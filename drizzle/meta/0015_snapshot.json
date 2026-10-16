@@ -1105,7 +1105,7 @@
           "type": "text",
           "primaryKey": false,
           "notNull": true,
-          "default": "'America/Mexico_City'"
+          "default": "'America/Lima'"
         },
         "connector": {
           "name": "connector",

@@ -1,6 +1,6 @@
 # Guion E2E — Resultados: ventas, el agente, de dónde llegan y qué se cae
 
-> Automatizado en `scripts/e2e-resultados.mjs` (`pnpm test:e2e:resultados`,
+> Automatizado en `scripts/e2e-results.mjs` (`pnpm test:e2e:results`,
 > app viva con los mocks). Spec: [019](../../specs/019-resultados/spec.md).
 > Corre con la bandera `AGENDA` apagada o encendida: la lee del mismo entorno
 > que la app.

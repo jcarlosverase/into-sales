@@ -9,9 +9,9 @@ import {
   saveTiktokCredentials,
   tokenLast4,
 } from "@/server/tiktok/credentials";
-import { ensureWebhookForOrg } from "@/server/zernio/conexiones";
-import { accountHealth, zernioAccountName } from "@/server/zernio/cuentas";
-import { resolveZernioAccount } from "@/server/zernio/guardar";
+import { ensureWebhookForOrg } from "@/server/zernio/connections";
+import { accountHealth, zernioAccountName } from "@/server/zernio/accounts";
+import { resolveZernioAccount } from "@/server/zernio/save-connection";
 
 export const dynamic = "force-dynamic";
 
@@ -58,20 +58,20 @@ export const PUT = withAuth(async (session, req: Request) => {
   if (!body.ok) return body.response;
 
   // 023: la cuenta se resuelve contra Zernio, no se guarda a ciegas.
-  const cuenta = await resolveZernioAccount(body.data.token, body.data.accountRef, "tiktok");
-  if (!cuenta.ok) return cuenta.response;
+  const account = await resolveZernioAccount(body.data.token, body.data.accountRef, "tiktok");
+  if (!account.ok) return account.response;
 
-  const previa = await getTiktokCredentialsByOrg(session.organizationId);
+  const previous = await getTiktokCredentialsByOrg(session.organizationId);
   const username =
-    (cuenta.account.username ?? body.data.username)?.replace(/^@/, "") || null;
+    (account.account.username ?? body.data.username)?.replace(/^@/, "") || null;
   await saveTiktokCredentials({
     organizationId: session.organizationId,
-    accountRef: cuenta.account._id,
+    accountRef: account.account._id,
     username,
     token: body.data.token,
     // Sin secreto nuevo se conserva el que había: reconectar no debe apagar
     // la verificación de firma.
-    webhookSecret: body.data.webhookSecret ?? previa?.webhookSecret ?? null,
+    webhookSecret: body.data.webhookSecret ?? previous?.webhookSecret ?? null,
   });
   const webhook = await ensureWebhookForOrg(session.organizationId, {
       secret: body.data.webhookSecret,
@@ -80,11 +80,11 @@ export const PUT = withAuth(async (session, req: Request) => {
   return Response.json({
     ok: true,
     username,
-    accountRef: cuenta.account._id,
-    accountName: zernioAccountName(cuenta.account),
+    accountRef: account.account._id,
+    accountName: zernioAccountName(account.account),
     // Una cuenta personal se guarda igual, pero se dice: TikTok no le entrega
     // mensajes hasta que sea Business.
-    health: accountHealth(cuenta.account, "tiktok"),
+    health: accountHealth(account.account, "tiktok"),
     webhook,
   });
 });

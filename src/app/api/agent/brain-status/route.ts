@@ -9,7 +9,7 @@ import {
   computeBrainStatus,
   getBrainHealth,
 } from "@/server/bot/status";
-import { estadoDelDespacho } from "@/server/dispatch/estado";
+import { dispatchStatus } from "@/server/dispatch/status";
 
 export const dynamic = "force-dynamic";
 
@@ -27,7 +27,7 @@ export const GET = withAuth(async (session) => {
       .limit(1),
     getBrainHealth(getEnv().BRAIN_HEALTH_URL),
     isAiConfiguredFor(session.organizationId),
-    estadoDelDespacho(session.organizationId),
+    dispatchStatus(session.organizationId),
   ]);
   const status = computeBrainStatus({
     aiConfigured,

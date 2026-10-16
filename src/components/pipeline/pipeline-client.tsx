@@ -15,8 +15,8 @@ import {
 } from "@dnd-kit/core";
 import { MessageSquareText, Settings2, Trophy, XCircle } from "lucide-react";
 import type { LossReason, PriorityValue, StageDto } from "@/lib/types";
-import { formatMoneyCents, sumable } from "@/lib/money";
-import { cn } from "@/lib/utils";
+import { formatMoneyCents, summable } from "@/lib/money";
+import { cn, initials } from "@/lib/utils";
 import { ContactAvatar } from "@/components/avatar";
 import { Button } from "@/components/ui/button";
 import { formatTime } from "@/components/inbox/helpers";
@@ -36,12 +36,25 @@ export type BoardLead = {
   amountCents: number | null;
   currency: string | null;
   priority: PriorityValue | null;
+  /** 029 — next follow-up day (`AAAA-MM-DD`) and its note. */
+  followUpOn: string | null;
+  followUpNote: string | null;
+  /** 022 — the sales rep who owns the lead, or null when unassigned. */
+  assignee: TeamMember | null;
 };
+
+/** 022 — someone a lead can be assigned to. */
+export type TeamMember = { id: string; name: string };
 
 export function PipelineClient() {
   const [stages, setStages] = useState<StageDto[]>([]);
   const [currency, setCurrency] = useState("MXN");
   const [leads, setLeads] = useState<BoardLead[]>([]);
+  // 022 — only supervisors can reassign; `team` is who they can pick.
+  const [canAssign, setCanAssign] = useState(false);
+  const [team, setTeam] = useState<TeamMember[]>([]);
+  // 029 — hoy del negocio, para los atajos de «Próximo contacto».
+  const [today, setToday] = useState<string | null>(null);
   const [activeLead, setActiveLead] = useState<BoardLead | null>(null);
   const [managing, setManaging] = useState(false);
   /** Arrastre hacia una etapa perdida, esperando el motivo. */
@@ -51,14 +64,14 @@ export function PipelineClient() {
     name: string;
   } | null>(null);
   /** Tarjeta cuyo monto se está capturando. */
-  const [editandoMonto, setEditandoMonto] = useState<BoardLead | null>(null);
+  const [editingAmount, setEditingAmount] = useState<BoardLead | null>(null);
   /**
    * Trato abierto en el cajón. Se guarda el ID y no el objeto: así el cajón
    * lee siempre del tablero y refleja al instante lo que se cambie desde
    * dentro, en vez de enseñar una copia que envejece.
    */
-  const [abiertoId, setAbiertoId] = useState<string | null>(null);
-  const abierto = leads.find((l) => l.id === abiertoId) ?? null;
+  const [openId, setOpenId] = useState<string | null>(null);
+  const opened = leads.find((l) => l.id === openId) ?? null;
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } })
@@ -71,8 +84,14 @@ export function PipelineClient() {
       stages: StageDto[];
       leads: BoardLead[];
       currency?: string;
+      today?: string;
+      canAssign?: boolean;
+      team?: TeamMember[];
     };
     if (data.currency) setCurrency(data.currency);
+    setCanAssign(data.canAssign ?? false);
+    setTeam(data.team ?? []);
+    setToday(data.today ?? null);
     setStages(data.stages);
     setLeads(data.leads);
   }, []);
@@ -81,12 +100,18 @@ export function PipelineClient() {
     void refetch();
   }, [refetch]);
 
+  // 029 — `/pipeline?lead=<id>` (desde «Hoy») abre ese trato en el cajón.
+  useEffect(() => {
+    const id = new URLSearchParams(window.location.search).get("lead");
+    if (id) setOpenId(id);
+  }, []);
+
   function onDragStart(event: DragStartEvent) {
     const lead = leads.find((l) => l.id === event.active.id);
     setActiveLead(lead ?? null);
   }
 
-  async function moverLead(
+  async function moveLead(
     leadId: string,
     overStage: string,
     loss?: { reason: LossReason; note: string }
@@ -110,7 +135,7 @@ export function PipelineClient() {
     void refetch();
   }
 
-  async function guardarMonto(leadId: string, cents: number | null) {
+  async function saveAmount(leadId: string, cents: number | null) {
     setLeads((prev) =>
       prev.map((l) => (l.id === leadId ? { ...l, amountCents: cents } : l))
     );
@@ -123,7 +148,7 @@ export function PipelineClient() {
     void refetch();
   }
 
-  async function guardarPrioridad(leadId: string, priority: PriorityValue | null) {
+  async function savePriority(leadId: string, priority: PriorityValue | null) {
     setLeads((prev) =>
       prev.map((l) => (l.id === leadId ? { ...l, priority } : l))
     );
@@ -131,6 +156,30 @@ export function PipelineClient() {
       method: "PATCH",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ priority }),
+    }).catch(() => null);
+    void refetch();
+  }
+
+  // 029 — próximo contacto desde el cajón.
+  async function saveFollowUp(leadId: string, next: { followUpOn: string | null; followUpNote: string | null }) {
+    setLeads((prev) => prev.map((l) => (l.id === leadId ? { ...l, ...next } : l)));
+    await fetch(`/api/pipeline/leads/${leadId}`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(next),
+    }).catch(() => null);
+    void refetch();
+  }
+
+  async function saveRep(leadId: string, userId: string | null) {
+    const assignee = userId ? (team.find((m) => m.id === userId) ?? null) : null;
+    setLeads((prev) =>
+      prev.map((l) => (l.id === leadId ? { ...l, assignee } : l))
+    );
+    await fetch(`/api/pipeline/leads/${leadId}`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ assignedUserId: userId }),
     }).catch(() => null);
     void refetch();
   }
@@ -145,13 +194,13 @@ export function PipelineClient() {
 
     // Perder un trato exige motivo. Se pregunta ANTES de mover: si el dueño
     // cancela, la tarjeta ni siquiera parpadea fuera de su columna.
-    const destino = stages.find((s) => s.id === overStage);
-    if (destino?.kind === "lost") {
+    const destination = stages.find((s) => s.id === overStage);
+    if (destination?.kind === "lost") {
       setPendingLoss({ leadId, stageId: overStage, name: lead.contact.name });
       return;
     }
 
-    await moverLead(leadId, overStage);
+    await moveLead(leadId, overStage);
   }
 
   /**
@@ -159,15 +208,15 @@ export function PipelineClient() {
    * arrastre: perder un trato exige motivo venga de donde venga, y duplicar
    * esa regla aquí sería tener dos sitios donde olvidarla.
    */
-  function moverDesdeCajon(leadId: string, stageId: string) {
+  function moveFromDrawer(leadId: string, stageId: string) {
     const lead = leads.find((l) => l.id === leadId);
     if (!lead || lead.stageId === stageId) return;
-    const destino = stages.find((s) => s.id === stageId);
-    if (destino?.kind === "lost") {
+    const destination = stages.find((s) => s.id === stageId);
+    if (destination?.kind === "lost") {
       setPendingLoss({ leadId, stageId, name: lead.contact.name });
       return;
     }
-    void moverLead(leadId, stageId);
+    void moveLead(leadId, stageId);
   }
 
   return (
@@ -193,8 +242,8 @@ export function PipelineClient() {
                 key={stage.id}
                 stage={stage}
                 currency={currency}
-                onEditAmount={setEditandoMonto}
-                onOpen={(l) => setAbiertoId(l.id)}
+                onEditAmount={setEditingAmount}
+                onOpen={(l) => setOpenId(l.id)}
                 leads={leads
                   .filter((l) => l.stageId === stage.id)
                   .sort((a, b) => a.position - b.position)}
@@ -219,33 +268,38 @@ export function PipelineClient() {
 
       {/* Va ANTES que los diálogos: con el mismo z-index, el que se pinta
           después queda encima, y el motivo de pérdida debe tapar al cajón. */}
-      {abierto && (
+      {opened && (
         <LeadDrawer
-          lead={abierto}
+          lead={opened}
           stages={stages}
           currency={currency}
-          onClose={() => setAbiertoId(null)}
-          onMoveStage={(stageId) => moverDesdeCajon(abierto.id, stageId)}
-          onAmount={(cents) => void guardarMonto(abierto.id, cents)}
-          onPriority={(p) => void guardarPrioridad(abierto.id, p)}
+          onClose={() => setOpenId(null)}
+          onMoveStage={(stageId) => moveFromDrawer(opened.id, stageId)}
+          onAmount={(cents) => void saveAmount(opened.id, cents)}
+          onPriority={(p) => void savePriority(opened.id, p)}
+          today={today}
+          onFollowUp={(next) => void saveFollowUp(opened.id, next)}
+          canAssign={canAssign}
+          team={team}
+          onAssign={(userId) => void saveRep(opened.id, userId)}
         />
       )}
 
-      {editandoMonto && (
+      {editingAmount && (
         <AmountDialog
-          leadName={editandoMonto.contact.name}
-          currency={editandoMonto.currency ?? currency}
-          amountCents={editandoMonto.amountCents}
-          priority={editandoMonto.priority}
+          leadName={editingAmount.contact.name}
+          currency={editingAmount.currency ?? currency}
+          amountCents={editingAmount.amountCents}
+          priority={editingAmount.priority}
           onPriorityChange={(p) => {
-            setEditandoMonto({ ...editandoMonto, priority: p });
-            void guardarPrioridad(editandoMonto.id, p);
+            setEditingAmount({ ...editingAmount, priority: p });
+            void savePriority(editingAmount.id, p);
           }}
-          onCancel={() => setEditandoMonto(null)}
+          onCancel={() => setEditingAmount(null)}
           onSave={(cents) => {
-            const leadId = editandoMonto.id;
-            setEditandoMonto(null);
-            void guardarMonto(leadId, cents);
+            const leadId = editingAmount.id;
+            setEditingAmount(null);
+            void saveAmount(leadId, cents);
           }}
         />
       )}
@@ -257,7 +311,7 @@ export function PipelineClient() {
           onConfirm={(reason, note) => {
             const { leadId, stageId } = pendingLoss;
             setPendingLoss(null);
-            void moverLead(leadId, stageId, { reason, note });
+            void moveLead(leadId, stageId, { reason, note });
           }}
         />
       )}
@@ -270,23 +324,23 @@ export function PipelineClient() {
  * desincroniza en cuanto alguien mueve una tarjeta, y sumar unas decenas es
  * gratis. Todo en CENTAVOS enteros — el dinero jamás pasa por coma flotante.
  */
-function totalesDeEtapa(leads: BoardLead[], businessCurrency: string) {
+function stageTotals(leads: BoardLead[], businessCurrency: string) {
   let totalCents = 0;
-  let sinMonto = 0;
-  let otraMoneda = 0;
+  let withoutAmount = 0;
+  let otherCurrency = 0;
 
   for (const l of leads) {
     if (l.amountCents === null) {
-      sinMonto++;
+      withoutAmount++;
       continue;
     }
-    if (!sumable({ amountCents: l.amountCents, currency: l.currency }, businessCurrency)) {
-      otraMoneda++;
+    if (!summable({ amountCents: l.amountCents, currency: l.currency }, businessCurrency)) {
+      otherCurrency++;
       continue;
     }
     totalCents += l.amountCents;
   }
-  return { totalCents, sinMonto, otraMoneda };
+  return { totalCents, withoutAmount: withoutAmount, otherCurrency: otherCurrency };
 }
 
 function StageColumn({
@@ -341,29 +395,29 @@ function StageColumn({
 
 /** Cuánto dinero hay en esta etapa, y qué quedó fuera de la cuenta. */
 function StageFooter({ leads, currency }: { leads: BoardLead[]; currency: string }) {
-  const { totalCents, sinMonto, otraMoneda } = totalesDeEtapa(leads, currency);
-  const conMonto = leads.length - sinMonto - otraMoneda;
+  const { totalCents, withoutAmount: withoutAmount, otherCurrency: otherCurrency } = stageTotals(leads, currency);
+  const withAmount = leads.length - withoutAmount - otherCurrency;
 
   return (
     <div className="border-t px-3 py-2 text-[11px]">
-      {conMonto === 0 ? (
+      {withAmount === 0 ? (
         // Un "$0.00" aquí se lee como un error del sistema, no como un dato.
         <p className="text-muted-foreground">Sin montos capturados</p>
       ) : (
         <div className="flex items-baseline justify-between gap-2">
           <span className="text-muted-foreground">
-            Total{sinMonto > 0 ? ` · ${sinMonto} sin monto` : ""}
+            Total{withoutAmount > 0 ? ` · ${withoutAmount} sin monto` : ""}
           </span>
           <span className="font-semibold tabular-nums">
             {formatMoneyCents(totalCents, currency)}
           </span>
         </div>
       )}
-      {otraMoneda > 0 && (
+      {otherCurrency > 0 && (
         // Descartarlos en silencio haría que el total mintiera sin que nadie
         // pudiera notarlo.
         <p className="mt-0.5 text-warning-text">
-          {otraMoneda} en otra moneda, fuera del total
+          {otherCurrency} en otra moneda, fuera del total
         </p>
       )}
     </div>
@@ -442,6 +496,7 @@ function LeadCard({
               : "Sin actividad"}
           </p>
         </div>
+        <AssigneeChip assignee={lead.assignee} />
         {lead.conversationId && (
           <Link
             href={`/inbox?contact=${lead.contact.id}`}
@@ -483,5 +538,29 @@ function LeadCard({
         </p>
       )}
     </div>
+  );
+}
+
+/** 022 — who owns the card: the rep's initials, or a muted "unassigned" mark. */
+function AssigneeChip({ assignee }: { assignee: TeamMember | null }) {
+  if (!assignee) {
+    return (
+      <span
+        title="Sin asignar"
+        aria-label="Sin asignar"
+        className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-dashed border-border-strong text-[10px] text-text-3"
+      >
+        ?
+      </span>
+    );
+  }
+  return (
+    <span
+      title={`Asignado a ${assignee.name}`}
+      aria-label={`Asignado a ${assignee.name}`}
+      className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-soft text-[10px] font-bold text-brand-text"
+    >
+      {initials(assignee.name)}
+    </span>
   );
 }

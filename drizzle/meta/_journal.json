@@ -134,6 +134,48 @@
       "when": 1791918147335,
       "tag": "0018_canal_tiktok",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1791990000000,
+      "tag": "0019_lead_assignment",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1791990100000,
+      "tag": "0020_licencia_central",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1791990200000,
+      "tag": "0021_follow_up",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1791990300000,
+      "tag": "0022_attention_hours",
+      "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1791990400000,
+      "tag": "0023_default_timezone_lima",
+      "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1792112674882,
+      "tag": "0024_timestamptz_lima",
+      "breakpoints": true
     }
   ]
 }

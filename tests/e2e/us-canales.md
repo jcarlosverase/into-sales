@@ -1,6 +1,6 @@
 # E2E — Ajustes → Canales y arreglos de Zernio (023)
 
-Arnés: `scripts/e2e-canales.mjs`. Spec:
+Arnés: `scripts/e2e-channels.mjs`. Spec:
 [`specs/023-ajustes-canales/spec.md`](../../specs/023-ajustes-canales/spec.md).
 
 Precondición: app corriendo (`next dev`) sobre una base migrada, con
@@ -14,7 +14,7 @@ lo tira (`_down`), entrega eventos firmados y lee lo que el CRM dejó en él
 (`GET /api/dev/zernio-mock/_state`).
 
 ```bash
-node --env-file=.env scripts/e2e-canales.mjs
+node --env-file=.env scripts/e2e-channels.mjs
 ```
 
 ## D1 — La cuenta se resuelve contra la llave

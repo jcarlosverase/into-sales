@@ -35,7 +35,7 @@ export function StatCard({
   inverted?: boolean;
 }) {
   const d = compare ? delta(compare) : null;
-  const mejor = d === null || d === 0 ? null : inverted ? d < 0 : d > 0;
+  const best = d === null || d === 0 ? null : inverted ? d < 0 : d > 0;
   const Icon = d === null || d === 0 ? ArrowRight : d > 0 ? ArrowUpRight : ArrowDownRight;
 
   return (
@@ -45,7 +45,7 @@ export function StatCard({
         <p
           className={cn(
             "mt-1 flex items-center gap-1 text-xs",
-            mejor === null ? "text-text-3" : mejor ? "text-success-text" : "text-danger-text"
+            best === null ? "text-text-3" : best ? "text-success-text" : "text-danger-text"
           )}
         >
           <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden />

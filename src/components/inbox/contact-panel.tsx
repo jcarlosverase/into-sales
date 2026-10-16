@@ -18,19 +18,19 @@ import {
   type BrainStatusDto,
 } from "@/lib/brain-status";
 import type {
-  AnuncioDto,
+  AdDto,
   ConversationDto,
-  FichaDto,
-  FichaValue,
+  QualificationDto,
+  QualificationValue,
   StageDto,
 } from "@/lib/types";
 import { cn, formatPhone } from "@/lib/utils";
-import { AnuncioOrigen } from "@/components/anuncio-origen";
+import { AdOrigin } from "@/components/ad-origin";
 import { ContactAvatar } from "@/components/avatar";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import { FichaPanel } from "@/components/ficha-panel";
+import { QualificationPanel } from "@/components/qualification-panel";
 import { DeleteConversationDialog } from "./delete-conversation-dialog";
 
 const HANDOFF_LABELS: Record<string, string> = {
@@ -61,14 +61,14 @@ export function ContactPanel({
 }) {
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [notes, setNotes] = useState("");
-  const [ficha, setFicha] = useState<FichaDto>({});
+  const [qualification, setQualification] = useState<QualificationDto>({});
   const [notesLoaded, setNotesLoaded] = useState(false);
   const [savingNotes, setSavingNotes] = useState(false);
   const [stages, setStages] = useState<StageDto[]>([]);
   const [currentStageId, setCurrentStageId] = useState<string | null>(null);
   const [leadId, setLeadId] = useState<string | null>(null);
   // 018: de qué anuncio llegó; null si escribió por su cuenta.
-  const [anuncio, setAnuncio] = useState<AnuncioDto | null>(null);
+  const [ad, setAd] = useState<AdDto | null>(null);
   // Quién responde (agente incluido, cerebro externo o los dos): sin esto, el
   // toggle "Respondiendo" mentiría cuando el agente aún no se ha
   // configurado/encendido, y pediría la clave de IA aunque conteste Nea.
@@ -103,10 +103,10 @@ export function ContactPanel({
     ]).catch(() => [null, null]);
     if (detail) {
       setNotes(detail.contact?.notes ?? "");
-      setFicha(detail.contact?.ficha ?? {});
+      setQualification(detail.contact?.ficha ?? {});
       setCurrentStageId(detail.stage?.id ?? null);
       setLeadId(detail.lead?.id ?? null);
-      setAnuncio(detail.anuncio ?? null);
+      setAd(detail.ad ?? null);
     }
     if (stagesRes) setStages(stagesRes.stages);
     setNotesLoaded(true);
@@ -123,19 +123,19 @@ export function ContactPanel({
       // La ficha SÍ se refresca en vivo: el agente la va llenando mientras la
       // conversación ocurre, y verla aparecer sola es justo para lo que sirve.
       // No pisa una edición a medias — el borrador vive dentro del panel.
-      setFicha(detail.contact?.ficha ?? {});
+      setQualification(detail.contact?.ficha ?? {});
       setCurrentStageId(detail.stage?.id ?? null);
       setLeadId(detail.lead?.id ?? null);
       // La imagen del creativo se copia después de que entra el mensaje: este
       // refetch en vivo es lo que la hace aparecer sin recargar.
-      setAnuncio(detail.anuncio ?? null);
+      setAd(detail.ad ?? null);
     }
   }, [contactId, loadBrain]);
 
   useEffect(() => {
     setNotesLoaded(false);
     // Al cambiar de contacto no puede asomarse el anuncio del anterior.
-    setAnuncio(null);
+    setAd(null);
     void refetch();
   }, [refetch]);
 
@@ -156,8 +156,8 @@ export function ContactPanel({
   }
 
   /** Manda SOLO lo que cambió: el servidor hace merge (ver `server/bot/ficha`). */
-  async function saveFicha(patch: Record<string, FichaValue | null>) {
-    setFicha((prev) => {
+  async function saveQualification(patch: Record<string, QualificationValue | null>) {
+    setQualification((prev) => {
       const next = { ...prev };
       for (const [k, v] of Object.entries(patch)) {
         if (v === null) delete next[k];
@@ -314,7 +314,7 @@ export function ContactPanel({
                 />
                 <p className="text-[11px] leading-relaxed text-warning-text">
                   {aiConfigured
-                    ? "El agente de Vocero no responde por su cuenta. Configura lo básico y enciéndelo (o conecta tu propio bot por la API)."
+                    ? "El agente de IntoSales no responde por su cuenta. Configura lo básico y enciéndelo (o conecta tu propio bot por la API)."
                     : "Falta el proveedor de IA (o está pausado) para que el agente responda, o conecta tu propio bot por la API."}
                   <Link
                     href={aiConfigured ? "/agent" : "/settings/ai"}
@@ -327,9 +327,9 @@ export function ContactPanel({
             )}
           </div>
 
-          {anuncio && (
+          {ad && (
             <div className="mt-3">
-              <AnuncioOrigen anuncio={anuncio} />
+              <AdOrigin ad={ad} />
             </div>
           )}
         </section>
@@ -382,7 +382,7 @@ export function ContactPanel({
 
         {/* Ficha: lo que se SABE del lead. Va antes de Notas —lo que alguien
             OPINA— porque es lo que se consulta a mitad de una conversación. */}
-        <FichaPanel ficha={ficha} onSave={saveFicha} />
+        <QualificationPanel ficha={qualification} onSave={saveQualification} />
 
         {/* Notas */}
         <section className={cn("p-4", onDeleteConversation && "border-b")}>

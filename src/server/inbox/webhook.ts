@@ -37,6 +37,26 @@ export function isValidSignature(
   return safeEqual(signatureHeader.slice("sha256=".length), expected);
 }
 
+/**
+ * A rejected signature used to be silent: Meta got its 401, retried for a
+ * while and dropped the message, and the inbox simply stayed empty. The
+ * usual cause is a META_APP_SECRET that is not the App Secret of the app that
+ * sends the webhooks (copied from another app, or cut short). Say so in the
+ * server log, at most once a minute so a burst of retries does not flood it.
+ * The secret itself is never logged.
+ */
+let lastSignatureWarning = 0;
+export function warnInvalidSignature(channel: string, hasSignature: boolean): void {
+  const now = Date.now();
+  if (now - lastSignatureWarning < 60_000) return;
+  lastSignatureWarning = now;
+  console.warn(
+    hasSignature
+      ? `[webhook ${channel}] Meta mandó un evento con una firma que no coincide con META_APP_SECRET y se descartó (401). Revisa que META_APP_SECRET sea el App Secret de la misma app de Meta (32 caracteres, en Configuración de la app → Básica) y reinicia la app.`
+      : `[webhook ${channel}] llegó un evento sin firma y META_APP_SECRET está configurado: se descartó (401).`
+  );
+}
+
 /* ---------- Tipos del payload de Meta (subconjunto soportado) ---------- */
 
 /** Payload de un adjunto en un mensaje del webhook (008). */

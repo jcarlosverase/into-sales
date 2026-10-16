@@ -28,13 +28,13 @@ function contrast(a: string, b: string): number {
 
 /** Variables de un bloque de globals.css, con el valor sin saltos de línea. */
 function variables(css: string, selector: string): Record<string, string> {
-  const inicio = css.indexOf(selector);
-  expect(inicio, `no está el bloque ${selector}`).toBeGreaterThanOrEqual(0);
-  const cuerpo = css
-    .slice(css.indexOf("{", inicio) + 1, css.indexOf("}", inicio))
+  const start = css.indexOf(selector);
+  expect(start, `no está el bloque ${selector}`).toBeGreaterThanOrEqual(0);
+  const body = css
+    .slice(css.indexOf("{", start) + 1, css.indexOf("}", start))
     .replace(/\/\*[\s\S]*?\*\//g, ""); // un comentario puede nombrar un token
   return Object.fromEntries(
-    [...cuerpo.matchAll(/(--[\w-]+):\s*([^;]+);/g)].map((m) => [
+    [...body.matchAll(/(--[\w-]+):\s*([^;]+);/g)].map((m) => [
       m[1]!,
       m[2]!.replace(/\s+/g, " ").trim(),
     ])
@@ -63,18 +63,18 @@ describe("white-label: acento", () => {
     expect(lum).toBeLessThan(0xd0);
   });
 
-  it("hex inválido cae al default (el azul Vocero)", () => {
-    expect(resolveAccentSet("rojo")).toEqual(ACCENT_PRESETS["#0d5bff"]!.set);
+  it("hex inválido cae al default (el azul into)", () => {
+    expect(resolveAccentSet("rojo")).toEqual(ACCENT_PRESETS["#0081c8"]!.set);
   });
 
-  it("el azul Vocero es el default y trae los valores exactos de la landing", () => {
-    expect(DEFAULT_BRANDING.accent).toBe("#0d5bff");
+  it("el azul into es el default; el relleno va un paso más oscuro para pasar AA", () => {
+    expect(DEFAULT_BRANDING.accent).toBe("#0081c8");
     expect(resolveAccentSet(DEFAULT_BRANDING.accent)).toEqual({
-      accent: "#0d5bff",
-      hover: "#0a4de6",
-      soft: "#d3e2ff",
-      tint: "#ebf1ff",
-      text: "#0038d8",
+      accent: "#0074b4",
+      hover: "#00669e",
+      soft: "#cce3f1",
+      tint: "#e8f3fa",
+      text: "#005a8c",
       fg: "#ffffff",
     });
   });
@@ -83,9 +83,9 @@ describe("white-label: acento", () => {
 describe("white-label: acento en tema oscuro", () => {
   it("un acento pensado para fondo blanco se aclara hasta despegarse del fondo", () => {
     // Azul profundo: sobre el azul marino de la página casi no se ve.
-    const oscuro = resolveAccentSet("#12305a", "dark");
+    const darkValue = resolveAccentSet("#12305a", "dark");
     expect(contrast("#12305a", DARK_BG)).toBeLessThan(3);
-    expect(contrast(oscuro.accent, DARK_BG)).toBeGreaterThanOrEqual(3);
+    expect(contrast(darkValue.accent, DARK_BG)).toBeGreaterThanOrEqual(3);
   });
 
   it("la tinta del botón pasa AA sobre el acento ya aclarado", () => {
@@ -95,21 +95,22 @@ describe("white-label: acento en tema oscuro", () => {
     }
   });
 
-  it("el azul Vocero conserva la tinta blanca en oscuro", () => {
-    expect(resolveAccentSet(DEFAULT_BRANDING.accent, "dark").fg).toBe("#ffffff");
+  it("el azul into en oscuro lleva una tinta que pasa AA", () => {
+    const s = resolveAccentSet(DEFAULT_BRANDING.accent, "dark");
+    expect(contrast(s.fg, s.accent)).toBeGreaterThanOrEqual(4.5);
   });
 
   it("los presets NO se aplican tal cual: están calculados para fondo blanco", () => {
-    const claro = resolveAccentSet("#3f5972", "light");
-    const oscuro = resolveAccentSet("#3f5972", "dark");
-    expect(oscuro.accent).not.toBe(claro.accent);
+    const light = resolveAccentSet("#3f5972", "light");
+    const darkValue = resolveAccentSet("#3f5972", "dark");
+    expect(darkValue.accent).not.toBe(light.accent);
     // soft y tint se mezclan hacia el fondo oscuro, no hacia blanco
-    expect(contrast(oscuro.tint, DARK_BG)).toBeLessThan(2);
+    expect(contrast(darkValue.tint, DARK_BG)).toBeLessThan(2);
   });
 
   it("hex inválido en oscuro también cae al acento por defecto", () => {
     expect(resolveAccentSet("rojo", "dark")).toEqual(
-      resolveAccentSet("#0d5bff", "dark")
+      resolveAccentSet("#0081c8", "dark")
     );
   });
 
@@ -146,16 +147,16 @@ describe("white-label: barra lateral bicolor (.nav-dark)", () => {
     expect(nav).not.toContain(resolveAccentSet("#3f5972", "light").accent);
   });
 
-  it("con el azul Vocero, la barra se ve como siempre", () => {
-    // La receta de la barra es la de antes: el ítem activo del tema claro no
-    // cambia aunque el tema oscuro de la página sí.
+  it("con el azul into, la barra lleva su receta fija", () => {
+    // El ítem activo del tema claro no cambia aunque el tema oscuro de la
+    // página sí.
     expect(resolveNavAccentSet(DEFAULT_BRANDING.accent)).toEqual({
-      accent: "#256bff",
-      hover: "#4883ff",
-      soft: "#122c63",
-      tint: "#0e1e41",
-      text: "#6295ff",
-      fg: "#ffffff",
+      accent: "#1a8ece",
+      hover: "#3ea0d5",
+      soft: "#0f3556",
+      tint: "#0d223b",
+      text: "#5aaddb",
+      fg: "#0f1419",
     });
   });
 
@@ -164,13 +165,13 @@ describe("white-label: barra lateral bicolor (.nav-dark)", () => {
     // 1.04:1. Ahora la página va un escalón arriba; si alguien vuelve a
     // igualarlas, el bicolor desaparece en oscuro: aquí se cae.
     const css = readFileSync("src/app/globals.css", "utf8");
-    const oscuro = variables(css, ':root[data-theme="dark"] {');
+    const darkValue = variables(css, ':root[data-theme="dark"] {');
     const nav = variables(css, ".nav-dark {");
     expect(Object.keys(nav)).toEqual(
       expect.arrayContaining(["--bg", "--bg-subtle", "--text", "--text-3", "--border"])
     );
-    expect(nav["--bg-subtle"]).not.toBe(oscuro["--bg-subtle"]);
-    expect(nav["--bg"]).not.toBe(oscuro["--bg"]);
+    expect(nav["--bg-subtle"]).not.toBe(darkValue["--bg-subtle"]);
+    expect(nav["--bg"]).not.toBe(darkValue["--bg"]);
   });
 });
 
@@ -180,43 +181,43 @@ describe("tema oscuro: las superficies se distinguen", () => {
   // Se afirma sobre legibilidad, no sobre un hex: el que retoque el tema
   // oscuro puede mover los valores, no el piso.
   const css = readFileSync("src/app/globals.css", "utf8");
-  const oscuro = variables(css, ':root[data-theme="dark"] {');
-  const claro = variables(css, ":root {");
-  const tono = (nombre: string) => oscuro[nombre] ?? `falta ${nombre}`;
+  const darkValue = variables(css, ':root[data-theme="dark"] {');
+  const light = variables(css, ":root {");
+  const tone = (name: string) => darkValue[name] ?? `falta ${name}`;
 
   it("los bordes separan las columnas: ≥ 1.6:1 contra el fondo", () => {
-    expect(contrast(tono("--border"), tono("--bg"))).toBeGreaterThanOrEqual(1.6);
-    expect(contrast(tono("--border-strong"), tono("--bg"))).toBeGreaterThan(
-      contrast(tono("--border"), tono("--bg"))
+    expect(contrast(tone("--border"), tone("--bg"))).toBeGreaterThanOrEqual(1.6);
+    expect(contrast(tone("--border-strong"), tone("--bg"))).toBeGreaterThan(
+      contrast(tone("--border"), tone("--bg"))
     );
   });
 
   it("el chip y la fila bajo el cursor se ACLARAN respecto al fondo", () => {
     // Contra --bg, que es el de la lista: un chip o un hover más oscuros se
     // leen como un hueco, no como una superficie.
-    const blanco = "#ffffff";
-    for (const nombre of ["--chip-bg", "--row-hover", "--bg-hover"]) {
-      expect(contrast(tono(nombre), blanco), nombre).toBeLessThan(
-        contrast(tono("--bg"), blanco)
+    const white = "#ffffff";
+    for (const name of ["--chip-bg", "--row-hover", "--bg-hover"]) {
+      expect(contrast(tone(name), white), name).toBeLessThan(
+        contrast(tone("--bg"), white)
       );
     }
   });
 
   it("en claro, chips y hover se ven igual que antes", () => {
-    expect(claro["--chip-bg"]).toBe(claro["--bg"]);
-    expect(claro["--row-hover"]).toBe(claro["--bg-subtle"]);
+    expect(light["--chip-bg"]).toBe(light["--bg"]);
+    expect(light["--row-hover"]).toBe(light["--bg-subtle"]);
   });
 });
 
 describe("white-label: normalización", () => {
-  it("nombre vacío o nulo → default 'Vocero'; se recorta a 30", () => {
-    expect(normalizeBranding(null).name).toBe("Vocero");
-    expect(normalizeBranding({ name: "   " }).name).toBe("Vocero");
+  it("nombre vacío o nulo → default 'IntoSales'; se recorta a 30", () => {
+    expect(normalizeBranding(null).name).toBe("IntoSales");
+    expect(normalizeBranding({ name: "   " }).name).toBe("IntoSales");
     expect(normalizeBranding({ name: "x".repeat(50) }).name).toHaveLength(30);
   });
 
   it("acento inválido → default", () => {
-    expect(normalizeBranding({ accent: "azul" }).accent).toBe("#0d5bff");
+    expect(normalizeBranding({ accent: "azul" }).accent).toBe("#0081c8");
     expect(normalizeBranding({ accent: "#3F6B66" }).accent).toBe("#3f6b66");
   });
 });

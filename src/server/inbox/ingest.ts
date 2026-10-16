@@ -18,10 +18,10 @@ import {
 } from "@/server/inbox/identity";
 import { applyStatusUpdate } from "@/server/inbox/status";
 import {
-  anuncioDeWhatsapp,
-  type AnuncioDeOrigen,
+  whatsappAd,
+  type OriginAd,
 } from "@/server/attribution/referral";
-import { registrarAnuncioDeOrigen } from "@/server/attribution/store";
+import { registerOriginAd } from "@/server/attribution/store";
 import { onLeadActivity } from "@/server/inbox/lead-activity";
 import { maybeRunAgentTurn } from "@/server/ai/trigger";
 
@@ -54,23 +54,23 @@ const BUTTON_REPLY_TYPES = new Set(["button", "interactive"]);
  * eligió. Devuelve null si la respuesta no trae ni rótulo ni identificador
  * (payload roto): quien llama la descarta con aviso, nunca revienta el webhook.
  */
-export function contenidoEntrante(
+export function inboundContent(
   msg: WebhookMessage
 ): { type: string; text: string | null } | null {
   if (msg.type === "button") {
-    const rotulo = limpio(msg.button?.text) ?? limpio(msg.button?.payload);
-    return rotulo ? { type: "text", text: rotulo } : null;
+    const label = clean(msg.button?.text) ?? clean(msg.button?.payload);
+    return label ? { type: "text", text: label } : null;
   }
   if (msg.type === "interactive") {
     const reply = msg.interactive?.button_reply ?? msg.interactive?.list_reply;
-    const rotulo = limpio(reply?.title) ?? limpio(reply?.id);
-    return rotulo ? { type: "text", text: rotulo } : null;
+    const label = clean(reply?.title) ?? clean(reply?.id);
+    return label ? { type: "text", text: label } : null;
   }
   return { type: msg.type, text: msg.text?.body ?? null };
 }
 
-function limpio(valor: unknown): string | null {
-  return typeof valor === "string" && valor.trim() ? valor.trim() : null;
+function clean(valueValue: unknown): string | null {
+  return typeof valueValue === "string" && valueValue.trim() ? valueValue.trim() : null;
 }
 
 /** Tipos con archivo binario en Graph (008). */
@@ -275,8 +275,8 @@ export async function processMessagesValue(value: WebhookValue): Promise<void> {
     if (!SUPPORTED_TYPES.has(msg.type) && !BUTTON_REPLY_TYPES.has(msg.type)) {
       continue; // reacciones, etc.: ignorar
     }
-    const contenido = contenidoEntrante(msg);
-    if (!contenido) {
+    const content = inboundContent(msg);
+    if (!content) {
       console.warn(
         `[webhook] respuesta de botón ${msg.id} (${msg.type}) sin rótulo ni identificador: descartada`
       );
@@ -295,13 +295,13 @@ export async function processMessagesValue(value: WebhookValue): Promise<void> {
       organizationId,
       identity: resolved,
       waMessageId: msg.id,
-      type: contenido.type,
-      text: contenido.text,
+      type: content.type,
+      text: content.text,
       timestamp: msg.timestamp,
       media: mediaInputFrom(msg),
       // 018: normalizado aquí, en el adaptador del canal; la ingesta no sabe
       // de qué forma lo mandó Meta.
-      anuncio: anuncioDeWhatsapp(msg.referral),
+      ad: whatsappAd(msg.referral),
     });
   }
 }
@@ -436,7 +436,7 @@ export async function ingestInboundMessage(input: {
   /** 014: hilo en la plataforma de origen (Zernio); null en WhatsApp. */
   threadRef?: string | null;
   /** 016/018: el anuncio que abrió la conversación, ya normalizado por el canal. */
-  anuncio?: AnuncioDeOrigen | null;
+  ad?: OriginAd | null;
 }): Promise<void> {
   const db = getDb();
   const { organizationId } = input;
@@ -459,13 +459,13 @@ export async function ingestInboundMessage(input: {
   // identificador de clic (lo decide `registrarAnuncioDeOrigen`). Si falla,
   // el mensaje del cliente entra igual: el anuncio es contexto, el mensaje es
   // lo que importa.
-  if (input.anuncio) {
+  if (input.ad) {
     try {
-      await registrarAnuncioDeOrigen({
+      await registerOriginAd({
         organizationId,
         contactId: contact.id,
         conversationId: conversation.id,
-        anuncio: input.anuncio,
+        ad: input.ad,
       });
     } catch (err) {
       console.warn(

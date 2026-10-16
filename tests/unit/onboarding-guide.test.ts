@@ -57,10 +57,10 @@ describe("guía de inicio", () => {
   });
 
   it("el agente necesita perfil, y dice qué falta", () => {
-    const sinPerfil = guideFrom({ steps: all({ profile: "pending" }), enabled: false });
-    expect(sinPerfil.steps[0]?.done).toBe(false);
-    expect(sinPerfil.steps[0]?.hint).toMatch(/nombre/);
-    expect(sinPerfil.complete).toBe(false);
+    const withoutProfile = guideFrom({ steps: all({ profile: "pending" }), enabled: false });
+    expect(withoutProfile.steps[0]?.done).toBe(false);
+    expect(withoutProfile.steps[0]?.hint).toMatch(/nombre/);
+    expect(withoutProfile.complete).toBe(false);
   });
 
   it("una conexión pendiente deja la guía incompleta", () => {

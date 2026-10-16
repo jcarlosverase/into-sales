@@ -1,12 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
-import { clasificarFallo, listModels, probeProvider } from "@/lib/ai/probe";
+import { classifyFailure, listModels, probeProvider } from "@/lib/ai/probe";
 
 /**
  * #85 — «Probar conexión» y «Traer modelos» nunca lanzan: cada fallo vuelve
  * tipado y en el idioma del dueño, y la llave solo viaja en el header.
  */
 
-function respuesta(status: number, body: unknown) {
+function response(status: number, body: unknown) {
   return new Response(typeof body === "string" ? body : JSON.stringify(body), {
     status,
     headers: { "content-type": "application/json" },
@@ -16,7 +16,7 @@ function respuesta(status: number, body: unknown) {
 describe("probeProvider", () => {
   it("un turno mínimo con el modelo y la llave en Authorization → ok con latencia", async () => {
     const fetchImpl = vi.fn().mockResolvedValue(
-      respuesta(200, { choices: [{ message: { content: "ok" } }] })
+      response(200, { choices: [{ message: { content: "ok" } }] })
     );
     const r = await probeProvider({
       baseUrl: "https://proveedor.test",
@@ -38,26 +38,26 @@ describe("probeProvider", () => {
   });
 
   it("clasifica los códigos del proveedor", () => {
-    expect(clasificarFallo(401, "").code).toBe("invalid_token");
-    expect(clasificarFallo(403, "").code).toBe("invalid_token");
-    expect(clasificarFallo(402, "").code).toBe("no_credit");
-    expect(clasificarFallo(404, "").code).toBe("model_not_found");
-    expect(clasificarFallo(400, '{"error":{"message":"foo is not a valid model ID"}}').code).toBe(
+    expect(classifyFailure(401, "").code).toBe("invalid_token");
+    expect(classifyFailure(403, "").code).toBe("invalid_token");
+    expect(classifyFailure(402, "").code).toBe("no_credit");
+    expect(classifyFailure(404, "").code).toBe("model_not_found");
+    expect(classifyFailure(400, '{"error":{"message":"foo is not a valid model ID"}}').code).toBe(
       "model_not_found"
     );
-    expect(clasificarFallo(400, "bad request").code).toBe("provider_error");
-    expect(clasificarFallo(429, "").code).toBe("rate_limited");
-    expect(clasificarFallo(500, "").code).toBe("provider_error");
+    expect(classifyFailure(400, "bad request").code).toBe("provider_error");
+    expect(classifyFailure(429, "").code).toBe("rate_limited");
+    expect(classifyFailure(500, "").code).toBe("provider_error");
   });
 
   it("incluye el error.message del proveedor en el mensaje", () => {
-    const r = clasificarFallo(401, '{"error":{"message":"User not found."}}');
+    const r = classifyFailure(401, '{"error":{"message":"User not found."}}');
     expect(r.message).toContain("User not found.");
     expect(r.httpStatus).toBe(401);
   });
 
   it("200 sin choices → provider_error (no es una API de chat)", async () => {
-    const fetchImpl = vi.fn().mockResolvedValue(respuesta(200, { hola: "mundo" }));
+    const fetchImpl = vi.fn().mockResolvedValue(response(200, { hola: "mundo" }));
     const r = await probeProvider({
       baseUrl: "https://proveedor.test",
       model: "m",
@@ -69,33 +69,33 @@ describe("probeProvider", () => {
   });
 
   it("red caída → unreachable; URL inválida → bad_url sin tocar la red", async () => {
-    const caida = vi.fn().mockRejectedValue(new TypeError("fetch failed"));
+    const down = vi.fn().mockRejectedValue(new TypeError("fetch failed"));
     const r = await probeProvider({
       baseUrl: "https://proveedor.test",
       model: "m",
       token: "sk-x",
-      fetchImpl: caida as unknown as typeof fetch,
+      fetchImpl: down as unknown as typeof fetch,
     });
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.code).toBe("unreachable");
 
-    const nunca = vi.fn();
-    const mala = await probeProvider({
+    const neverValue = vi.fn();
+    const bad = await probeProvider({
       baseUrl: "no es una url",
       model: "m",
       token: "sk-x",
-      fetchImpl: nunca as unknown as typeof fetch,
+      fetchImpl: neverValue as unknown as typeof fetch,
     });
-    expect(mala.ok).toBe(false);
-    if (!mala.ok) expect(mala.code).toBe("bad_url");
-    expect(nunca).not.toHaveBeenCalled();
+    expect(bad.ok).toBe(false);
+    if (!bad.ok) expect(bad.code).toBe("bad_url");
+    expect(neverValue).not.toHaveBeenCalled();
   });
 });
 
 describe("listModels", () => {
   it("devuelve la lista ordenada con la forma de OpenRouter/OpenAI", async () => {
     const fetchImpl = vi.fn().mockResolvedValue(
-      respuesta(200, {
+      response(200, {
         data: [
           { id: "z/ultimo", name: "Último" },
           { id: "a/primero" },
@@ -111,9 +111,9 @@ describe("listModels", () => {
     });
     expect(r.ok).toBe(true);
     if (r.ok) {
-      expect(r.modelos).toEqual([
-        { id: "a/primero", nombre: null },
-        { id: "z/ultimo", nombre: "Último" },
+      expect(r.models).toEqual([
+        { id: "a/primero", name: null },
+        { id: "z/ultimo", name: "Último" },
       ]);
     }
     expect(fetchImpl.mock.calls[0]![0]).toBe("https://openrouter.ai/api/v1/models");
@@ -123,25 +123,25 @@ describe("listModels", () => {
     const r404 = await listModels({
       baseUrl: "https://proveedor.test",
       token: "sk-x",
-      fetchImpl: vi.fn().mockResolvedValue(respuesta(404, "")) as unknown as typeof fetch,
+      fetchImpl: vi.fn().mockResolvedValue(response(404, "")) as unknown as typeof fetch,
     });
     expect(r404.ok).toBe(false);
     if (!r404.ok) expect(r404.code).toBe("unsupported");
 
-    const rRara = await listModels({
+    const rOdd = await listModels({
       baseUrl: "https://proveedor.test",
       token: "sk-x",
-      fetchImpl: vi.fn().mockResolvedValue(respuesta(200, { modelos: [] })) as unknown as typeof fetch,
+      fetchImpl: vi.fn().mockResolvedValue(response(200, { models: [] })) as unknown as typeof fetch,
     });
-    expect(rRara.ok).toBe(false);
-    if (!rRara.ok) expect(rRara.code).toBe("unsupported");
+    expect(rOdd.ok).toBe(false);
+    if (!rOdd.ok) expect(rOdd.code).toBe("unsupported");
   });
 
   it("401 → invalid_token", async () => {
     const r = await listModels({
       baseUrl: "https://proveedor.test",
       token: "sk-x",
-      fetchImpl: vi.fn().mockResolvedValue(respuesta(401, "")) as unknown as typeof fetch,
+      fetchImpl: vi.fn().mockResolvedValue(response(401, "")) as unknown as typeof fetch,
     });
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.code).toBe("invalid_token");

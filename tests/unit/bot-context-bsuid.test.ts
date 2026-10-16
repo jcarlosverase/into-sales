@@ -18,11 +18,11 @@ vi.mock("@/lib/db", async (importOriginal) => {
 });
 
 /** Una base cuyos `select` devuelven `resultados` en orden, y que guarda cada WHERE. */
-function base(resultados: unknown[][]) {
+function base(results: unknown[][]) {
   const wheres: SQL[] = [];
   getDb.mockReturnValue({
     select: () => {
-      const rows = resultados.shift() ?? [];
+      const rows = results.shift() ?? [];
       const c: Record<string, unknown> = {};
       c.from = () => c;
       c.where = (w: SQL) => {
@@ -39,7 +39,7 @@ function base(resultados: unknown[][]) {
 
 const sqlDe = (w: SQL) => new PgDialect().sqlToQuery(w);
 
-const CONTACTO = { id: "ct_tel", waIdentity: "525550001234", waUserId: "MX.bsu.1" };
+const CONTACT = { id: "ct_tel", waIdentity: "525550001234", waUserId: "MX.bsu.1" };
 
 describe("parseIdentity (la identidad del cerebro, leída como la ingesta)", () => {
   it("bsuid:<id> es un BSUID sin teléfono", () => {
@@ -70,14 +70,14 @@ describe("findContactByIdentity", () => {
   beforeEach(() => getDb.mockReset());
 
   it("la llave exacta gana y no hay segunda consulta", async () => {
-    const wheres = base([[CONTACTO]]);
-    await expect(findContactByIdentity("org_1", "525550001234")).resolves.toBe(CONTACTO);
+    const wheres = base([[CONTACT]]);
+    await expect(findContactByIdentity("org_1", "525550001234")).resolves.toBe(CONTACT);
     expect(wheres).toHaveLength(1);
   });
 
   it("bsuid sin contacto propio → el de teléfono con ese BSUID guardado", async () => {
-    const wheres = base([[], [CONTACTO]]);
-    await expect(findContactByIdentity("org_1", "bsuid:MX.bsu.1")).resolves.toBe(CONTACTO);
+    const wheres = base([[], [CONTACT]]);
+    await expect(findContactByIdentity("org_1", "bsuid:MX.bsu.1")).resolves.toBe(CONTACT);
     expect(wheres).toHaveLength(2);
     // La segunda es la regla de la ingesta: por wa_user_id, solo WhatsApp.
     const q = sqlDe(wheres[1]!);

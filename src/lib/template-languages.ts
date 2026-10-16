@@ -14,7 +14,7 @@ export type TemplateLanguageGroup = "es" | "pt-en" | "otros";
 
 type Entry = { code: string; name: string; group: TemplateLanguageGroup };
 
-const ESPANOL: Entry[] = [
+const SPANISH: Entry[] = [
   { code: "es_MX", name: "Español (México)", group: "es" },
   { code: "es", name: "Español (general)", group: "es" },
   { code: "es_AR", name: "Español (Argentina)", group: "es" },
@@ -30,7 +30,7 @@ const ESPANOL: Entry[] = [
   { code: "es_UY", name: "Español (Uruguay)", group: "es" },
 ];
 
-const PORTUGUES_E_INGLES: Entry[] = [
+const PORTUGUESE_AND_ENGLISH: Entry[] = [
   { code: "pt_BR", name: "Portugués (Brasil)", group: "pt-en" },
   { code: "pt_PT", name: "Portugués (Portugal)", group: "pt-en" },
   { code: "en_US", name: "Inglés (EE. UU.)", group: "pt-en" },
@@ -51,7 +51,7 @@ const PORTUGUES_E_INGLES: Entry[] = [
   { code: "en_UG", name: "Inglés (Uganda)", group: "pt-en" },
 ];
 
-const OTROS: Entry[] = (
+const OTHERS: Entry[] = (
   [
     ["af", "Afrikáans"], ["sq", "Albanés"], ["de", "Alemán"],
     ["de_AT", "Alemán (Austria)"], ["de_CH", "Alemán (Suiza)"], ["ar", "Árabe"],
@@ -83,9 +83,9 @@ const OTROS: Entry[] = (
 ).map(([code, name]) => ({ code, name, group: "otros" as const }));
 
 export const TEMPLATE_LANGUAGES: readonly Entry[] = [
-  ...ESPANOL,
-  ...PORTUGUES_E_INGLES,
-  ...OTROS,
+  ...SPANISH,
+  ...PORTUGUESE_AND_ENGLISH,
+  ...OTHERS,
 ];
 
 export const TEMPLATE_LANGUAGE_GROUPS: { id: TemplateLanguageGroup; label: string }[] = [

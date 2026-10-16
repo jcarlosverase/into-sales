@@ -132,7 +132,7 @@ src/
 │   │   └── connectors/
 │   │       ├── types.ts                  # NUEVO · contrato + capacidades (contracts/conector.md)
 │   │       ├── index.ts                  # NUEVO · catálogo {enlace-fijo, zoom, google}
-│   │       ├── enlace-fijo.ts            # NUEVO · default sin dependencias
+│   │       ├── fixed-link.ts            # NUEVO · default sin dependencias
 │   │       ├── zoom.ts                   # NUEVO · S2S OAuth + caché de token (cantera fork)
 │   │       ├── zoom-credentials.ts       # NUEVO · cifrado/estado (molde whatsapp/credentials.ts)
 │   │       ├── google.ts                 # NUEVO · Calendar + Meet, REST directo

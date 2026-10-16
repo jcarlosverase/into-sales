@@ -22,7 +22,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 export function FaviconCard({ branding }: { branding: Branding }) {
   const router = useRouter();
   const input = useRef<HTMLInputElement>(null);
-  const [subiendo, setSubiendo] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // Cambia con cada carga para que la vista previa no se quede con la anterior.
   const [rev, setRev] = useState(0);
@@ -30,7 +30,7 @@ export function FaviconCard({ branding }: { branding: Branding }) {
 
   const src = `${faviconHref({ ...branding, favicon: actual })}&r=${rev}`;
 
-  async function subir(file: File) {
+  async function upload(file: File) {
     setError(null);
     if (file.size > MAX_FAVICON_BYTES) {
       setError(
@@ -38,13 +38,13 @@ export function FaviconCard({ branding }: { branding: Branding }) {
       );
       return;
     }
-    setSubiendo(true);
+    setUploading(true);
     const res = await fetch("/api/settings/branding/favicon", {
       method: "PUT",
       headers: { "content-type": file.type || "application/octet-stream" },
       body: file,
     }).catch(() => null);
-    setSubiendo(false);
+    setUploading(false);
     if (!res?.ok) {
       const data = (await res?.json().catch(() => null)) as {
         error?: { message?: string };
@@ -58,13 +58,13 @@ export function FaviconCard({ branding }: { branding: Branding }) {
     router.refresh(); // el layout raíz vuelve a emitir el <link rel="icon">
   }
 
-  async function quitar() {
+  async function remove() {
     setError(null);
-    setSubiendo(true);
+    setUploading(true);
     const res = await fetch("/api/settings/branding/favicon", {
       method: "DELETE",
     }).catch(() => null);
-    setSubiendo(false);
+    setUploading(false);
     if (!res?.ok) {
       setError("No se pudo quitar el icono");
       return;
@@ -117,21 +117,21 @@ export function FaviconCard({ branding }: { branding: Branding }) {
             // Se limpia el valor para que subir el MISMO archivo dos veces
             // vuelva a disparar el evento.
             e.target.value = "";
-            if (f) void subir(f);
+            if (f) void upload(f);
           }}
         />
 
         <div className="flex flex-wrap gap-2">
           <Button
             variant="secondary"
-            disabled={subiendo}
+            disabled={uploading}
             onClick={() => input.current?.click()}
           >
             <ImageUp className="h-4 w-4" />
-            {subiendo ? "Subiendo…" : actual ? "Cambiar logo" : "Subir logo"}
+            {uploading ? "Subiendo…" : actual ? "Cambiar logo" : "Subir logo"}
           </Button>
           {actual && (
-            <Button variant="ghost" disabled={subiendo} onClick={() => void quitar()}>
+            <Button variant="ghost" disabled={uploading} onClick={() => void remove()}>
               <Trash2 className="h-4 w-4" /> Quitar
             </Button>
           )}

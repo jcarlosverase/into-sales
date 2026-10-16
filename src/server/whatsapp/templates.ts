@@ -7,7 +7,7 @@ import {
 import { getDb, schema } from "@/lib/db";
 import { newId } from "@/lib/db/ids";
 import { graphRequest, MetaApiError, normalizeRecipient } from "@/lib/meta/client";
-import { destinatarioMeta } from "@/lib/meta/destinatario";
+import { recipientMeta } from "@/lib/meta/recipient";
 import { scoped } from "@/lib/db/tenant";
 import { publish } from "@/server/events/bus";
 import {
@@ -355,11 +355,11 @@ export async function sendTemplate(input: {
   // 003: destinatario = teléfono normalizado o BSUID.
   // 003: teléfono en `to`, BSUID en `recipient` — Meta los pide en campos
   // distintos y mandar el BSUID en `to` devuelve 131026.
-  const destinatario = destinatarioMeta(
+  const recipient = recipientMeta(
     row.contact.phone ? normalizeRecipient(row.contact.phone) : null,
     row.contact.waUserId
   );
-  if (!destinatario) {
+  if (!recipient) {
     throw new TemplateError(
       "meta_error",
       "El contacto no tiene teléfono ni identidad de WhatsApp utilizable"
@@ -368,7 +368,7 @@ export async function sendTemplate(input: {
 
   const waMessageId = await callGraphSend(creds, {
     messaging_product: "whatsapp",
-    ...destinatario,
+    ...recipient,
     type: "template",
     template: {
       name: template.name,

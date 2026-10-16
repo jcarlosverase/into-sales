@@ -66,8 +66,8 @@ function invalidTokenResponse(): Response {
  * callback URL propia (el GET de `webhook_configuration` no trae
  * `application`).
  */
-const SIN_GESTION = "-sin-gestion";
-const SIN_WEBHOOK_DE_APP = "-sin-app";
+const WITHOUT_HANDLING = "-sin-gestion";
+const NO_APP_WEBHOOK = "-sin-app";
 
 function permissionErrorResponse(): Response {
   return Response.json(
@@ -136,8 +136,8 @@ async function callbackVerificationError(
 }
 
 /** Un teléfono de Meta es solo dígitos; un BSUID lleva prefijo y punto. */
-function esSoloDigitos(valor: string): boolean {
-  return /^[0-9]+$/.test(valor);
+function isOnlyDigits(value: string): boolean {
+  return /^[0-9]+$/.test(value);
 }
 
 /** Quita el segmento de versión (v25.0/...) si viene en la ruta. */
@@ -207,7 +207,7 @@ export async function GET(req: Request, ctx: Params) {
     return Response.json({
       webhook_configuration: {
         ...(override ? { phone_number: override } : {}),
-        ...(token.endsWith(SIN_WEBHOOK_DE_APP)
+        ...(token.endsWith(NO_APP_WEBHOOK)
           ? {}
           : { application: "https://app-de-meta.mock/webhook" }),
       },
@@ -346,8 +346,8 @@ export async function POST(req: Request, ctx: Params) {
      * fallaba en produccion, que es exactamente lo que ocurrio. El BSUID va
      * en `recipient`, con `recipient_type: "individual"`.
      */
-    const destino = body.to as string | undefined;
-    if (destino && !esSoloDigitos(destino)) {
+    const destination = body.to as string | undefined;
+    if (destination && !isOnlyDigits(destination)) {
       return Response.json(
         {
           error: {
@@ -463,7 +463,7 @@ export async function POST(req: Request, ctx: Params) {
   // ("Delete WABA alternate callback"): un CRM que re-suscribe a ciegas
   // desconecta aquí al cerebro externo igual que en producción.
   if (path.length === 2 && path[1] === "subscribed_apps") {
-    if (token.endsWith(SIN_GESTION)) return permissionErrorResponse();
+    if (token.endsWith(WITHOUT_HANDLING)) return permissionErrorResponse();
     const uri =
       typeof body.override_callback_uri === "string"
         ? body.override_callback_uri.trim()
@@ -479,7 +479,7 @@ export async function POST(req: Request, ctx: Params) {
   // permiso de gestión, verifica el callback (handshake) antes de aceptarlo y
   // una cadena vacía lo quita.
   if (path.length === 1 && body.webhook_configuration) {
-    if (token.endsWith(SIN_GESTION)) return permissionErrorResponse();
+    if (token.endsWith(WITHOUT_HANDLING)) return permissionErrorResponse();
     const config = body.webhook_configuration as {
       override_callback_uri?: string;
       verify_token?: string;

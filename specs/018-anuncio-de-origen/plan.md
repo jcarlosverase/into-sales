@@ -45,7 +45,7 @@ mensaje no cambia la ruta que la sirve (`ensureAssetAvailable` no toca un asset
 src/lib/db/schema.ts                     ad_attribution.image_asset_id + índice
 drizzle/0014_anuncio_de_origen.sql       migración re-ejecutable (+ snapshot y journal)
 src/server/attribution/referral.ts       normalización pura del referral de WhatsApp
-src/server/attribution/creativo.ts       URL permitida y copia de la imagen
+src/server/attribution/creative.ts       URL permitida y copia de la imagen
 src/server/attribution/store.ts          registrar, leer, reparar y serializar
 src/server/attribution/flag.ts           comentarios: qué apaga la bandera ahora
 src/server/whatsapp/media.ts             deleteMediaFile
@@ -54,13 +54,13 @@ src/server/inbox/queries.ts              anuncio en la lista y el detalle
 src/server/contact-source.ts, contacts.ts fuente deducida
 src/app/api/contacts/[id]/route.ts       anuncio del contacto + reparación
 src/app/api/conversations/[id]/route.ts  el evento SSE lleva el anuncio
-src/lib/types.ts, src/lib/anuncios.ts    DTOs y etiquetas
-src/components/anuncio-origen.tsx        la tarjeta
+src/lib/types.ts, src/lib/ad-origin.ts    DTOs y etiquetas
+src/components/ad-origin.tsx        la tarjeta
 src/components/inbox/, pipeline/         marca, filtro y tarjeta
 src/server/dev/, src/app/api/dev/wa-mock/ referral libre en el inbound y creativos de prueba
 scripts/e2e-selftest.mjs                 sección 018 y ajuste de la 016 apagada
-scripts/e2e-anuncio-origen-ui.mjs        guion de navegador y capturas
-tests/unit/anuncio-origen.test.ts        unitarias
+scripts/e2e-ad-origin-ui.mjs        guion de navegador y capturas
+tests/unit/ad-origin.test.ts        unitarias
 ```
 
 ## Diseño
@@ -98,5 +98,5 @@ tests/unit/anuncio-origen.test.ts        unitarias
 1. `pnpm typecheck && pnpm lint && pnpm test && pnpm build`.
 2. Migración desde base vacía y desde `0013` con datos, en Postgres embebido.
 3. `pnpm test:e2e` con `ATRIBUCION` apagada y encendida.
-4. `scripts/e2e-anuncio-origen-ui.mjs`: lista, filtro, panel, cajón, claro y
+4. `scripts/e2e-ad-origin-ui.mjs`: lista, filtro, panel, cajón, claro y
    oscuro, 1440 y 390 px.

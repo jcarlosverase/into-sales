@@ -259,17 +259,17 @@ export function dayLabelInTz(startUtc: string, tz: string, now?: Date): string {
   const dayIso = dayIsoInTz(d, tz);
   const todayIso = dayIsoInTz(now ?? new Date(), tz);
 
-  let prefijo = "";
-  if (dayIso === todayIso) prefijo = "hoy ";
-  else if (dayIso === addDaysISO(todayIso, 1)) prefijo = "mañana ";
+  let prefix = "";
+  if (dayIso === todayIso) prefix = "hoy ";
+  else if (dayIso === addDaysISO(todayIso, 1)) prefix = "mañana ";
 
-  const cuerpo = new Intl.DateTimeFormat("es-MX", {
+  const body = new Intl.DateTimeFormat("es-MX", {
     timeZone: tz,
     weekday: "long",
     day: "numeric",
     month: "long",
   }).format(d);
-  return `${prefijo}${cuerpo}`;
+  return `${prefix}${body}`;
 }
 
 /**

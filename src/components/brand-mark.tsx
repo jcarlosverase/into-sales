@@ -1,12 +1,5 @@
 import type { Branding } from "@/lib/branding";
-import {
-  BRAND_CYAN,
-  BRAND_CYAN_ON_TILE,
-  BRAND_MARK_BODY,
-  BRAND_MARK_STROKE,
-  BRAND_MARK_TAIL,
-  isVoceroName,
-} from "@/lib/brand";
+import { BRAND_GREEN, BRAND_LOGO_SRC, isBrandName } from "@/lib/brand";
 import { faviconHref, faviconInitial } from "@/lib/favicon";
 import { cn } from "@/lib/utils";
 
@@ -17,34 +10,19 @@ import { cn } from "@/lib/utils";
 export type BrandingMark = Pick<Branding, "name" | "accent" | "favicon">;
 
 /**
- * El trazo de la marca: la "v" caligráfica con remate cian de vocerocrm.com.
- * El cuerpo hereda `currentColor`; píntalo con `text-brand` (o blanco sobre el
- * mosaico) y el remate sigue siendo cian.
+ * El isotipo oficial de into. Es un PNG con fondo transparente: se ve igual
+ * sobre el papel del tema claro y sobre la barra azul marino.
  */
-export function BrandMark({
-  className,
-  cyan = BRAND_CYAN,
-}: {
-  className?: string;
-  cyan?: string;
-}) {
+export function BrandMark({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" aria-hidden="true" className={className}>
-      <path
-        d={BRAND_MARK_BODY}
-        stroke="currentColor"
-        strokeWidth={BRAND_MARK_STROKE}
-        strokeLinecap="round"
-        fill="none"
-      />
-      <path
-        d={BRAND_MARK_TAIL}
-        stroke={cyan}
-        strokeWidth={BRAND_MARK_STROKE}
-        strokeLinecap="round"
-        fill="none"
-      />
-    </svg>
+    // Sin next/image a propósito: es un archivo estático pequeño.
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={BRAND_LOGO_SRC}
+      alt=""
+      aria-hidden="true"
+      className={cn("object-contain", className)}
+    />
   );
 }
 
@@ -52,7 +30,8 @@ export function BrandMark({
  * Mosaico cuadrado con degradado del acento: es el favicon en grande. Con un
  * logo subido lleva el logo (el MISMO archivo y la MISMA URL versionada que
  * la pestaña, así lo que se sube en Ajustes → Marca se ve en los dos sitios);
- * sin él, la "v" de Vocero o la inicial del nombre white-label.
+ * sin él, la inicial del nombre white-label. (La marca IntoSales sin logo
+ * subido no usa el mosaico: ver `BrandLogo`.)
  */
 export function BrandTile({
   branding,
@@ -78,8 +57,6 @@ export function BrandTile({
           alt=""
           className="h-full w-full object-contain"
         />
-      ) : isVoceroName(branding.name) ? (
-        <BrandMark className="h-[64%] w-[64%]" cyan={BRAND_CYAN_ON_TILE} />
       ) : (
         <span className="font-bold leading-none">{faviconInitial(branding.name)}</span>
       )}
@@ -103,8 +80,8 @@ const TILE_SIZE = {
 } as const;
 
 /**
- * La marca completa, como en la cabecera de la landing: trazo + wordmark
- * "vocero" en minúsculas y bien apretado. Una instancia rebautizada ve en su
+ * La marca completa: isotipo + wordmark "intosales" en minúsculas, con
+ * "into" en el acento y "sales" en el verde de marca. Una instancia rebautizada ve en su
  * lugar el mosaico con la inicial y su nombre (white-label). Con logo subido
  * gana el logo, se llame como se llame: quien sube un archivo quiere verlo.
  */
@@ -117,17 +94,18 @@ export function BrandLogo({
   size?: keyof typeof WORDMARK_SIZE;
   className?: string;
 }) {
-  if (isVoceroName(branding.name) && !branding.favicon) {
+  if (isBrandName(branding.name) && !branding.favicon) {
     return (
       <span className={cn("flex items-center gap-2 text-foreground", className)}>
-        <BrandMark className={cn("shrink-0 text-brand", MARK_SIZE[size])} />
+        <BrandMark className={cn("shrink-0", MARK_SIZE[size])} />
         <span
           className={cn(
-            "font-[800] leading-none tracking-[-0.045em]",
+            "font-[700] leading-none tracking-[-0.02em]",
             WORDMARK_SIZE[size]
           )}
         >
-          vocero
+          <span className="text-brand-ink">into</span>
+          <span style={{ color: BRAND_GREEN }}>sales</span>
         </span>
       </span>
     );

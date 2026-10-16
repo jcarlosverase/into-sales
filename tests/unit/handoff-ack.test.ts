@@ -18,7 +18,7 @@ import { HANDOFF_BACKUP_ACK } from "@/server/ai/handoff";
  */
 
 /** Orden observable: qué se mandó y cuándo se traspasó. */
-const eventos: string[] = [];
+const events: string[] = [];
 
 const sendText = vi.fn();
 const graphRequest = vi.fn();
@@ -65,7 +65,7 @@ vi.mock("@/lib/db", () => ({
     insert: () => ({
       values: (values: Record<string, unknown>) => {
         inserts.push(values);
-        if (values.direction === "out") eventos.push(`persistido:${values.text}`);
+        if (values.direction === "out") events.push(`persistido:${values.text}`);
         const chain = {
           onConflictDoNothing: () => chain,
           returning: () => Promise.resolve([values]),
@@ -78,7 +78,7 @@ vi.mock("@/lib/db", () => ({
     update: () => ({
       set: (values: Record<string, unknown>) => {
         updates.push(values);
-        if (values.handoffReason) eventos.push(`handoff:${values.handoffReason}`);
+        if (values.handoffReason) events.push(`handoff:${values.handoffReason}`);
         return {
           where: () => {
             const chain = {
@@ -104,9 +104,9 @@ vi.mock("@/lib/db", () => ({
   ),
 }));
 
-const HORA = 60 * 60 * 1000;
+const HOUR = 60 * 60 * 1000;
 
-function conversacion(extra: Record<string, unknown> = {}) {
+function conversation(extra: Record<string, unknown> = {}) {
   return {
     id: "cv_1",
     organizationId: "org_1",
@@ -121,7 +121,7 @@ function conversacion(extra: Record<string, unknown> = {}) {
   };
 }
 
-const perfil = {
+const profile = {
   id: "agp_1",
   organizationId: "org_1",
   enabled: true,
@@ -132,13 +132,13 @@ const perfil = {
   greeting: null,
 };
 
-function historial(text: string) {
+function history(text: string) {
   return [{ id: "msg_1", direction: "in", text, createdAt: new Date() }];
 }
 
 /** Un turno donde el cliente escribe `text`: conversación, perfil, historial. */
-function turno(text: string, conv = conversacion()) {
-  selectQueue.push([conv], [perfil], historial(text));
+function turn(text: string, conv = conversation()) {
+  selectQueue.push([conv], [profile], history(text));
 }
 
 /**
@@ -150,7 +150,7 @@ function turno(text: string, conv = conversacion()) {
 let runAgentTurn: (conversationId: string) => Promise<unknown>;
 let SendError: typeof import("@/server/inbox/send").SendError;
 
-async function correrTurno() {
+async function runTurn() {
   await runAgentTurn("cv_1");
 }
 
@@ -161,13 +161,13 @@ describe("acuse del patrón de respaldo antes de traspasar (FR-022)", () => {
   }, 60_000);
 
   beforeEach(() => {
-    eventos.length = 0;
+    events.length = 0;
     selectQueue.length = 0;
     inserts.length = 0;
     updates.length = 0;
     sendText.mockReset();
     sendText.mockImplementation(async (input: { text: string }) => {
-      eventos.push(`enviado:${input.text}`);
+      events.push(`enviado:${input.text}`);
       return { messageId: "msg_out" };
     });
     graphRequest.mockReset();
@@ -176,10 +176,10 @@ describe("acuse del patrón de respaldo antes de traspasar (FR-022)", () => {
   });
 
   it("el cliente que pide un humano recibe el acuse, y DESPUÉS se traspasa", async () => {
-    turno("quiero hablar con un humano");
-    await correrTurno();
+    turn("quiero hablar con un humano");
+    await runTurn();
 
-    expect(eventos).toEqual([`enviado:${HANDOFF_BACKUP_ACK}`, "handoff:cliente"]);
+    expect(events).toEqual([`enviado:${HANDOFF_BACKUP_ACK}`, "handoff:cliente"]);
     // Por el emisor de siempre: el mismo que usa el `farewell` del modelo,
     // con su guard de sandbox y de ventana dentro.
     expect(sendText).toHaveBeenCalledTimes(1);
@@ -194,61 +194,61 @@ describe("acuse del patrón de respaldo antes de traspasar (FR-022)", () => {
   });
 
   it("en el Laboratorio el acuse queda en la conversación y JAMÁS toca la API", async () => {
-    turno("quiero hablar con un humano", conversacion({ isTest: true }));
-    await correrTurno();
+    turn("quiero hablar con un humano", conversation({ isTest: true }));
+    await runTurn();
 
     expect(sendText).not.toHaveBeenCalled();
     expect(graphRequest).not.toHaveBeenCalled();
-    const saliente = inserts.find((v) => v.direction === "out");
-    expect(saliente).toMatchObject({
+    const outbound = inserts.find((v) => v.direction === "out");
+    expect(outbound).toMatchObject({
       text: HANDOFF_BACKUP_ACK,
       aiGenerated: true,
       origin: "ai",
     });
     // Y el juez del Laboratorio ya tiene qué leer antes del corte del guion.
-    expect(eventos).toEqual([`persistido:${HANDOFF_BACKUP_ACK}`, "handoff:cliente"]);
+    expect(events).toEqual([`persistido:${HANDOFF_BACKUP_ACK}`, "handoff:cliente"]);
   });
 
   it("si el acuse no sale, el traspaso se aplica IGUAL (y el turno no revienta)", async () => {
     sendText.mockRejectedValueOnce(
       new SendError("meta_unavailable", "Meta no está disponible ahora")
     );
-    const consola = vi.spyOn(console, "error").mockImplementation(() => {});
-    turno("me pasas a un asesor");
+    const consoleValue = vi.spyOn(console, "error").mockImplementation(() => {});
+    turn("me pasas a un asesor");
 
-    await expect(correrTurno()).resolves.toBeUndefined();
+    await expect(runTurn()).resolves.toBeUndefined();
 
     expect(sendText).toHaveBeenCalledTimes(1);
     expect(updates.some((u) => u.handoffReason === "cliente")).toBe(true);
-    consola.mockRestore();
+    consoleValue.mockRestore();
   });
 
   it("con la ventana de 24 h cerrada no hay texto libre: se traspasa por `ventana`", async () => {
-    turno(
+    turn(
       "quiero hablar con un humano",
-      conversacion({ lastInboundAt: new Date(Date.now() - 25 * HORA) })
+      conversation({ lastInboundAt: new Date(Date.now() - 25 * HOUR) })
     );
-    await correrTurno();
+    await runTurn();
 
     expect(sendText).not.toHaveBeenCalled();
-    expect(eventos).toEqual(["handoff:ventana"]);
+    expect(events).toEqual(["handoff:ventana"]);
   });
 
   it("un turno que vuelve a correr tras el traspaso NO repite el acuse", async () => {
     // Primer turno: acuse + traspaso.
-    turno("quiero hablar con un humano");
-    await correrTurno();
+    turn("quiero hablar con un humano");
+    await runTurn();
     // Lo que llegue mientras tanto re-encola un turno; ese turno lee la
     // conversación YA traspasada. El último entrante sigue siendo la misma
     // frase, así que si el silencio no mandara, el acuse saldría dos veces.
-    turno(
+    turn(
       "quiero hablar con un humano",
-      conversacion({ handoffAt: new Date(), handoffReason: "cliente" })
+      conversation({ handoffAt: new Date(), handoffReason: "cliente" })
     );
-    await correrTurno();
+    await runTurn();
 
     expect(sendText).toHaveBeenCalledTimes(1);
-    expect(eventos).toEqual([`enviado:${HANDOFF_BACKUP_ACK}`, "handoff:cliente"]);
+    expect(events).toEqual([`enviado:${HANDOFF_BACKUP_ACK}`, "handoff:cliente"]);
   });
 
   it("es el mismo emisor y el mismo orden que el `farewell` del camino del modelo", async () => {
@@ -259,13 +259,13 @@ describe("acuse del patrón de respaldo antes de traspasar (FR-022)", () => {
       raw: "{}",
     });
     selectQueue.push(
-      [conversacion()],
-      [perfil],
-      historial("esto ya me cansó"),
+      [conversation()],
+      [profile],
+      history("esto ya me cansó"),
       [], // kb
       [] // etapas
     );
-    await correrTurno();
+    await runTurn();
 
     expect(chatJson).toHaveBeenCalledTimes(1);
     expect(sendText).toHaveBeenCalledWith({
@@ -274,7 +274,7 @@ describe("acuse del patrón de respaldo antes de traspasar (FR-022)", () => {
       text: "Te paso con el equipo.",
       aiGenerated: true,
     });
-    expect(eventos).toEqual(["enviado:Te paso con el equipo.", "handoff:modelo"]);
+    expect(events).toEqual(["enviado:Te paso con el equipo.", "handoff:modelo"]);
   });
 });
 
@@ -285,7 +285,7 @@ describe("acuse del patrón de respaldo antes de traspasar (FR-022)", () => {
  */
 describe("el tope de mensajes del canal no traspasa (022)", () => {
   beforeEach(() => {
-    eventos.length = 0;
+    events.length = 0;
     selectQueue.length = 0;
     inserts.length = 0;
     updates.length = 0;
@@ -301,23 +301,23 @@ describe("el tope de mensajes del canal no traspasa (022)", () => {
     );
     // conversación, perfil, historial, conocimiento, etapas
     selectQueue.push(
-      [conversacion({ channel: "tiktok" })],
-      [perfil],
-      historial("¿siguen ahí?"),
+      [conversation({ channel: "tiktok" })],
+      [profile],
+      history("¿siguen ahí?"),
       [],
       []
     );
     await expect(runAgentTurn("cv_1")).resolves.toBeDefined();
 
     expect(sendText).toHaveBeenCalledTimes(1);
-    expect(eventos.filter((e) => e.startsWith("handoff:"))).toEqual([]);
+    expect(events.filter((e) => e.startsWith("handoff:"))).toEqual([]);
     expect(updates.some((u) => "handoffReason" in u || "handoffAt" in u)).toBe(false);
   });
 
   it("la ventana cerrada sí sigue traspasando, como siempre", async () => {
     sendText.mockRejectedValueOnce(new SendError("window_closed", "cerrada"));
-    selectQueue.push([conversacion()], [perfil], historial("¿siguen ahí?"), [], []);
+    selectQueue.push([conversation()], [profile], history("¿siguen ahí?"), [], []);
     await runAgentTurn("cv_1");
-    expect(eventos).toContain("handoff:ventana");
+    expect(events).toContain("handoff:ventana");
   });
 });

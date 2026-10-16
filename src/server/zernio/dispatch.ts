@@ -12,8 +12,8 @@ import {
   findZernioConnection,
   healZernioAccountRef,
   storedZernioSecrets,
-} from "@/server/zernio/conexiones";
-import type { ZernioChannel } from "@/server/zernio/cuentas";
+} from "@/server/zernio/connections";
+import type { ZernioChannel } from "@/server/zernio/accounts";
 import {
   WEBHOOKS_RECHECK_MS,
   webhookSecretsFromZernio,

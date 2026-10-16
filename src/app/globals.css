@@ -3,10 +3,11 @@
 @tailwind utilities;
 
 /*
-  Sistema de diseño de Vocero: la misma marca que vocerocrm.com dentro del CRM.
-  Papel frío (#f6f8fc), tinta azul marino, acento azul eléctrico con remate
-  cian, tipografía Archivo para la interfaz, Instrument Serif itálica para los
-  acentos editoriales e IBM Plex Mono para etiquetas y horas.
+  Sistema de diseño de IntoSales, con la marca "into": acento azul #0081C8 y
+  verde #33B44A. Papel frío (#f6f8fc), tinta azul marino, tipografía Barlow
+  para la interfaz (sustituto libre de DIN Pro, la letra de la marca),
+  Instrument Serif itálica para los acentos editoriales e IBM Plex Mono para
+  etiquetas y horas. Basado en el sistema de Vocero CRM (MIT).
 
   El tema activo se selecciona con `data-theme` en <html> (ver src/lib/theme.ts):
   el servidor lo escribe desde la cookie, así que no hay parpadeo.
@@ -47,12 +48,12 @@
     --bubble-out-border: var(--accent-soft);
     --bubble-out-text: var(--text);
 
-    /* Acento (default: azul Vocero; el white-label lo sobreescribe) */
-    --accent: #0d5bff;
-    --accent-hover: #0a4de6;
-    --accent-soft: #d3e2ff;
-    --accent-tint: #ebf1ff;
-    --accent-text: #0038d8;
+    /* Acento (default: azul into; el white-label lo sobreescribe) */
+    --accent: #0074b4;
+    --accent-hover: #00669e;
+    --accent-soft: #cce3f1;
+    --accent-tint: #e8f3fa;
+    --accent-text: #005a8c;
     --accent-fg: #ffffff;
     /* El acento como TINTA (una hora, un enlace) y como anillo de foco. En
        claro son el acento mismo; en oscuro, sus variantes aclaradas: el
@@ -108,7 +109,7 @@
     página va un escalón ARRIBA de ella (≥ 1.25:1, si no el bicolor
     desaparece) y lo que flota (diálogos, cajones) otro más. Antes todo vivía
     entre #070e20 y #131f3d: barra y página a 1.04:1 y las sombras no se
-    veían. Los pisos de contraste los vigila tests/unit/contraste-temas.test.ts.
+    veían. Los pisos de contraste los vigila tests/unit/theme-contrast.test.ts.
   */
   :root[data-theme="dark"] {
     color-scheme: dark;
@@ -140,14 +141,14 @@
     --bubble-in: #173d2c;
     --bubble-in-border: #2a5e45;
 
-    /* Acento: respaldo con el azul Vocero calculado para este fondo; el
+    /* Acento: respaldo con el azul into calculado para este fondo; el
        white-label lo recalcula (ver resolveAccentSet en lib/branding). */
-    --accent: #256bff;
-    --accent-hover: #4883ff;
-    --accent-soft: #1f3f82;
-    --accent-tint: #1e3567;
-    --accent-text: #6f9eff;
-    --accent-fg: #ffffff;
+    --accent: #1a8ece;
+    --accent-hover: #3ea0d5;
+    --accent-soft: #1b4b70;
+    --accent-tint: #1b3d5c;
+    --accent-text: #68b4de;
+    --accent-fg: #0f1419;
     --accent-ink: var(--accent-text);
     --ring: var(--accent-hover);
     --accent-veil: rgba(0, 0, 0, 0.22);
@@ -291,7 +292,7 @@
     height: 460px;
     left: -140px;
     bottom: -180px;
-    background: radial-gradient(circle, rgba(0, 198, 245, 0.14), transparent 65%);
+    background: radial-gradient(circle, rgba(51, 180, 74, 0.14), transparent 65%);
     animation: brand-drift 18s ease-in-out infinite alternate-reverse;
   }
   @keyframes brand-drift {

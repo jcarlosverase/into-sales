@@ -6,6 +6,7 @@ import { organization } from "better-auth/plugins";
 import { getDb, schema } from "@/lib/db";
 import { getEnv } from "@/lib/env";
 import { AUTH_RATE_LIMIT, checkRateLimit, clientIp } from "@/lib/rate-limit";
+import { trustedOrigins } from "./trusted-origins";
 import {
   onUserCreated,
   resolveActiveOrganizationId,
@@ -44,6 +45,7 @@ function createAuth() {
   const env = getEnv();
   return betterAuth({
     baseURL: env.APP_BASE_URL,
+    trustedOrigins: (request) => trustedOrigins(request, process.env),
     secret: env.BETTER_AUTH_SECRET,
     database: drizzleAdapter(getDb(), {
       provider: "pg",

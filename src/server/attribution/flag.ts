@@ -29,7 +29,7 @@
 /** Valores que cuentan como "encendida". Cualquier otra cosa, apagada. */
 const ON_VALUES = new Set(["on", "1", "true", "si", "sí", "yes"]);
 
-export function parseAtribucionFlag(raw: string | undefined): boolean {
+export function parseAttributionFlag(raw: string | undefined): boolean {
   return ON_VALUES.has((raw ?? "").trim().toLowerCase());
 }
 
@@ -43,8 +43,8 @@ export function parseAtribucionFlag(raw: string | undefined): boolean {
  * `ATRIBUCION` sí está declarada en el esquema de `lib/env.ts`: ahí viven su
  * documentación y su tipo. Lo que no pasa por el validador es esta consulta.
  */
-export function atribucionEnabled(): boolean {
-  return parseAtribucionFlag(process.env.ATRIBUCION);
+export function attributionEnabled(): boolean {
+  return parseAttributionFlag(process.env.ATRIBUCION);
 }
 
 /**
@@ -52,6 +52,6 @@ export function atribucionEnabled(): boolean {
  * bandera está apagada, ese endpoint no existe en esta instancia — no hay nada
  * que revelar sobre él.
  */
-export function atribucionDisabledResponse(): Response {
+export function attributionDisabledResponse(): Response {
   return new Response(null, { status: 404 });
 }

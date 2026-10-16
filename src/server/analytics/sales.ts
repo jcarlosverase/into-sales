@@ -1,9 +1,9 @@
 import { asc, desc, eq, gte, inArray, lt, sql } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db";
 import { scoped } from "@/lib/db/tenant";
-import { sumable } from "@/lib/money";
+import { summable } from "@/lib/money";
 import {
-  bucketsDelPeriodo,
+  periodBuckets,
   comparable,
   rate,
   type FunnelStepDto,
@@ -37,61 +37,61 @@ export async function salesBlock(
   // El desenlace de cada lead se resuelve UNA vez y de ahí salen los
   // indicadores, la serie y los motivos de pérdida. Si cada bloque lo dedujera
   // por su cuenta podrían contradecirse entre sí en la misma pantalla.
-  const [desenlaces, desenlacesPrev] = await Promise.all([
-    desenlacesDelPeriodo(organizationId, start, end),
-    desenlacesDelPeriodo(organizationId, previousStart, previousEnd),
+  const [outcomes, outcomesPrev] = await Promise.all([
+    periodOutcomes(organizationId, start, end),
+    periodOutcomes(organizationId, previousStart, previousEnd),
   ]);
-  const cerrados = clasificarCierres(desenlaces, businessCurrency);
-  const cerradosPrev = clasificarCierres(desenlacesPrev, businessCurrency);
+  const closed = classifyClosings(outcomes, businessCurrency);
+  const closedPrev = classifyClosings(outcomesPrev, businessCurrency);
 
-  const [nuevos, nuevosPrev, timeToWinDays, serie, embudo, tiempos, completeFrom, vivo] =
+  const [newOnes, newPrev, timeToWinDays, series, funnel, times, completeFrom, alive] =
     await Promise.all([
-      contarNuevos(organizationId, start, end),
-      contarNuevos(organizationId, previousStart, previousEnd),
-      diasHastaGanar(organizationId, cerrados.won),
-      serieTemporal(organizationId, period, cerrados.won, businessCurrency),
-      embudoCohorte(organizationId, start, end),
-      tiemposPorEtapa(organizationId, start, end),
-      primerEventoReal(organizationId),
-      pipelineVivo(organizationId, businessCurrency),
+      countNew(organizationId, start, end),
+      countNew(organizationId, previousStart, previousEnd),
+      daysToWin(organizationId, closed.won),
+      timeSeries(organizationId, period, closed.won, businessCurrency),
+      funnelCohort(organizationId, start, end),
+      timesByStage(organizationId, start, end),
+      firstRealEvent(organizationId),
+      livePipeline(organizationId, businessCurrency),
     ]);
 
-  const wonCount = cerrados.won.length;
-  const lostCount = cerrados.lost.length;
+  const wonCount = closed.won.length;
+  const lostCount = closed.lost.length;
 
   // Ticket promedio sobre los tratos que SÍ tienen monto en la moneda del
   // negocio: dividir entre todos los ganados castigaría el promedio con los
   // que nadie capturó.
   const avgTicketCents =
-    cerrados.wonWithAmount > 0
-      ? Math.round(cerrados.wonCents / cerrados.wonWithAmount)
+    closed.wonWithAmount > 0
+      ? Math.round(closed.wonCents / closed.wonWithAmount)
       : null;
 
   return {
     period: period.dto,
     kpis: {
-      newLeads: comparable(nuevos, nuevosPrev),
-      won: comparable(wonCount, cerradosPrev.won.length),
-      lost: comparable(lostCount, cerradosPrev.lost.length),
-      wonCents: comparable(cerrados.wonCents, cerradosPrev.wonCents),
+      newLeads: comparable(newOnes, newPrev),
+      won: comparable(wonCount, closedPrev.won.length),
+      lost: comparable(lostCount, closedPrev.lost.length),
+      wonCents: comparable(closed.wonCents, closedPrev.wonCents),
       winRate: rate(wonCount, wonCount + lostCount),
       avgTicketCents,
     },
-    pipeline: vivo,
-    series: serie,
-    funnel: embudo,
-    timing: tiempos,
+    pipeline: alive,
+    series: series,
+    funnel: funnel,
+    timing: times,
     timeToWinDays,
     completeFrom,
-    lossReasons: motivosDePerdida(desenlaces),
+    lossReasons: lostReasons(outcomes),
     // "Vacío" habla del PERIODO, no del tablero: el embudo de hoy casi siempre
     // tiene algo, y si contara un rango de 2020 nunca podría declararse vacío.
-    empty: nuevos === 0 && wonCount === 0 && lostCount === 0,
+    empty: newOnes === 0 && wonCount === 0 && lostCount === 0,
   };
 }
 
 /** Prospectos que entraron: leads creados en el rango, sin los del Laboratorio. */
-async function contarNuevos(
+async function countNew(
   organizationId: string,
   start: Date,
   end: Date
@@ -111,14 +111,14 @@ async function contarNuevos(
   return rows[0]?.n ?? 0;
 }
 
-type Cierres = {
+type Closings = {
   won: string[];
   lost: string[];
   wonCents: number;
   wonWithAmount: number;
 };
 
-export type Desenlace = {
+export type Outcome = {
   leadId: string;
   kind: StageKind;
   lossReason: LossReason | null;
@@ -138,11 +138,11 @@ export type Desenlace = {
  * sumarían el monto dos veces. Con el desenlace único los dos casos
  * desaparecen.
  */
-async function desenlacesDelPeriodo(
+async function periodOutcomes(
   organizationId: string,
   start: Date,
   end: Date
-): Promise<Desenlace[]> {
+): Promise<Outcome[]> {
   return getDb()
     .selectDistinctOn([schema.leadStageEvent.leadId], {
       leadId: schema.leadStageEvent.leadId,
@@ -175,20 +175,20 @@ async function desenlacesDelPeriodo(
  * El dinero sale del monto ACTUAL del lead —no se guarda histórico del monto—,
  * y solo suma el que está en la moneda del negocio.
  */
-export function clasificarCierres(
-  desenlaces: Desenlace[],
+export function classifyClosings(
+  outcomes: Outcome[],
   businessCurrency: string
-): Cierres {
+): Closings {
   const won: string[] = [];
   const lost: string[] = [];
   let wonCents = 0;
   let wonWithAmount = 0;
 
-  for (const d of desenlaces) {
+  for (const d of outcomes) {
     // `open` = el lead volvió al embudo y no cerró nada en este rango.
     if (d.kind === "won") {
       won.push(d.leadId);
-      if (sumable({ amountCents: d.amountCents, currency: d.currency }, businessCurrency)) {
+      if (summable({ amountCents: d.amountCents, currency: d.currency }, businessCurrency)) {
         wonCents += d.amountCents!;
         wonWithAmount += 1;
       }
@@ -205,14 +205,14 @@ export function clasificarCierres(
  * REALES: los sembrados por la migración traen `updated_at` como fecha, que
  * cualquier edición posterior pisó, y contaminarían el promedio.
  */
-async function diasHastaGanar(
+async function daysToWin(
   organizationId: string,
   leadIds: string[]
 ): Promise<number | null> {
   if (leadIds.length === 0) return null;
   const rows = await getDb()
     .select({
-      dias: sql<number | null>`avg(extract(epoch from (${schema.leadStageEvent.occurredAt} - ${schema.lead.createdAt})) / 86400)::float`,
+      days: sql<number | null>`avg(extract(epoch from (${schema.leadStageEvent.occurredAt} - ${schema.lead.createdAt})) / 86400)::float`,
     })
     .from(schema.leadStageEvent)
     .innerJoin(schema.lead, eq(schema.lead.id, schema.leadStageEvent.leadId))
@@ -225,8 +225,8 @@ async function diasHastaGanar(
         eq(schema.leadStageEvent.approximate, false)
       )
     );
-  const dias = rows[0]?.dias;
-  return dias === null || dias === undefined ? null : Math.round(dias * 10) / 10;
+  const days = rows[0]?.days;
+  return days === null || days === undefined ? null : Math.round(days * 10) / 10;
 }
 
 /**
@@ -236,7 +236,7 @@ async function diasHastaGanar(
  * vuelve a decidir quién ganó, solo reparte esos mismos en el calendario. Es lo
  * que mantiene la gráfica cuadrada con el indicador de arriba.
  */
-async function serieTemporal(
+async function timeSeries(
   organizationId: string,
   period: ResolvedPeriod,
   wonLeadIds: string[],
@@ -244,12 +244,12 @@ async function serieTemporal(
 ): Promise<SalesBlockDto["series"]> {
   const db = getDb();
   const { start, end, timezone } = period;
-  const porMes = period.dto.granularity === "month";
+  const byMonth = period.dto.granularity === "month";
 
-  const [nuevos, ganados] = await Promise.all([
+  const [newOnes, wonValue] = await Promise.all([
     db
       .select({
-        bucket: localDateExpr(schema.lead.createdAt, timezone, porMes),
+        bucket: localDateExpr(schema.lead.createdAt, timezone, byMonth),
         n: sql<number>`count(*)::int`,
       })
       .from(schema.lead)
@@ -273,7 +273,7 @@ async function serieTemporal(
       ? []
       : db
           .select({
-            bucket: localDateExpr(schema.leadStageEvent.occurredAt, timezone, porMes),
+            bucket: localDateExpr(schema.leadStageEvent.occurredAt, timezone, byMonth),
             leadId: schema.leadStageEvent.leadId,
             lastAt: sql<number>`extract(epoch from max(${schema.leadStageEvent.occurredAt}))::float`,
             cents: sql<number>`coalesce(max(case when ${schema.lead.amountCents} is not null and coalesce(${schema.lead.currency}, ${businessCurrency}) = ${businessCurrency} then ${schema.lead.amountCents} else 0 end), 0)::int`,
@@ -294,19 +294,19 @@ async function serieTemporal(
   ]);
 
   const buckets = new Map<string, SalesBlockDto["series"][number]>();
-  for (const r of nuevos) {
+  for (const r of newOnes) {
     buckets.set(r.bucket, { bucket: r.bucket, newLeads: r.n, won: 0, wonCents: 0 });
   }
   // Un lead ganado en dos días distintos del rango sigue siendo UN trato: se
   // queda en el bucket de su último cierre, que es lo que el indicador cuenta.
-  const ultimoBucket = new Map<string, { bucket: string; cents: number; at: number }>();
-  for (const r of ganados) {
+  const lastBucket = new Map<string, { bucket: string; cents: number; at: number }>();
+  for (const r of wonValue) {
     const at = Number(r.lastAt);
-    const previo = ultimoBucket.get(r.leadId);
-    if (previo && previo.at >= at) continue;
-    ultimoBucket.set(r.leadId, { bucket: r.bucket, cents: r.cents, at });
+    const previous = lastBucket.get(r.leadId);
+    if (previous && previous.at >= at) continue;
+    lastBucket.set(r.leadId, { bucket: r.bucket, cents: r.cents, at });
   }
-  for (const g of ultimoBucket.values()) {
+  for (const g of lastBucket.values()) {
     const prev = buckets.get(g.bucket) ?? {
       bucket: g.bucket,
       newLeads: 0,
@@ -318,7 +318,7 @@ async function serieTemporal(
     buckets.set(g.bucket, prev);
   }
   // Cada cubeta del periodo, con cero donde no pasó nada.
-  return bucketsDelPeriodo(period.dto).map(
+  return periodBuckets(period.dto).map(
     (bucket) => buckets.get(bucket) ?? { bucket, newLeads: 0, won: 0, wonCents: 0 }
   );
 }
@@ -330,14 +330,14 @@ async function serieTemporal(
  * Es la pregunta del dueño —"de cada 100 que entran, cuántos cierran"— y no la
  * mezcla de cohortes que daría contar eventos sueltos.
  */
-async function embudoCohorte(
+async function funnelCohort(
   organizationId: string,
   start: Date,
   end: Date
 ): Promise<FunnelStepDto[]> {
   const db = getDb();
 
-  const [etapas, alcanzadas] = await Promise.all([
+  const [stages, reached] = await Promise.all([
     db
       .select()
       .from(schema.pipelineStage)
@@ -369,7 +369,7 @@ async function embudoCohorte(
       .groupBy(schema.leadStageEvent.leadId),
   ]);
 
-  return armarEmbudo(etapas, alcanzadas);
+  return buildFunnel(stages, reached);
 }
 
 /**
@@ -380,35 +380,35 @@ async function embudoCohorte(
  * solo corre sobre etapas ABIERTAS: si "Perdido" tuviera una posición alta, un
  * trato perdido aparecería como si hubiera pasado por todas.
  */
-export function armarEmbudo(
-  etapas: { id: string; name: string; kind: StageKind; position: number }[],
-  alcanzadas: { maxOpenPos: number | null; won: number }[]
+export function buildFunnel(
+  stages: { id: string; name: string; kind: StageKind; position: number }[],
+  reached: { maxOpenPos: number | null; won: number }[]
 ): FunnelStepDto[] {
-  const abiertas = etapas.filter((s) => s.kind === "open");
-  const ganada = etapas.find((s) => s.kind === "won");
+  const openOnes = stages.filter((s) => s.kind === "open");
+  const theWon = stages.find((s) => s.kind === "won");
 
-  const pasos: FunnelStepDto[] = abiertas.map((s) => ({
+  const steps: FunnelStepDto[] = openOnes.map((s) => ({
     stageId: s.id,
     name: s.name,
     kind: s.kind,
-    reached: alcanzadas.filter(
+    reached: reached.filter(
       (a) => a.maxOpenPos !== null && Number(a.maxOpenPos) >= s.position
     ).length,
     advanceRate: null,
   }));
 
-  pasos.push({
-    stageId: ganada?.id ?? null,
-    name: ganada?.name ?? "Ganado",
+  steps.push({
+    stageId: theWon?.id ?? null,
+    name: theWon?.name ?? "Ganado",
     kind: "won",
-    reached: alcanzadas.filter((a) => a.won === 1).length,
+    reached: reached.filter((a) => a.won === 1).length,
     advanceRate: null,
   });
 
-  for (let i = 0; i < pasos.length - 1; i++) {
-    pasos[i]!.advanceRate = rate(pasos[i + 1]!.reached, pasos[i]!.reached);
+  for (let i = 0; i < steps.length - 1; i++) {
+    steps[i]!.advanceRate = rate(steps[i + 1]!.reached, steps[i]!.reached);
   }
-  return pasos;
+  return steps;
 }
 
 /**
@@ -416,7 +416,7 @@ export function armarEmbudo(
  * siguiente del mismo lead, los dos dentro del rango y los dos REALES. Un tramo
  * medido contra una fecha sembrada por la migración no mide nada.
  */
-async function tiemposPorEtapa(
+async function timesByStage(
   organizationId: string,
   start: Date,
   end: Date
@@ -425,7 +425,7 @@ async function tiemposPorEtapa(
     .select({
       stageId: schema.leadStageEvent.toStageId,
       name: schema.leadStageEvent.toStageName,
-      dias: sql<
+      days: sql<
         number | null
       >`extract(epoch from (lead(${schema.leadStageEvent.occurredAt}) over (partition by ${schema.leadStageEvent.leadId} order by ${schema.leadStageEvent.occurredAt}) - ${schema.leadStageEvent.occurredAt})) / 86400`,
     })
@@ -441,21 +441,21 @@ async function tiemposPorEtapa(
       )
     );
 
-  const porEtapa = new Map<string, { stageId: string | null; name: string; dias: number[] }>();
+  const byStage = new Map<string, { stageId: string | null; name: string; days: number[] }>();
   for (const r of rows) {
-    if (r.dias === null) continue;
+    if (r.days === null) continue;
     const key = r.stageId ?? r.name;
-    const bucket = porEtapa.get(key) ?? { stageId: r.stageId, name: r.name, dias: [] };
-    bucket.dias.push(Number(r.dias));
-    porEtapa.set(key, bucket);
+    const bucket = byStage.get(key) ?? { stageId: r.stageId, name: r.name, days: [] };
+    bucket.days.push(Number(r.days));
+    byStage.set(key, bucket);
   }
 
-  return [...porEtapa.values()]
+  return [...byStage.values()]
     .map((b) => ({
       stageId: b.stageId,
       name: b.name,
-      avgDays: Math.round((b.dias.reduce((a, d) => a + d, 0) / b.dias.length) * 10) / 10,
-      sample: b.dias.length,
+      avgDays: Math.round((b.days.reduce((a, d) => a + d, 0) / b.days.length) * 10) / 10,
+      sample: b.days.length,
     }))
     .sort((a, b) => (b.avgDays ?? 0) - (a.avgDays ?? 0));
 }
@@ -466,17 +466,17 @@ async function tiemposPorEtapa(
  * leads que ya existían); sin ellos el historial es completo desde el inicio y
  * no hay nada que advertir.
  */
-async function primerEventoReal(organizationId: string): Promise<string | null> {
+async function firstRealEvent(organizationId: string): Promise<string | null> {
   const rows = await getDb()
     .select({
       at: sql<Date | null>`min(${schema.leadStageEvent.occurredAt}) filter (where ${schema.leadStageEvent.approximate} = false)`.mapWith(
         schema.leadStageEvent.occurredAt
       ),
-      sembrados: sql<number>`count(*) filter (where ${schema.leadStageEvent.approximate} = true)::int`,
+      seeded: sql<number>`count(*) filter (where ${schema.leadStageEvent.approximate} = true)::int`,
     })
     .from(schema.leadStageEvent)
     .where(scoped(schema.leadStageEvent.organizationId, organizationId));
-  if (!rows[0]?.sembrados) return null;
+  if (!rows[0]?.seeded) return null;
   return rows[0].at?.toISOString() ?? null;
 }
 
@@ -484,10 +484,10 @@ async function primerEventoReal(organizationId: string): Promise<string | null> 
  * Motivos de pérdida del periodo. Sale del MISMO desenlace que los
  * indicadores: la tabla no puede contar un trato que arriba no es perdido.
  */
-export function motivosDePerdida(desenlaces: Desenlace[]): LossReasonRowDto[] {
+export function lostReasons(outcomes: Outcome[]): LossReasonRowDto[] {
   const acc = new Map<LossReason | "sin_registro", LossReasonRowDto>();
 
-  for (const d of desenlaces) {
+  for (const d of outcomes) {
     if (d.kind !== "lost") continue;
     const reason = d.lossReason ?? "sin_registro";
     const row = acc.get(reason) ?? {
@@ -508,16 +508,16 @@ export function motivosDePerdida(desenlaces: Desenlace[]): LossReasonRowDto[] {
  * SQL; la suma va como `bigint` porque muchos montos de `integer` se salen de
  * `integer`.
  */
-async function pipelineVivo(
+async function livePipeline(
   organizationId: string,
   businessCurrency: string
 ): Promise<SalesBlockDto["pipeline"]> {
-  const mismaMoneda = sql`coalesce(${schema.lead.currency}, ${businessCurrency}) = ${businessCurrency}`;
+  const sameCurrency = sql`coalesce(${schema.lead.currency}, ${businessCurrency}) = ${businessCurrency}`;
   const rows = await getDb()
     .select({
-      openCents: sql<string>`coalesce(sum(${schema.lead.amountCents}) filter (where ${schema.lead.amountCents} is not null and ${mismaMoneda}), 0)::bigint`,
+      openCents: sql<string>`coalesce(sum(${schema.lead.amountCents}) filter (where ${schema.lead.amountCents} is not null and ${sameCurrency}), 0)::bigint`,
       withoutAmount: sql<number>`count(*) filter (where ${schema.lead.amountCents} is null)::int`,
-      otherCurrency: sql<number>`count(*) filter (where ${schema.lead.amountCents} is not null and not (${mismaMoneda}))::int`,
+      otherCurrency: sql<number>`count(*) filter (where ${schema.lead.amountCents} is not null and not (${sameCurrency}))::int`,
     })
     .from(schema.lead)
     .innerJoin(schema.pipelineStage, eq(schema.pipelineStage.id, schema.lead.stageId))

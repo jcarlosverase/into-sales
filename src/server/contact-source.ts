@@ -39,9 +39,9 @@ export function isSourceValue(v: unknown): v is SourceValue {
  */
 export function effectiveSource(
   stored: SourceValue | null,
-  llegoPorAnuncio = false
+  arrivedByAd = false
 ): SourceDto {
   if (stored) return { value: stored, source: "capturada" };
-  if (llegoPorAnuncio) return { value: "anuncio", source: "deducida" };
+  if (arrivedByAd) return { value: "anuncio", source: "deducida" };
   return { value: "desconocida", source: "deducida" };
 }

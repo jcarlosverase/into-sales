@@ -74,7 +74,7 @@ export type PeriodDto = {
  * la gráfica, no un hueco: sin él, las barras del martes y del viernes quedarían
  * juntas y la serie mentiría sobre el ritmo.
  */
-export function bucketsDelPeriodo(
+export function periodBuckets(
   p: Pick<PeriodDto, "from" | "to" | "granularity">
 ): string[] {
   const out: string[] = [];
@@ -94,10 +94,10 @@ export function bucketsDelPeriodo(
     }
     return out;
   }
-  const fin = Date.parse(`${p.to}T00:00:00Z`);
+  const end = Date.parse(`${p.to}T00:00:00Z`);
   for (
     let t = Date.parse(`${p.from}T00:00:00Z`);
-    t <= fin && out.length < 400;
+    t <= end && out.length < 400;
     t += 86_400_000
   ) {
     out.push(new Date(t).toISOString().slice(0, 10));
@@ -239,7 +239,7 @@ export type BotBlockDto = {
    * Cuántos contactos tienen ficha. `null` cuando el perfil del agente no la
    * escribe: no es 0 %, es que esa medida no aplica en esta instalación.
    */
-  fichaCoverage: RateDto | null;
+  qualificationCoverage: RateDto | null;
   empty: boolean;
 };
 

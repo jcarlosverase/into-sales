@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { LeadRoutingCard } from "./lead-routing-card";
 
 type Member = {
   id: string;
@@ -25,6 +26,8 @@ export function TeamClient() {
   const [created, setCreated] = useState<{ email: string; password: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  // 022 — a new team account joins the rotation: the routing card refetches.
+  const [routingKey, setRoutingKey] = useState(0);
 
   const refetch = useCallback(async () => {
     const res = await fetch("/api/settings/team").catch(() => null);
@@ -68,6 +71,7 @@ export function TeamClient() {
     setName("");
     setEmail("");
     setTempPassword("");
+    setRoutingKey((k) => k + 1);
     void refetch();
   }
 
@@ -139,6 +143,8 @@ export function TeamClient() {
         </CardContent>
       </Card>
 
+      <LeadRoutingCard refreshKey={routingKey} />
+
       <div className="space-y-2">
         <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
           Miembros
@@ -154,7 +160,11 @@ export function TeamClient() {
               <p className="text-xs text-muted-foreground">{m.email}</p>
             </div>
             <Badge variant={m.role === "owner" ? "default" : "secondary"}>
-              {m.role === "owner" ? "Propietario" : "Miembro"}
+              {m.role === "owner"
+                ? "Propietario"
+                : m.role === "admin"
+                  ? "Administrador"
+                  : "Vendedor"}
             </Badge>
           </div>
         ))}

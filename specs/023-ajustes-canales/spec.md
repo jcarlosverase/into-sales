@@ -124,9 +124,9 @@ tres responden 403 a quien no sea propietario.
 
 | Archivo | Qué |
 |---|---|
-| `src/server/zernio/cuentas.ts` (nuevo) | `fetchZernioAccounts`, `pickZernioAccount` (puro), `accountHealth` (puro) |
+| `src/server/zernio/accounts.ts` (nuevo) | `fetchZernioAccounts`, `pickZernioAccount` (puro), `accountHealth` (puro) |
 | `src/server/zernio/webhooks.ts` (nuevo) | Listar webhooks con caché, cuáles apuntan aquí (puro), secretos, `ensureZernioWebhook` |
-| `src/server/zernio/conexiones.ts` (nuevo) | Las conexiones Zernio de una organización en una sola forma, y guardar el secreto en todas |
+| `src/server/zernio/connections.ts` (nuevo) | Las conexiones Zernio de una organización en una sola forma, y guardar el secreto en todas |
 | `src/server/zernio/index.ts` · `dispatch.ts` | `isValidZernioSignatureAny`; `resolveZernioSecret` devuelve `secrets` (D3) |
 | `src/server/{instagram,messenger,tiktok}/credentials.ts` · `ingest.ts` | `get…CredentialsForZernio` (D2) |
 | `src/app/api/settings/{instagram,messenger,tiktok}/route.ts` | D1, D4, D7 |
@@ -139,7 +139,7 @@ tres responden 403 a quien no sea propietario.
 - **Unitarias**: `pickZernioAccount` (las cinco filas de D1), `accountHealth`,
   `isValidZernioSignatureAny`, qué webhooks apuntan aquí y cuál cubre una
   cuenta, las secciones de la navegación.
-- **Guion `scripts/e2e-canales.mjs`** contra la app con simuladores: conectar
+- **Guion `scripts/e2e-channels.mjs`** contra la app con simuladores: conectar
   Instagram sin `accountRef`; con el id del perfil; con una cuenta de otra red;
   varias cuentas → `choose_account`; no propietario → 403; el webhook queda
   creado y limitado a las cuentas; firma válida → 200 e inválida → 401 con el

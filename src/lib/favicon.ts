@@ -1,18 +1,15 @@
 import {
-  BRAND_CYAN_ON_TILE,
-  BRAND_MARK_BODY,
-  BRAND_MARK_STROKE,
-  BRAND_MARK_TAIL,
-  isVoceroName,
+  BRAND_LOGO_SRC,
+  isBrandName,
 } from "./brand";
 import { resolveAccentSet, type Branding } from "./branding";
 
 /**
  * El icono de la pestaña, white-label.
  *
- * Toda instancia tiene uno **sin configurar nada**: si se llama Vocero, es el
- * logo de la marca (la "v" con remate cian sobre el mosaico azul, igual que en
- * vocerocrm.com); con otro nombre se dibuja la inicial sobre el acento. Una
+ * Toda instancia tiene uno **sin configurar nada**: si se llama IntoSales, es
+ * el isotipo oficial de into (`BRAND_LOGO_SRC`, un archivo estático); con otro
+ * nombre se dibuja la inicial sobre el acento. Una
  * agencia que despliega para su cliente puede subir el logo real y
  * reemplazarlo.
  *
@@ -90,10 +87,10 @@ export function sniffFaviconMime(bytes: Uint8Array): FaviconMime | null {
   return null;
 }
 
-/** Inicial que se dibuja. Vacío o raro cae a la V de Vocero. */
+/** Inicial que se dibuja. Vacío o raro cae a la I de IntoSales. */
 export function faviconInitial(name: string): string {
   const c = name.trim().charAt(0).toUpperCase();
-  return c || "V";
+  return c || "I";
 }
 
 /**
@@ -102,36 +99,16 @@ export function faviconInitial(name: string): string {
  * el servidor.
  */
 export function generatedFaviconSvg(branding: Branding): string {
-  const { accent, hover, fg } = resolveAccentSet(branding.accent);
-  if (isVoceroName(branding.name)) return voceroFaviconSvg(accent, hover);
-  const letra = faviconInitial(branding.name)
+  const { accent, fg } = resolveAccentSet(branding.accent);
+  const letter = faviconInitial(branding.name)
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;");
   return [
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">`,
     `<rect width="64" height="64" rx="12" fill="${accent}"/>`,
     `<text x="32" y="33" fill="${fg}" font-family="system-ui,-apple-system,Segoe UI,Roboto,sans-serif"`,
-    ` font-size="38" font-weight="700" text-anchor="middle" dominant-baseline="central">${letra}</text>`,
+    ` font-size="38" font-weight="700" text-anchor="middle" dominant-baseline="central">${letter}</text>`,
     `</svg>`,
-  ].join("");
-}
-
-/**
- * El favicon de vocerocrm.com, con el degradado en el acento de la instancia:
- * una instancia llamada Vocero pero con otro color sigue viendo SU color.
- * El trazo sale de `lib/brand`, el mismo que dibuja la barra lateral.
- */
-function voceroFaviconSvg(from: string, to: string): string {
-  return [
-    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">`,
-    `<defs><linearGradient id="g" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">`,
-    `<stop offset="0" stop-color="${from}"/><stop offset="1" stop-color="${to}"/>`,
-    `</linearGradient></defs>`,
-    `<rect width="64" height="64" rx="14" fill="url(#g)"/>`,
-    `<g transform="translate(5.6 5.6) scale(2.2)" fill="none" stroke-linecap="round">`,
-    `<path d="${BRAND_MARK_BODY}" stroke="#ffffff" stroke-width="${BRAND_MARK_STROKE}"/>`,
-    `<path d="${BRAND_MARK_TAIL}" stroke="${BRAND_CYAN_ON_TILE}" stroke-width="${BRAND_MARK_STROKE}"/>`,
-    `</g></svg>`,
   ].join("");
 }
 
@@ -148,16 +125,22 @@ export function faviconCacheKey(
 ): string {
   if (branding.favicon) return `u${branding.favicon.version}`;
   let h = 0;
-  const semilla = `${branding.name}|${branding.accent}`;
-  for (let i = 0; i < semilla.length; i++) {
-    h = (h * 31 + semilla.charCodeAt(i)) >>> 0;
+  const seed = `${branding.name}|${branding.accent}`;
+  for (let i = 0; i < seed.length; i++) {
+    h = (h * 31 + seed.charCodeAt(i)) >>> 0;
   }
   return `g${h.toString(36)}`;
 }
 
-/** URL que va en el `<link rel="icon">`. */
+/**
+ * URL que va en el `<link rel="icon">`. La marca IntoSales sin logo subido
+ * apunta directo al isotipo estático; lo demás pasa por la ruta del icono.
+ */
 export function faviconHref(
   branding: Pick<Branding, "name" | "accent" | "favicon">
 ): string {
+  if (!branding.favicon && isBrandName(branding.name)) {
+    return `${BRAND_LOGO_SRC}?v=${faviconCacheKey(branding)}`;
+  }
   return `/api/branding/favicon?v=${faviconCacheKey(branding)}`;
 }

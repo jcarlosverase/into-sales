@@ -1,4 +1,5 @@
-# Postgres local para desarrollo. Uso: docker compose -f docker-compose.dev.yml up -d
+# Postgres local para desarrollo en el puerto 5433 (el 5432 queda para
+# into-central). Uso: docker compose -f docker-compose.dev.yml up -d
 # `name` propio: evita colisionar con el proyecto del docker-compose.yml (Ruta B).
 name: vocero-dev
 
@@ -10,8 +11,12 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       POSTGRES_DB: vocero
+      # Hora de Lima (UTC-5) para el servidor y quien abra la base; las fechas son
+      # timestamptz y guardan el instante, así que esto solo cambia cómo se ven.
+      TZ: America/Lima
+      PGTZ: America/Lima
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - vocero_dev_pg:/var/lib/postgresql/data
     healthcheck:

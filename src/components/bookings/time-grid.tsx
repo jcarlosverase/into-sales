@@ -53,7 +53,7 @@ export function TimeGrid({
   weeklyHours: WeeklyHours;
   today: string;
   nowMinutes: number;
-  /** "GMT-6": la esquina dice en qué hora está pintada la rejilla. */
+  /** "GMT-5": la esquina dice en qué hora está pintada la rejilla. */
   tzLabel: string;
   selectedId: string | null;
   /** Las citas de ESTE rango ya llegaron: solo entonces se decide el scroll. */

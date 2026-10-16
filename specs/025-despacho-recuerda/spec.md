@@ -98,7 +98,7 @@ conversación ya tenga una respuesta después.
   `runAgentTurn` devuelve lo que leyó.
 - Contrato del despacho: dos notas nuevas (un mensaje puede ser anterior a tu
   última respuesta; `messages` nunca llega vacío).
-- Arnés `scripts/e2e-despacho.mjs`: tres secciones nuevas y la espera del #116
+- Arnés `scripts/e2e-dispatch.mjs`: tres secciones nuevas y la espera del #116
   donde faltaba. El mock de IA gana una demora configurable y el registro de
   lo que se le preguntó.
 
@@ -161,7 +161,7 @@ Sin `BRAIN_DISPATCH_URL`: contesta el agente incluido.
   solo añade una columna nula. Un despacho pendiente creado antes de
   actualizar se entrega como antes.
 - **AC12** El evento conserva su forma y su firma:
-  `tests/unit/despacho-contrato.test.ts` no cambia.
+  `tests/unit/dispatch-contract.test.ts` no cambia.
 
 ## Requisitos no funcionales
 

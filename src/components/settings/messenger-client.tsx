@@ -49,8 +49,10 @@ const HELP: Record<Source, { title: string; items: string[] }> = {
   zernio: {
     title: "Vincula tu página en Zernio y pega aquí tu API key",
     items: [
-      "La página se vincula en el panel de Zernio (Accounts → Connect), no desde aquí.",
+      "La página se vincula en el panel de Zernio, no desde IntoSales. Copia de ahí el accountId de la cuenta de Facebook conectada.",
       "La API key se crea en Zernio → Settings → API Keys y se muestra una sola vez (empieza con sk_).",
+      "El mismo webhook de Zernio entrega Instagram, WhatsApp y X si esas cuentas están conectadas; IntoSales filtra por plataforma y solo ingiere lo de Facebook aquí.",
+      "El secreto del webhook es opcional pero recomendado: con él se verifica la firma de cada entrega.",
     ],
   },
   meta: {

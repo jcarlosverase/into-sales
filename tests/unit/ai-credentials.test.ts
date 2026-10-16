@@ -9,7 +9,7 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 const inserted: Record<string, unknown>[] = [];
 const updated: Record<string, unknown>[] = [];
 /** Lo que devuelve el UPDATE … RETURNING: vacío = no había fila. */
-let filaExistente: Record<string, unknown>[] = [];
+let existingRow: Record<string, unknown>[] = [];
 
 vi.mock("@/lib/db", () => ({
   getDb: () => ({
@@ -31,7 +31,7 @@ vi.mock("@/lib/db", () => ({
         updated.push(v);
         return {
           where: () => {
-            const rows = filaExistente.map((f) => ({ ...f, ...v }));
+            const rows = existingRow.map((f) => ({ ...f, ...v }));
             return {
               returning: () => Promise.resolve(rows),
               then: (resolve: (x: unknown) => void) =>
@@ -58,14 +58,14 @@ beforeAll(() => {
 beforeEach(() => {
   inserted.length = 0;
   updated.length = 0;
-  filaExistente = [];
+  existingRow = [];
 });
 
 describe("saveAiCredential", () => {
   it("cifra la llave: la fila no contiene el texto plano y queda activa", async () => {
     const { saveAiCredential } = await import("@/server/ai/credentials");
     const token = "sk-or-llave-super-secreta-abcd";
-    const guardada = await saveAiCredential({
+    const saved = await saveAiCredential({
       organizationId: "org_1",
       provider: "openrouter",
       baseUrl: "https://openrouter.ai/api",
@@ -93,9 +93,9 @@ describe("saveAiCredential", () => {
     ).toBe(token);
 
     // lo que vuelve hacia fuera no trae el token ni el cifrado
-    expect(JSON.stringify(guardada)).not.toContain(token);
-    expect(guardada).not.toHaveProperty("tokenCipher");
-    expect(guardada.tokenLast4).toBe("abcd");
+    expect(JSON.stringify(saved)).not.toContain(token);
+    expect(saved).not.toHaveProperty("tokenCipher");
+    expect(saved.tokenLast4).toBe("abcd");
   });
 
   it("sin llave y sin fila → error tipado sin_token (no inserta nada)", async () => {
@@ -114,7 +114,7 @@ describe("saveAiCredential", () => {
   });
 
   it("sin llave con fila → solo cambia proveedor/modelo y conserva el estado", async () => {
-    filaExistente = [
+    existingRow = [
       {
         id: "aicred_1",
         organizationId: "org_1",
@@ -133,14 +133,14 @@ describe("saveAiCredential", () => {
       },
     ];
     const { saveAiCredential } = await import("@/server/ai/credentials");
-    const guardada = await saveAiCredential({
+    const saved = await saveAiCredential({
       organizationId: "org_1",
       provider: "openrouter",
       baseUrl: "https://openrouter.ai/api",
       model: "nuevo",
     });
-    expect(guardada.model).toBe("nuevo");
-    expect(guardada.status).toBe("paused_invalid_token");
+    expect(saved.model).toBe("nuevo");
+    expect(saved.status).toBe("paused_invalid_token");
     expect(updated[0]).not.toHaveProperty("status");
     expect(updated[0]).not.toHaveProperty("tokenCipher");
   });
@@ -148,26 +148,26 @@ describe("saveAiCredential", () => {
 
 describe("el estado según el proveedor", () => {
   it("401 → paused_invalid_token con el detalle; 402 → paused_no_credit", async () => {
-    const { marcarEstadoPorRespuesta } = await import("@/server/ai/credentials");
-    expect(await marcarEstadoPorRespuesta("org_1", 401, "proveedor respondió 401")).toBe(true);
+    const { markStatusFromResponse } = await import("@/server/ai/credentials");
+    expect(await markStatusFromResponse("org_1", 401, "proveedor respondió 401")).toBe(true);
     expect(updated[0]).toMatchObject({
       status: "paused_invalid_token",
       statusReason: "proveedor respondió 401",
     });
-    expect(await marcarEstadoPorRespuesta("org_1", 402)).toBe(true);
+    expect(await markStatusFromResponse("org_1", 402)).toBe(true);
     expect(updated[1]).toMatchObject({ status: "paused_no_credit", statusReason: null });
   });
 
   it("429 y 500 no tocan la fila", async () => {
-    const { marcarEstadoPorRespuesta } = await import("@/server/ai/credentials");
-    expect(await marcarEstadoPorRespuesta("org_1", 429)).toBe(false);
-    expect(await marcarEstadoPorRespuesta("org_1", 500)).toBe(false);
+    const { markStatusFromResponse } = await import("@/server/ai/credentials");
+    expect(await markStatusFromResponse("org_1", 429)).toBe(false);
+    expect(await markStatusFromResponse("org_1", 500)).toBe(false);
     expect(updated).toHaveLength(0);
   });
 
   it("marcarActiva vuelve a active y limpia el motivo", async () => {
-    const { marcarActiva } = await import("@/server/ai/credentials");
-    await marcarActiva("org_1");
+    const { markActive } = await import("@/server/ai/credentials");
+    await markActive("org_1");
     expect(updated[0]).toMatchObject({ status: "active", statusReason: null });
   });
 });

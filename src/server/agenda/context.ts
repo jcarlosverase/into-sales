@@ -37,14 +37,14 @@ import { getSettings } from "@/server/agenda/settings";
  */
 
 /** Hasta cuándo atrás una cita sin cerrar sigue siendo tema de conversación. */
-export const DIAS_SIN_CERRAR = 7;
+export const DAYS_UNCLOSED = 7;
 
 /** Hasta cuándo atrás una cita cerrada sigue siendo tema de conversación. */
-export const DIAS_CERRADA = 7;
+export const CLOSED_DAYS = 7;
 
-const DIA_MS = 86_400_000;
+const DAY_MS = 86_400_000;
 
-export type CitaEnContexto = {
+export type BookingInContext = {
   id: string;
   /** Siempre `agendada`: las cerradas van en `lastClosed`. */
   status: "agendada";
@@ -57,11 +57,11 @@ export type CitaEnContexto = {
   linkPending: boolean;
 };
 
-export type EstadoCerrada = "cancelada" | "no_show" | "realizada";
+export type ClosedStatus = "cancelada" | "no_show" | "realizada";
 
-export type CitaCerrada = {
+export type ClosedBooking = {
   id: string;
-  status: EstadoCerrada;
+  status: ClosedStatus;
   startUtc: string;
   endUtc: string;
   label: string;
@@ -78,19 +78,19 @@ export type CitaCerrada = {
   // Sin enlace a propósito: el de una cita cerrada ya no sirve.
 };
 
-export type CitasEnContexto = {
+export type BookingsInContext = {
   /** Zona del negocio, en la que están las etiquetas. */
   timezone: string;
-  next: CitaEnContexto | null;
-  unresolved: CitaEnContexto | null;
-  lastClosed: CitaCerrada | null;
+  next: BookingInContext | null;
+  unresolved: BookingInContext | null;
+  lastClosed: ClosedBooking | null;
 };
 
 /** La cita tal cual sale de la base, antes de elegir y dar forma. */
-export type FilaCita = {
+export type BookingRow = {
   id: string;
   kind: "session" | "block";
-  status: "agendada" | EstadoCerrada;
+  status: "agendada" | ClosedStatus;
   isTest: boolean;
   scheduledAt: Date;
   durationMinutes: number;
@@ -99,33 +99,33 @@ export type FilaCita = {
   updatedAt: Date;
 };
 
-function forma(fila: FilaCita, timezone: string, now: Date) {
-  const startUtc = fila.scheduledAt.toISOString();
+function shape(row: BookingRow, timezone: string, now: Date) {
+  const startUtc = row.scheduledAt.toISOString();
   return {
-    id: fila.id,
+    id: row.id,
     startUtc,
     endUtc: new Date(
-      fila.scheduledAt.getTime() + fila.durationMinutes * 60_000
+      row.scheduledAt.getTime() + row.durationMinutes * 60_000
     ).toISOString(),
     label: `${dayLabelInTz(startUtc, timezone, now)}, ${timeInTz(startUtc, timezone)}`,
   };
 }
 
-function vigente(fila: FilaCita, timezone: string, now: Date): CitaEnContexto {
+function current(row: BookingRow, timezone: string, now: Date): BookingInContext {
   return {
-    ...forma(fila, timezone, now),
+    ...shape(row, timezone, now),
     status: "agendada",
-    meetingLink: fila.meetingLink,
-    linkPending: fila.linkPending,
+    meetingLink: row.meetingLink,
+    linkPending: row.linkPending,
   };
 }
 
-function cerrada(fila: FilaCita, timezone: string, now: Date): CitaCerrada {
-  const status = fila.status as EstadoCerrada;
+function closed(row: BookingRow, timezone: string, now: Date): ClosedBooking {
+  const status = row.status as ClosedStatus;
   return {
-    ...forma(fila, timezone, now),
+    ...shape(row, timezone, now),
     status,
-    closedAt: fila.updatedAt.toISOString(),
+    closedAt: row.updatedAt.toISOString(),
     cancelledBy: status === "cancelada" ? "equipo" : null,
   };
 }
@@ -136,38 +136,38 @@ function cerrada(fila: FilaCita, timezone: string, now: Date): CitaCerrada {
  * El filtro de prueba y de bloqueos vive AQUÍ, no solo en la consulta: es la
  * garantía, y así la fija una prueba sin base de datos.
  */
-export function citasEnContexto(
-  filas: FilaCita[],
+export function bookingsInContext(
+  rows: BookingRow[],
   timezone: string,
   now: Date
-): CitasEnContexto {
-  const reales = filas.filter((f) => !f.isTest && f.kind === "session");
-  const agendadas = reales.filter((f) => f.status === "agendada");
+): BookingsInContext {
+  const realOnes = rows.filter((f) => !f.isTest && f.kind === "session");
+  const booked = realOnes.filter((f) => f.status === "agendada");
   const t = now.getTime();
 
-  const next = agendadas
+  const next = booked
     .filter((f) => f.scheduledAt.getTime() >= t)
     .sort((a, b) => a.scheduledAt.getTime() - b.scheduledAt.getTime())[0];
 
-  const unresolved = agendadas
+  const unresolved = booked
     .filter((f) => {
-      const inicio = f.scheduledAt.getTime();
-      return inicio < t && inicio >= t - DIAS_SIN_CERRAR * DIA_MS;
+      const start = f.scheduledAt.getTime();
+      return start < t && start >= t - DAYS_UNCLOSED * DAY_MS;
     })
     .sort((a, b) => b.scheduledAt.getTime() - a.scheduledAt.getTime())[0];
 
-  const lastClosed = reales
+  const lastClosed = realOnes
     .filter(
       (f) =>
-        f.status !== "agendada" && f.updatedAt.getTime() >= t - DIAS_CERRADA * DIA_MS
+        f.status !== "agendada" && f.updatedAt.getTime() >= t - CLOSED_DAYS * DAY_MS
     )
     .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime())[0];
 
   return {
     timezone,
-    next: next ? vigente(next, timezone, now) : null,
-    unresolved: unresolved ? vigente(unresolved, timezone, now) : null,
-    lastClosed: lastClosed ? cerrada(lastClosed, timezone, now) : null,
+    next: next ? current(next, timezone, now) : null,
+    unresolved: unresolved ? current(unresolved, timezone, now) : null,
+    lastClosed: lastClosed ? closed(lastClosed, timezone, now) : null,
   };
 }
 
@@ -183,14 +183,14 @@ export function citasEnContexto(
  * callar al cliente por no poder consultar la agenda sería peor que no
  * mencionarla. Sin bloque, el cerebro no afirma nada sobre citas.
  */
-export async function citasParaContexto(
+export async function bookingsForContext(
   organizationId: string,
   contactId: string,
   now = new Date()
-): Promise<CitasEnContexto | null> {
+): Promise<BookingsInContext | null> {
   if (!agendaEnabled()) return null;
   try {
-    return await leerCitas(organizationId, contactId, now);
+    return await readBookings(organizationId, contactId, now);
   } catch (err) {
     console.error(
       `[agenda] no pude leer las citas del contacto ${contactId} para el contexto:`,
@@ -200,16 +200,16 @@ export async function citasParaContexto(
   }
 }
 
-async function leerCitas(
+async function readBookings(
   organizationId: string,
   contactId: string,
   now: Date
-): Promise<CitasEnContexto> {
+): Promise<BookingsInContext> {
   const db = getDb();
-  const desdeSinCerrar = new Date(now.getTime() - DIAS_SIN_CERRAR * DIA_MS);
-  const desdeCerrada = new Date(now.getTime() - DIAS_CERRADA * DIA_MS);
+  const sinceUnclosed = new Date(now.getTime() - DAYS_UNCLOSED * DAY_MS);
+  const sinceClosed = new Date(now.getTime() - CLOSED_DAYS * DAY_MS);
 
-  const [settings, filas] = await Promise.all([
+  const [settings, rows] = await Promise.all([
     getSettings(organizationId),
     db
       .select({
@@ -234,12 +234,12 @@ async function leerCitas(
           // Lo único que puede salir: lo que viene o empezó hace poco, y lo
           // que se cerró hace poco. Acota la lectura a un puñado de filas.
           or(
-            gte(schema.booking.scheduledAt, desdeSinCerrar),
-            gte(schema.booking.updatedAt, desdeCerrada)
+            gte(schema.booking.scheduledAt, sinceUnclosed),
+            gte(schema.booking.updatedAt, sinceClosed)
           )
         )
       ),
   ]);
 
-  return citasEnContexto(filas, settings.timezone, now);
+  return bookingsInContext(rows, settings.timezone, now);
 }

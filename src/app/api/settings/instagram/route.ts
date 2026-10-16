@@ -9,9 +9,9 @@ import {
   channelDisabledResponse,
   isChannelEnabled,
 } from "@/server/channels/enabled";
-import { ensureWebhookForOrg } from "@/server/zernio/conexiones";
-import { accountHealth, zernioAccountName } from "@/server/zernio/cuentas";
-import { resolveZernioAccount } from "@/server/zernio/guardar";
+import { ensureWebhookForOrg } from "@/server/zernio/connections";
+import { accountHealth, zernioAccountName } from "@/server/zernio/accounts";
+import { resolveZernioAccount } from "@/server/zernio/save-connection";
 
 export const dynamic = "force-dynamic";
 
@@ -58,25 +58,25 @@ export const PUT = withAuth(async (session, req: Request) => {
   if (!body.ok) return body.response;
   const data = body.data;
 
-  const previa = await getInstagramCredentialsByOrg(session.organizationId);
+  const previous = await getInstagramCredentialsByOrg(session.organizationId);
   // Sin secreto nuevo se conserva el que había: reconectar no debe apagar la
   // verificación de firma.
   const webhookSecret =
     data.webhookSecret ??
-    (previa?.source === data.source ? previa.webhookSecret : null) ??
+    (previous?.source === data.source ? previous.webhookSecret : null) ??
     null;
 
   if (data.source === "zernio") {
     // 023: la cuenta se resuelve contra Zernio, no se guarda a ciegas.
-    const cuenta = await resolveZernioAccount(data.token, data.accountRef, "instagram");
-    if (!cuenta.ok) return cuenta.response;
-    const username = cuenta.account.username?.replace(/^@/, "") || data.username || null;
+    const account = await resolveZernioAccount(data.token, data.accountRef, "instagram");
+    if (!account.ok) return account.response;
+    const username = account.account.username?.replace(/^@/, "") || data.username || null;
 
     await saveInstagramCredentials({
       organizationId: session.organizationId,
       source: "zernio",
-      igUserId: cuenta.account.platformUserId || data.igUserId || cuenta.account._id,
-      accountRef: cuenta.account._id,
+      igUserId: account.account.platformUserId || data.igUserId || account.account._id,
+      accountRef: account.account._id,
       username,
       token: data.token,
       webhookSecret,
@@ -87,9 +87,9 @@ export const PUT = withAuth(async (session, req: Request) => {
     return Response.json({
       ok: true,
       username,
-      accountRef: cuenta.account._id,
-      accountName: zernioAccountName(cuenta.account),
-      health: accountHealth(cuenta.account, "instagram"),
+      accountRef: account.account._id,
+      accountName: zernioAccountName(account.account),
+      health: accountHealth(account.account, "instagram"),
       webhook,
     });
   }

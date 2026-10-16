@@ -72,7 +72,7 @@ node --env-file=.env scripts/e2e-tiktok.mjs
 
 ## En otros arneses y pruebas
 
-- **AC8, con cerebro externo**: `scripts/e2e-despacho.mjs` (sección «022·AC8»)
+- **AC8, con cerebro externo**: `scripts/e2e-dispatch.mjs` (sección «022·AC8»)
   comprueba que el turno se despacha con `channel: "tiktok"`, identidad `tt:` y
   `windowExpiresAt` a 48 h, y que el cerebro contesta por `/api/bot/messages`.
 - **AC13** (el agente topa con el tope y no traspasa): el agente incluido

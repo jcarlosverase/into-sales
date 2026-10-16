@@ -52,7 +52,7 @@ describe("024 · texto de la IA sin formato para redes", () => {
   });
 
   it("no toca lo que no es formato", () => {
-    for (const texto of [
+    for (const text of [
       "2 * 3 * 4 = 24",
       "5*3=15",
       "la variable mi_variable_larga",
@@ -63,7 +63,7 @@ describe("024 · texto de la IA sin formato para redes", () => {
       "Hola, ¿en qué te ayudo?",
       "1. Uno\n2. Dos",
     ]) {
-      expect(plainSocialText(texto)).toBe(texto);
+      expect(plainSocialText(text)).toBe(text);
     }
   });
 
@@ -80,18 +80,18 @@ describe("024 · texto de la IA sin formato para redes", () => {
   });
 
   it("los emojis y los saltos de línea se conservan", () => {
-    const texto = "¡Listo! 🎉\n\nTu cita quedó para el *martes* 📅";
-    expect(plainSocialText(texto)).toBe("¡Listo! 🎉\n\nTu cita quedó para el martes 📅");
+    const text = "¡Listo! 🎉\n\nTu cita quedó para el *martes* 📅";
+    expect(plainSocialText(text)).toBe("¡Listo! 🎉\n\nTu cita quedó para el martes 📅");
   });
 
   it("es idempotente", () => {
-    for (const texto of [
+    for (const text of [
       "*Precio:* $120\n- **Martillo**\n[ver](https://x.mx/a_b)",
       "# Título\n```\ncódigo\n```",
       "• ya plano",
       "",
     ]) {
-      const una = plainSocialText(texto);
+      const una = plainSocialText(text);
       expect(plainSocialText(una)).toBe(una);
     }
   });

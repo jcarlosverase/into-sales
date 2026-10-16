@@ -1,53 +1,42 @@
 <!--
 SYNC IMPACT REPORT
 ==================
-Versión: 1.3.0 → 1.4.0
+Versión: 1.4.0 → 1.5.0
 
 Cambios:
-  - Principio II "Soberanía / Self-Hosted" → EXPANDIDO: la lista cerrada de
-    dependencias de runtime gana una tercera categoría, **conectores
-    opcionales**, admisible SOLO bajo cinco condiciones (apagados por defecto
-    tras una bandera de despliegue, aislados tras adaptador dedicado con
-    contrato público, instancia completa sin ellos con degradación definida,
-    credenciales cifradas del propio negocio, y verificables en CI apagados y
-    encendidos). La frase de prohibición se acota: de "PROHIBIDO en v1 … y
-    servicios de Google" a "PROHIBIDO como dependencia del núcleo", con la vía
-    única del conector opcional para servicios de terceros.
-  - Principios I, III, IV, V, VI, VII, VIII y IX: íntegros (sin cambio).
-  - "Restricciones de Plataforma y Seguridad": sin cambio — su regla de
-    aislamiento tras adaptadores dedicados ya cubre a los conectores.
+  - Principio VIII "Foco Vertical" → EXPANDIDO: la exclusión de "lo que solo
+    sirva a una plataforma centralizada" se acota. Sigue FUERA que el CRM sea
+    una plataforma (billing, multi-instancia, vender planes dentro del CRM);
+    entra un conector opcional al servicio central de quien instala y
+    mantiene la instancia (la agencia), que recibe el estado del diagnóstico
+    sin detalle y devuelve información de la cuenta del negocio (su plan) para
+    mostrarla, sin poder bloquear ni limitar la operación core.
+  - Principio II "Soberanía", condición 4 de los conectores opcionales →
+    ACLARADA: la llave de ese conector es la credencial del propio negocio con
+    su proveedor; se cifra en reposo como cualquier otra y no le da al central
+    acceso a la instancia.
+  - Principios I, III, IV, V, VI, VII y IX: íntegros (sin cambio).
   - Governance: sin cambio.
 
-Bump: MINOR (1.3.0 → 1.4.0) — expansión material de un principio; no elimina ni
-redefine nada de forma incompatible: una instancia default sigue cumpliendo
-exactamente la promesa vigente ("un VPS, un dominio, credenciales de Meta y un
-token de OpenRouter. Nada más").
+Bump: MINOR (1.4.0 → 1.5.0) — expansión material de dos principios; una
+instancia por defecto (sin la bandera `INTO_CENTRAL_URL`) cumple exactamente
+la promesa vigente.
 
 Motivación:
-  El canal de Instagram (014 / ADR-001) entró como integración opcional detrás
-  de CHANNELS sin tocar este principio, porque es la misma Meta Graph API del
-  canal permitido. El motor de agendamiento (feature 015) necesita Zoom y
-  Google — proveedores nuevos — y el principio no daba ninguna vía, ni siquiera
-  apagados por defecto; la única salida habría sido "cada quien su fork", que
-  ADR-001 ya demostró insostenible (la rama 004-motor-agenda quedó irrescatable
-  en 26 días: 76 commits atrás y migración colisionada). La soberanía que el
-  principio protege no se toca: el costo lo paga únicamente la instancia que
-  enciende la bandera y pega SUS credenciales, y la condición 5 lo vuelve
-  verificable en vez de prometido.
-  Propuesta por escrito y ratificación del responsable (2026-08-26):
-  specs/015-motor-agenda-universal/enmienda-constitucional.md.
+  into instala y mantiene IntoSales para sus clientes y necesita saber cuándo
+  un CRM se cae o pierde su WhatsApp sin esperar la llamada del cliente; el
+  cliente necesita ver en su CRM qué plan tiene. La spec 028 (latido al
+  servicio central) lo hace como conector opcional; la 1.4.0 lo prohibía por
+  dos frases. Propuesta por escrito:
+  specs/028-latido-al-central/enmienda-constitucional.md. Pedida por el
+  responsable el 2026-10-14; el texto espera su revisión antes del commit.
 
 Plantillas dependientes:
-  - .specify/templates/spec-template.md — ✅ compatible (sin cambios).
-  - .specify/templates/plan-template.md — ✅ compatible; su Constitution Check
-    se evalúa contra esta versión (un conector externo pasa el gate si y solo
-    si cumple las cinco condiciones).
-  - .specify/templates/tasks-template.md — ✅ compatible.
-  - CLAUDE.md — ✅ actualizado en este mismo cambio (regla de Soberanía).
+  - .specify/templates/*.md — ✅ compatibles (sin cambios).
+  - CLAUDE.md y AGENTS.md — ✅ actualizados en este mismo cambio.
 
 TODOs diferidos:
-  - Deuda documental heredada de la 1.3.0 (features entre `003` y la app 1.2.0
-    sin spec): sigue igual; esta enmienda no la toca.
+  - Deuda documental heredada de la 1.3.0: sigue igual.
 -->
 
 # Vocero CRM Constitution
@@ -102,7 +91,11 @@ dependencias externas en runtime es CERRADA:
         con link pendiente; el mensaje se responde; el dato se guarda).
      4. **Credenciales del propio negocio, cifradas en reposo** (Principio I):
         cada instancia habla con SU cuenta del proveedor; jamás credenciales de
-        una plataforma central.
+        una plataforma central. La llave del conector al servicio central de
+        quien mantiene la instancia (Principio VIII) es la del propio negocio
+        con ese proveedor: se trata como cualquier otra credencial del negocio
+        (cifrada en reposo, solo sus últimos 4 hacia fuera) y no le da al
+        central acceso a la instancia.
      5. **Verificables apagados y encendidos**: la CI ejercita ambas
         configuraciones y cada conector externo tiene mock con camino infeliz.
 - **PROHIBIDO como dependencia del núcleo** (todo lo que el producto necesite
@@ -231,8 +224,14 @@ conversaciones de WhatsApp de UN negocio* se rechaza.
   sirvan a atender/organizar/convertir (broadcast masivo, scraping de números,
   flujos visuales genéricos) quedan FUERA del alcance de v1.
 - Toda feature MUST servir a la agencia que despliega o al negocio que opera UNA
-  instancia. Lo que solo sirva a una plataforma centralizada (billing, planes,
-  multi-instancia) queda FUERA.
+  instancia. Que el CRM se vuelva una plataforma —cobrar (billing), administrar
+  varias instancias desde una o vender planes dentro del CRM— queda FUERA.
+- Entra, como conector opcional bajo las condiciones del Principio II, la
+  conexión con el **servicio central de quien instala y mantiene la
+  instancia** (la agencia): puede recibir el estado del diagnóstico, sin
+  detalle ni datos de conversaciones o contactos, y devolver información de la
+  cuenta del negocio —como su plan— para mostrarla. No puede bloquear ni
+  limitar la operación core sin una enmienda nueva.
 
 **Rationale**: Un foco vertical explícito mantiene el modelo de datos alineado con el
 negocio real y da un criterio claro para aceptar o rechazar alcance.
@@ -334,4 +333,4 @@ práctica, convención o preferencia; ante un conflicto, gana la constitución.
 - **Propagación**: al enmendar la constitución se revisan y, si procede, se actualizan
   las plantillas dependientes (plan, spec, tasks).
 
-**Version**: 1.4.0 | **Ratified**: 2026-07-09 | **Last Amended**: 2026-08-26
+**Version**: 1.5.0 | **Ratified**: 2026-07-09 | **Last Amended**: 2026-10-14

@@ -33,49 +33,49 @@ import {
  *    puede pasar de 100 %.
  */
 
-const FUENTES: readonly SourceKey[] = [...SOURCE_VALUES, "desconocida"];
+const SOURCES: readonly SourceKey[] = [...SOURCE_VALUES, "desconocida"];
 
 /** Cuántas filas enseña la tabla por anuncio: más no se lee en una pantalla. */
-export const MAX_ANUNCIOS = 50;
+export const MAX_ADS = 50;
 
 export async function adsBlock(
   organizationId: string,
   period: ResolvedPeriod
 ): Promise<AdsBlockDto> {
-  const [convsPorFuente, leadsPorFuente, convsPorAnuncio, leadsPorAnuncio, previas] =
+  const [convsBySource, leadsBySource, convsByAd, leadsByAd, previous] =
     await Promise.all([
-      conversacionesPorFuente(organizationId, period.start, period.end),
-      prospectosPorFuente(organizationId, period.start, period.end),
-      conversacionesPorAnuncio(organizationId, period.start, period.end),
-      prospectosPorAnuncio(organizationId, period.start, period.end),
-      contarConversaciones(organizationId, period.previousStart, period.previousEnd),
+      conversationsBySource(organizationId, period.start, period.end),
+      prospectsBySource(organizationId, period.start, period.end),
+      conversationsByAd(organizationId, period.start, period.end),
+      prospectsByAd(organizationId, period.start, period.end),
+      countConversations(organizationId, period.previousStart, period.previousEnd),
     ]);
 
-  const sources = unirFuentes(convsPorFuente, leadsPorFuente);
-  const ads = unirAnuncios(convsPorAnuncio, leadsPorAnuncio);
-  const conversaciones = sources.reduce((a, s) => a + s.conversations, 0);
-  const deAnuncio = sources.find((s) => s.value === "anuncio")?.conversations ?? 0;
-  const prospectos = sources.reduce((a, s) => a + s.leads, 0);
+  const sources = joinSources(convsBySource, leadsBySource);
+  const ads = joinAds(convsByAd, leadsByAd);
+  const conversations = sources.reduce((a, s) => a + s.conversations, 0);
+  const fromAd = sources.find((s) => s.value === "anuncio")?.conversations ?? 0;
+  const prospects = sources.reduce((a, s) => a + s.leads, 0);
 
   return {
     period: period.dto,
-    conversations: comparable(conversaciones, previas),
-    adShare: rate(deAnuncio, conversaciones),
+    conversations: comparable(conversations, previous),
+    adShare: rate(fromAd, conversations),
     sources,
     ads,
-    empty: conversaciones === 0 && prospectos === 0,
+    empty: conversations === 0 && prospects === 0,
   };
 }
 
-type Conteo = { key: string | null; n: number };
-type ConteoLeads = { key: string | null; leads: number; won: number };
+type Count = { key: string | null; n: number };
+type CountLeads = { key: string | null; leads: number; won: number };
 
 /** Conversaciones reales que empezaron en el rango, por el origen del contacto. */
-async function conversacionesPorFuente(
+async function conversationsBySource(
   organizationId: string,
   start: Date,
   end: Date
-): Promise<Conteo[]> {
+): Promise<Count[]> {
   return getDb()
     .select({
       key: effectiveSourceExpr(
@@ -99,7 +99,7 @@ async function conversacionesPorFuente(
     .groupBy(sql`1`);
 }
 
-async function contarConversaciones(
+async function countConversations(
   organizationId: string,
   start: Date,
   end: Date
@@ -120,11 +120,11 @@ async function contarConversaciones(
 }
 
 /** Prospectos creados en el rango y cuántos de ellos están hoy en Ganado. */
-async function prospectosPorFuente(
+async function prospectsBySource(
   organizationId: string,
   start: Date,
   end: Date
-): Promise<ConteoLeads[]> {
+): Promise<CountLeads[]> {
   return getDb()
     .select({
       key: effectiveSourceExpr(
@@ -151,8 +151,8 @@ async function prospectosPorFuente(
 }
 
 /** Las filas por anuncio: la llave es el `source_id`, o la fila si no hay. */
-const llave = sql<string>`coalesce(${schema.adAttribution.sourceId}, ${schema.adAttribution.id})`;
-const metadatos = {
+const key = sql<string>`coalesce(${schema.adAttribution.sourceId}, ${schema.adAttribution.id})`;
+const metadata = {
   sourceId: sql<string | null>`max(${schema.adAttribution.sourceId})`,
   sourceType: sql<string | null>`max(${schema.adAttribution.sourceType})`,
   headline: sql<string | null>`max(${schema.adAttribution.headline})`,
@@ -160,7 +160,7 @@ const metadatos = {
   lastAt: sql<number>`extract(epoch from max(${schema.adAttribution.createdAt}))::float`,
 };
 
-type Metadatos = {
+type Metadata = {
   key: string;
   sourceId: string | null;
   sourceType: string | null;
@@ -174,15 +174,15 @@ type Metadatos = {
  * abrió. Cada fila de `ad_attribution` es de UNA conversación (el primer
  * anuncio gana, 016), así que no hay doble conteo.
  */
-async function conversacionesPorAnuncio(
+async function conversationsByAd(
   organizationId: string,
   start: Date,
   end: Date
-): Promise<(Metadatos & { conversations: number })[]> {
+): Promise<(Metadata & { conversations: number })[]> {
   return getDb()
     .select({
-      key: llave,
-      ...metadatos,
+      key: key,
+      ...metadata,
       conversations: sql<number>`count(*)::int`,
     })
     .from(schema.adAttribution)
@@ -201,7 +201,7 @@ async function conversacionesPorAnuncio(
         lt(schema.conversation.createdAt, end)
       )
     )
-    .groupBy(llave);
+    .groupBy(key);
 }
 
 /**
@@ -212,15 +212,15 @@ async function conversacionesPorAnuncio(
  * ficha): unir contra todas sus filas lo contaría dos veces si escribió desde
  * dos conversaciones.
  */
-async function prospectosPorAnuncio(
+async function prospectsByAd(
   organizationId: string,
   start: Date,
   end: Date
-): Promise<(Metadatos & { leads: number; won: number })[]> {
+): Promise<(Metadata & { leads: number; won: number })[]> {
   return getDb()
     .select({
-      key: llave,
-      ...metadatos,
+      key: key,
+      ...metadata,
       leads: sql<number>`count(*)::int`,
       won: sql<number>`count(*) filter (where ${schema.pipelineStage.kind} = 'won')::int`,
     })
@@ -246,15 +246,15 @@ async function prospectosPorAnuncio(
         notLabContact(schema.lead.contactId)
       )
     )
-    .groupBy(llave);
+    .groupBy(key);
 }
 
 /** Las seis fuentes en su orden fijo, solo las que tienen algo. */
-export function unirFuentes(convs: Conteo[], leads: ConteoLeads[]): SourceRowDto[] {
+export function joinSources(convs: Count[], leads: CountLeads[]): SourceRowDto[] {
   const conv = new Map(convs.map((c) => [c.key ?? "desconocida", c.n]));
   const lead = new Map(leads.map((l) => [l.key ?? "desconocida", l]));
 
-  return FUENTES.map((value) => {
+  return SOURCES.map((value) => {
     const l = lead.get(value);
     const won = l?.won ?? 0;
     const leadsN = l?.leads ?? 0;
@@ -274,12 +274,12 @@ export function unirFuentes(convs: Conteo[], leads: ConteoLeads[]): SourceRowDto
  * prospectos, y luego el anuncio que trajo a alguien más recientemente, que
  * es el que el dueño está mirando.
  */
-export function unirAnuncios(
-  convs: (Metadatos & { conversations: number })[],
-  leads: (Metadatos & { leads: number; won: number })[]
+export function joinAds(
+  convs: (Metadata & { conversations: number })[],
+  leads: (Metadata & { leads: number; won: number })[]
 ): AdRowDto[] {
-  const filas = new Map<string, AdRowDto & { lastAt: number }>();
-  const base = (m: Metadatos) => ({
+  const rowsValue = new Map<string, AdRowDto & { lastAt: number }>();
+  const base = (m: Metadata) => ({
     key: m.key,
     sourceId: m.sourceId,
     sourceType: m.sourceType,
@@ -293,28 +293,28 @@ export function unirAnuncios(
   });
 
   for (const c of convs) {
-    filas.set(c.key, { ...base(c), conversations: c.conversations });
+    rowsValue.set(c.key, { ...base(c), conversations: c.conversations });
   }
   for (const l of leads) {
-    const fila = filas.get(l.key) ?? base(l);
-    fila.leads = l.leads;
-    fila.won = l.won;
-    fila.winRate = rate(l.won, l.leads);
+    const row = rowsValue.get(l.key) ?? base(l);
+    row.leads = l.leads;
+    row.won = l.won;
+    row.winRate = rate(l.won, l.leads);
     // La imagen se descarga una vez por anuncio y puede llegar después: la que
     // haya, de cualquiera de las dos vistas.
-    fila.imageAssetId ??= l.imageAssetId;
-    fila.headline ??= l.headline;
-    if (l.lastAt > fila.lastAt) fila.lastAt = l.lastAt;
-    filas.set(l.key, fila);
+    row.imageAssetId ??= l.imageAssetId;
+    row.headline ??= l.headline;
+    if (l.lastAt > row.lastAt) row.lastAt = l.lastAt;
+    rowsValue.set(l.key, row);
   }
 
-  return [...filas.values()]
+  return [...rowsValue.values()]
     .sort(
       (a, b) =>
         b.conversations - a.conversations ||
         b.leads - a.leads ||
         b.lastAt - a.lastAt
     )
-    .slice(0, MAX_ANUNCIOS)
-    .map(({ lastAt: _lastAt, ...fila }) => fila);
+    .slice(0, MAX_ADS)
+    .map(({ lastAt: _lastAt, ...row }) => row);
 }

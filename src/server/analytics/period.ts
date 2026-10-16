@@ -27,7 +27,7 @@ export const DEFAULT_DAYS = 30;
 export const MAX_DAYS = 366;
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
-const FORMATO = "Fechas inválidas: usa el formato AAAA-MM-DD";
+const FORMAT = "Fechas inválidas: usa el formato AAAA-MM-DD";
 
 /** Rango en instantes UTC + su equivalente del periodo anterior. */
 export type ResolvedPeriod = {
@@ -68,9 +68,9 @@ export function daysApart(fromISO: string, toISO: string): number {
   );
 }
 
-function medianoche(isoDate: string, timezone: string): Date {
+function midnight(isoDate: string, timezone: string): Date {
   const d = zonedWallClockToUtc(isoDate, "00:00", timezone);
-  if (!d || Number.isNaN(d.getTime())) throw new PeriodError(FORMATO);
+  if (!d || Number.isNaN(d.getTime())) throw new PeriodError(FORMAT);
   return d;
 }
 
@@ -88,24 +88,24 @@ export function resolvePeriod(input: {
     input.timezone && isValidTimeZone(input.timezone)
       ? input.timezone
       : DEFAULT_TIMEZONE;
-  const hoy = todayInTz(input.now ?? new Date(), tz);
+  const today = todayInTz(input.now ?? new Date(), tz);
 
-  if (input.from && !ISO_DATE.test(input.from)) throw new PeriodError(FORMATO);
-  if (input.to && !ISO_DATE.test(input.to)) throw new PeriodError(FORMATO);
+  if (input.from && !ISO_DATE.test(input.from)) throw new PeriodError(FORMAT);
+  if (input.to && !ISO_DATE.test(input.to)) throw new PeriodError(FORMAT);
 
-  const to = input.to || hoy;
+  const to = input.to || today;
   const from = input.from || addDaysISO(to, -(DEFAULT_DAYS - 1));
 
   // "2026-02-31" pasa el patrón y no es una fecha.
-  const valida = (d: string) =>
+  const valid = (d: string) =>
     new Date(`${d}T00:00:00Z`).toISOString().slice(0, 10) === d;
   if (
     Number.isNaN(Date.parse(`${from}T00:00:00Z`)) ||
     Number.isNaN(Date.parse(`${to}T00:00:00Z`)) ||
-    !valida(from) ||
-    !valida(to)
+    !valid(from) ||
+    !valid(to)
   ) {
-    throw new PeriodError(FORMATO);
+    throw new PeriodError(FORMAT);
   }
   if (daysApart(from, to) < 0) {
     throw new PeriodError("La fecha inicial va antes que la final");
@@ -123,8 +123,8 @@ export function resolvePeriod(input: {
 
   // Rangos con fin EXCLUSIVO: `< end` evita el clásico bug del último
   // milisegundo del día, que se cuenta dos veces o se pierde.
-  const start = medianoche(from, tz);
-  const end = medianoche(addDaysISO(to, 1), tz);
+  const start = midnight(from, tz);
+  const end = midnight(addDaysISO(to, 1), tz);
 
   return {
     dto: {
@@ -139,7 +139,7 @@ export function resolvePeriod(input: {
     },
     start,
     end,
-    previousStart: medianoche(previousFrom, tz),
+    previousStart: midnight(previousFrom, tz),
     previousEnd: start,
     timezone: tz,
   };

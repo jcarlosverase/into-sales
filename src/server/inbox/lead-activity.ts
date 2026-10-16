@@ -2,6 +2,7 @@ import { and, asc, eq, sql } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db";
 import { newId } from "@/lib/db/ids";
 import { recordLeadCreated } from "@/server/leads/stage-history";
+import { assignLeadByRotation } from "@/server/leads/routing";
 import type { StageChangeSource } from "@/lib/types";
 
 /**
@@ -52,6 +53,16 @@ export async function createLeadForContact(input: {
   /** Quién dio de alta: el webhook es `sistema`, la captura manual `dueno`. */
   source?: StageChangeSource;
   actorUserId?: string | null;
+  /**
+   * 022 — Explicit owner of the new lead (a sales rep capturing their own
+   * prospect, D6). Absent: the lead goes to the next rep in the rotation.
+   */
+  assignedUserId?: string;
+  /**
+   * 030 — Leave the new lead unassigned instead of taking a turn (a
+   * supervisor importing «sin asignar»). Ignored with `assignedUserId`.
+   */
+  skipRotation?: boolean;
 }): Promise<{ id: string; stageId: string } | null> {
   const db = getDb();
 
@@ -95,8 +106,8 @@ export async function createLeadForContact(input: {
     .onConflictDoNothing({ target: [schema.lead.contactId] })
     .returning({ id: schema.lead.id, stageId: schema.lead.stageId });
 
-  const creado = inserted[0];
-  if (!creado) return null;
+  const created = inserted[0];
+  if (!created) return null;
 
   // El nacimiento del lead es el primer evento del embudo: sin él, "prospectos
   // que entraron en el periodo" no se podría contar desde la bitácora. Va aquí
@@ -106,13 +117,31 @@ export async function createLeadForContact(input: {
   // simultáneo ganó la carrera — ese ya anotó el suyo.
   await recordLeadCreated({
     organizationId: input.organizationId,
-    leadId: creado.id,
+    leadId: created.id,
     contactId: input.contactId,
-    stageId: creado.stageId,
+    stageId: created.stageId,
     occurredAt: input.at,
     actorUserId: input.actorUserId ?? null,
     source: input.source ?? "sistema",
   });
 
-  return creado;
+  // 022 — Assignment happens only when THIS call created the lead: a webhook
+  // that lost the race above must not consume a turn. A failure here never
+  // undoes the lead (ingestion must not break); the lead just stays
+  // unassigned and supervisors still see it.
+  try {
+    if (input.assignedUserId) {
+      const now = new Date();
+      await db
+        .update(schema.lead)
+        .set({ assignedUserId: input.assignedUserId, assignedAt: now, updatedAt: now })
+        .where(eq(schema.lead.id, created.id));
+    } else if (!input.skipRotation) {
+      await assignLeadByRotation(input.organizationId, created.id);
+    }
+  } catch (err) {
+    console.error("[leads] could not assign the new lead:", err);
+  }
+
+  return created;
 }

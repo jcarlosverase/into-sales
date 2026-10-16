@@ -396,10 +396,10 @@ export function offHoursBands(
   return out;
 }
 
-/** "GMT-6", "GMT+5:30", "GMT": el desfase de la zona del negocio ahora. */
+/** "GMT-5", "GMT+5:30", "GMT": el desfase de la zona del negocio ahora. */
 export function tzOffsetLabel(tz: string, at: Date = new Date()): string {
   // `tzOffsetMinutes` compara contra un instante sin milisegundos: con el
-  // reloj real sale "-359.99…" y la esquina decía "GMT-6:0.0103…".
+  // reloj real sale "-299.99…" y la esquina decía "GMT-5:0.0103…".
   const offset = Math.round(tzOffsetMinutes(at, tz));
   if (offset === 0) return "GMT";
   const sign = offset > 0 ? "+" : "-";

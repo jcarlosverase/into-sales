@@ -17,6 +17,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
+import { AttentionSection, type ReplyMode } from "./attention-hours";
+import type { AttentionHours } from "@/lib/attention";
 
 type Profile = {
   enabled: boolean;
@@ -25,6 +27,10 @@ type Profile = {
   instructions: string | null;
   escalationRules: string | null;
   greeting: string | null;
+  // 031 — cuándo responde la IA y el horario de atención.
+  replyMode: ReplyMode;
+  attentionHours: AttentionHours;
+  attentionTimezone: string;
 };
 
 type KbEntry = {
@@ -38,7 +44,8 @@ type KbEntry = {
 export function AgentClient() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [aiConfigured, setAiConfigured] = useState(true);
-  const [aiMensaje, setAiMensaje] = useState<string | null>(null);
+  const [aiMessage, setAiMessage] = useState<string | null>(null);
+  const [attentionNow, setAttentionNow] = useState(false);
   const [entries, setEntries] = useState<KbEntry[]>([]);
   const [kbSize, setKbSize] = useState<{ chars: number; warnAt: number; warning: boolean } | null>(null);
   const [saved, setSaved] = useState(false);
@@ -63,7 +70,8 @@ export function AgentClient() {
     if (p) {
       setProfile(p.profile);
       setAiConfigured(p.aiConfigured);
-      setAiMensaje(p.aiMensaje ?? null);
+      setAiMessage(p.aiMessage ?? null);
+      setAttentionNow(Boolean(p.attentionNow));
     }
     if (kb) setEntries(kb.entries);
     if (size) setKbSize(size);
@@ -153,10 +161,10 @@ export function AgentClient() {
         <div className="mx-4 mt-4 rounded-lg border border-brand-soft bg-brand-tint p-5 text-center sm:mx-6 sm:mt-6 sm:p-6">
           <Sparkles className="mx-auto mb-2 h-8 w-8 text-primary" />
           <p className="font-medium">
-            {aiMensaje ? "Tu agente no puede contestar" : "Configura tu proveedor de IA para activar el agente"}
+            {aiMessage ? "Tu agente no puede contestar" : "Configura tu proveedor de IA para activar el agente"}
           </p>
           <p className="mx-auto mt-1 max-w-md text-sm text-muted-foreground">
-            {aiMensaje ??
+            {aiMessage ??
               "Elige el proveedor, el modelo y pega tu llave: sin reiniciar nada."}{" "}
             Mientras tanto puedes dejar listo el comportamiento y el conocimiento aquí
             abajo.
@@ -171,6 +179,14 @@ export function AgentClient() {
       )}
 
       <div className="grid gap-4 p-4 sm:gap-6 sm:p-6 lg:grid-cols-2">
+        <AttentionSection
+          replyMode={profile.replyMode}
+          hours={profile.attentionHours}
+          timezone={profile.attentionTimezone}
+          attentionNow={attentionNow}
+          agentEnabled={profile.enabled}
+          onSave={saveProfile}
+        />
         <ProfileSection profile={profile} onSave={saveProfile} />
         <KbSection entries={entries} kbSize={kbSize} onChanged={() => void refetch()} />
       </div>

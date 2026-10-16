@@ -16,7 +16,7 @@ import { BotSection } from "@/components/results/bot-section";
  * resultado salga vacío.
  */
 
-const db = vi.hoisted(() => ({ tablas: [] as unknown[] }));
+const db = vi.hoisted(() => ({ tables: [] as unknown[] }));
 
 vi.mock("@/lib/db", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/db")>();
@@ -33,36 +33,36 @@ vi.mock("@/lib/db", async (importOriginal) => {
   ]) {
     builder[m] = () => builder;
   }
-  builder.from = (tabla: unknown) => {
-    db.tablas.push(tabla);
+  builder.from = (table: unknown) => {
+    db.tables.push(table);
     return builder;
   };
   (builder as { then: unknown }).then = (resolve: (v: unknown) => void) => resolve([]);
   return { ...actual, getDb: () => builder };
 });
 
-const periodo = resolvePeriod({
+const period = resolvePeriod({
   from: "2026-03-01",
   to: "2026-03-31",
-  timezone: "America/Mexico_City",
+  timezone: "America/Lima",
 });
 
 beforeEach(() => {
-  db.tablas = [];
+  db.tables = [];
 });
 
 describe("botBlock y la bandera AGENDA", () => {
   it("apagada: `sessions` es null y la tabla de citas no se consulta", async () => {
-    const b = await botBlock("org_1", periodo, false);
+    const b = await botBlock("org_1", period, false);
     expect(b.sessions).toBeNull();
-    expect(db.tablas).not.toContain(schema.booking);
+    expect(db.tables).not.toContain(schema.booking);
     // Lo demás del agente sigue ahí.
     expect(b.conversations).toBe(0);
     expect(b.empty).toBe(true);
   });
 
   it("encendida: cuenta las citas del periodo", async () => {
-    const b = await botBlock("org_1", periodo, true);
+    const b = await botBlock("org_1", period, true);
     expect(b.sessions).toEqual({
       booked: 0,
       done: 0,
@@ -70,13 +70,13 @@ describe("botBlock y la bandera AGENDA", () => {
       cancelled: 0,
       showRate: { value: null, sample: 0, reliable: false },
     });
-    expect(db.tablas).toContain(schema.booking);
+    expect(db.tables).toContain(schema.booking);
   });
 });
 
 describe("la sección del agente y la bandera AGENDA", () => {
-  const datos: BotBlockDto = {
-    period: periodo.dto,
+  const dataValue: BotBlockDto = {
+    period: period.dto,
     conversations: 12,
     aiReplyRate: rate(10, 11),
     firstResponseSeconds: 42,
@@ -84,23 +84,23 @@ describe("la sección del agente y la bandera AGENDA", () => {
     handoffs: [{ key: "cliente", label: "El cliente pidió un humano", count: 2 }],
     handoffRate: rate(2, 12),
     sessions: { booked: 4, done: 2, noShow: 1, cancelled: 1, showRate: rate(2, 3) },
-    fichaCoverage: null,
+    qualificationCoverage: null,
     empty: false,
   };
-  const pintar = (agenda: boolean, data: BotBlockDto) =>
+  const paint = (agenda: boolean, data: BotBlockDto) =>
     renderToStaticMarkup(
       createElement(BotSection, { data, loading: false, error: null, agenda })
     );
 
   it("apagada no habla de citas, aunque llegaran datos", () => {
-    const html = pintar(false, datos);
+    const html = paint(false, dataValue);
     expect(html).not.toMatch(/cita/i);
     expect(html).not.toContain("Asistencia");
     expect(html).toContain("Contestó el agente");
   });
 
   it("encendida enseña las citas del periodo", () => {
-    const html = pintar(true, datos);
+    const html = paint(true, dataValue);
     expect(html).toContain("Citas del periodo");
     expect(html).toContain("Asistencia");
   });

@@ -53,7 +53,7 @@ export const AI_STATUS_LABEL: Record<AiStatus, string> = {
 };
 
 /** A qué preset corresponde una base URL (la del entorno o una guardada). */
-export function presetDeBaseUrl(baseUrl: string): AiProviderId {
+export function presetFromBaseUrl(baseUrl: string): AiProviderId {
   return apiRoot(baseUrl) === apiRoot(OPENROUTER_BASE_URL)
     ? "openrouter"
     : "openai_compatible";
@@ -69,8 +69,8 @@ export function presetDeBaseUrl(baseUrl: string): AiProviderId {
  * un 404 que no explicaba nada.
  */
 export function apiRoot(baseUrl: string): string {
-  const sinBarra = baseUrl.trim().replace(/\/+$/, "");
-  return /\/v1$/i.test(sinBarra) ? sinBarra : `${sinBarra}/v1`;
+  const trimmedUrl = baseUrl.trim().replace(/\/+$/, "");
+  return /\/v1$/i.test(trimmedUrl) ? trimmedUrl : `${trimmedUrl}/v1`;
 }
 
 export function chatCompletionsUrl(baseUrl: string): string {

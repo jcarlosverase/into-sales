@@ -41,13 +41,34 @@ jobs:
           - name: default
             channels: ""
             agenda: ""
+            central: ""
           - name: completo
             channels: "whatsapp,instagram,messenger,tiktok"
             agenda: "on"
+            # 028: el latido al servicio central de into (conector opcional).
+            central: "http://localhost:3000/api/dev/central-mock"
+
+    # Pruebas de integración (tests/integration) contra un PostgreSQL de verdad:
+    # cada archivo crea y borra su propia base en este servidor.
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
 
     env:
+      TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
       CHANNELS: ${{ matrix.config.channels }}
       AGENDA: ${{ matrix.config.agenda }}
+      INTO_CENTRAL_URL: ${{ matrix.config.central }}
 
     steps:
       - uses: actions/checkout@v7

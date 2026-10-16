@@ -1,0 +1,29 @@
+# ============================================================
+# into-sales — capa del instalador de VPS (deploy/install.sh, spec 1001).
+# Se aplica ENCIMA de docker-compose.yml:
+#
+#   - Apaga el Caddy propio de la Ruta B: el HTTPS lo da el Caddy compartido
+#     «into-edge», para que varias instancias y el servicio central convivan
+#     en el mismo VPS.
+#   - Conecta la app a la red `into_edge` con un nombre único por instancia.
+#   - Usa una imagen local por instancia, construida desde el código.
+#
+# Las variables (EDGE_ALIAS, APP_IMAGE…) las escribe el instalador en el .env
+# de la instancia. No hace falta usar este archivo a mano.
+# ============================================================
+services:
+  app:
+    image: ${APP_IMAGE:-into-sales:local}
+    pull_policy: never
+    networks:
+      default: {}
+      edge:
+        aliases: ["${EDGE_ALIAS:-into-sales-app}"]
+
+  caddy:
+    profiles: ["ruta-b"]
+
+networks:
+  edge:
+    external: true
+    name: into_edge

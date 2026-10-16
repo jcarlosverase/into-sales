@@ -43,12 +43,12 @@ describe("ON CONFLICT sobre contact", () => {
       for (const match of targets) {
         const body = match[1] ?? "";
         if (!body.includes("schema.contact.waIdentity")) continue;
-        const faltantes = CONTACT_INDEX_COLUMNS.filter(
+        const missing = CONTACT_INDEX_COLUMNS.filter(
           (col) => !body.includes(`schema.contact.${col}`)
         );
-        if (faltantes.length > 0) {
+        if (missing.length > 0) {
           offenders.push(
-            `${file.replace(process.cwd(), "")} — le falta: ${faltantes.join(", ")}`
+            `${file.replace(process.cwd(), "")} — le falta: ${missing.join(", ")}`
           );
         }
       }

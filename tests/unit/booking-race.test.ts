@@ -19,7 +19,7 @@ const settings = {
   bufferMinutes: 0,
   minNoticeHours: 0,
   maxDaysAhead: 7,
-  timezone: "America/Mexico_City",
+  timezone: "America/Lima",
   connector: "enlace-fijo" as const,
   meetingLink: "https://meet.ejemplo.com/sala",
 };

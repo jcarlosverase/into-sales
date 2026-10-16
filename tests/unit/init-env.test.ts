@@ -19,11 +19,11 @@ import {
  * placeholder, esto se pone rojo antes que la instalación de alguien.
  */
 
-const RAIZ = path.resolve(import.meta.dirname, "..", "..");
-const EJEMPLO = readFileSync(path.join(RAIZ, ".env.example"), "utf8");
+const ROOT = path.resolve(import.meta.dirname, "..", "..");
+const EXAMPLE = readFileSync(path.join(ROOT, ".env.example"), "utf8");
 
 /** Solo las líneas activas (sin `#`), como las lee docker compose. */
-function activas(content: string): string[] {
+function activeOnes(content: string): string[] {
   return content.split(/\r?\n/).filter((l) => /^[A-Z][A-Z0-9_]*=/.test(l));
 }
 
@@ -62,11 +62,11 @@ describe("generateSecrets", () => {
 
 describe("renderInitEnv sobre el .env.example real", () => {
   it("deja un .env que pasa el esquema de arranque, sin REEMPLAZA_ activos y con DOMAIN=localhost", () => {
-    const r = renderInitEnv(EJEMPLO);
+    const r = renderInitEnv(EXAMPLE);
     const vars = parseEnv(r.content);
 
     expect(r.pending).toEqual([]);
-    expect(activas(r.content).some((l) => l.includes("REEMPLAZA_"))).toBe(false);
+    expect(activeOnes(r.content).some((l) => l.includes("REEMPLAZA_"))).toBe(false);
     expect(vars.DOMAIN).toBe("localhost");
     expect(vars.APP_BASE_URL).toBe("https://localhost");
 
@@ -77,24 +77,24 @@ describe("renderInitEnv sobre el .env.example real", () => {
 
   it("la contraseña de Postgres es la misma en POSTGRES_PASSWORD y dentro de DATABASE_URL", () => {
     const secrets = { ...generateSecrets(), POSTGRES_PASSWORD: "abc123def456" };
-    const vars = parseEnv(renderInitEnv(EJEMPLO, { secrets }).content);
+    const vars = parseEnv(renderInitEnv(EXAMPLE, { secrets }).content);
     expect(vars.POSTGRES_PASSWORD).toBe("abc123def456");
     expect(vars.DATABASE_URL).toBe("postgresql://postgres:abc123def456@postgres:5432/vocero");
   });
 
   it("--domain fija DOMAIN y APP_BASE_URL con https", () => {
-    const vars = parseEnv(renderInitEnv(EJEMPLO, { domain: "crm.ejemplo.com" }).content);
+    const vars = parseEnv(renderInitEnv(EXAMPLE, { domain: "crm.ejemplo.com" }).content);
     expect(vars.DOMAIN).toBe("crm.ejemplo.com");
     expect(vars.APP_BASE_URL).toBe("https://crm.ejemplo.com");
   });
 
   it("conserva los comentarios y las opcionales comentadas: el .env sigue siendo la guía inline", () => {
-    const r = renderInitEnv(EJEMPLO);
-    const antes = EJEMPLO.split(/\r?\n/);
-    const despues = r.content.split(/\r?\n/);
-    expect(despues).toHaveLength(antes.length);
-    antes.forEach((linea, i) => {
-      if (!/^[A-Z][A-Z0-9_]*=/.test(linea)) expect(despues[i]).toBe(linea);
+    const r = renderInitEnv(EXAMPLE);
+    const before = EXAMPLE.split(/\r?\n/);
+    const after = r.content.split(/\r?\n/);
+    expect(after).toHaveLength(before.length);
+    before.forEach((linea, i) => {
+      if (!/^[A-Z][A-Z0-9_]*=/.test(linea)) expect(after[i]).toBe(linea);
     });
     expect(r.content).toContain("# OPENROUTER_API_TOKEN=");
     expect(r.content).toContain("# AGENDA=on");
@@ -102,7 +102,7 @@ describe("renderInitEnv sobre el .env.example real", () => {
 
   it("reporta qué generó y qué fijó, por nombre y sin los valores", () => {
     const secrets = generateSecrets();
-    const r = renderInitEnv(EJEMPLO, { secrets });
+    const r = renderInitEnv(EXAMPLE, { secrets });
     expect(r.generated).toEqual([
       "POSTGRES_PASSWORD",
       "DATABASE_URL",
@@ -111,12 +111,12 @@ describe("renderInitEnv sobre el .env.example real", () => {
       "META_WEBHOOK_VERIFY_TOKEN",
     ]);
     expect(r.set).toEqual({ DOMAIN: "localhost", APP_BASE_URL: "https://localhost" });
-    const resumen = JSON.stringify({ generated: r.generated, set: r.set });
-    for (const valor of Object.values(secrets)) expect(resumen).not.toContain(valor);
+    const summary = JSON.stringify({ generated: r.generated, set: r.set });
+    for (const value of Object.values(secrets)) expect(summary).not.toContain(value);
   });
 
   it("respeta el final de línea del ejemplo (CRLF en un checkout de Windows, LF en el VPS)", () => {
-    const lf = EJEMPLO.replace(/\r\n/g, "\n");
+    const lf = EXAMPLE.replace(/\r\n/g, "\n");
     expect(renderInitEnv(lf).content).not.toContain("\r");
     const crlf = lf.replace(/\n/g, "\r\n");
     expect(renderInitEnv(crlf).content.split("\r\n").length).toBe(lf.split("\n").length);
@@ -128,7 +128,7 @@ describe("runInitEnv", () => {
 
   beforeEach(async () => {
     dir = await mkdtemp(path.join(os.tmpdir(), "vocero-init-env-"));
-    await writeFile(path.join(dir, ".env.example"), EJEMPLO);
+    await writeFile(path.join(dir, ".env.example"), EXAMPLE);
   });
 
   afterEach(async () => {
@@ -139,9 +139,9 @@ describe("runInitEnv", () => {
     const outcome = await runInitEnv({ dir });
     expect(outcome.status).toBe("created");
     if (outcome.status !== "created") return;
-    const escrito = await readFile(path.join(dir, ".env"), "utf8");
-    expect(escrito).toBe(outcome.rendered.content);
-    expect(safeParseEnv(parseEnv(escrito)).success).toBe(true);
+    const written = await readFile(path.join(dir, ".env"), "utf8");
+    expect(written).toBe(outcome.rendered.content);
+    expect(safeParseEnv(parseEnv(written)).success).toBe(true);
   });
 
   it("no pisa un .env existente: avisa y no cambia ni un byte", async () => {

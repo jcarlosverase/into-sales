@@ -36,10 +36,10 @@ export function DeleteConversationDialog({
   async function confirm() {
     setBusy(true);
     setError(null);
-    const problema = await onConfirm(alsoContact);
+    const problem = await onConfirm(alsoContact);
     // Si salió bien, quien abrió el diálogo ya lo cerró: no hay estado que tocar.
-    if (problema) {
-      setError(problema);
+    if (problem) {
+      setError(problem);
       setBusy(false);
     }
   }

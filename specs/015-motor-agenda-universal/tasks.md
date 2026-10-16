@@ -79,7 +79,7 @@ las instancias (ADR-001).
       día)
 - [X] T011 [P] Crear `src/server/agenda/connectors/types.ts` con el contrato
       exacto de contracts/conector.md (4 operaciones + `ConnectorCapabilities`)
-- [X] T012 Crear `src/server/agenda/connectors/enlace-fijo.ts` (createMeeting →
+- [X] T012 Crear `src/server/agenda/connectors/fixed-link.ts` (createMeeting →
       link de settings o null; update/delete no-op; test siempre ok) y el
       catálogo `src/server/agenda/connectors/index.ts` (registro por id, el
       motor pregunta capacidades — molde de `src/server/channels/capabilities.ts`)

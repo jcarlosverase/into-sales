@@ -8,6 +8,8 @@ import { normalizeMx } from "@/lib/meta/client";
 import { digitsOnly, normalizeText } from "@/lib/search";
 import { serializeContact } from "@/server/contacts";
 import { createLeadForContact } from "@/server/inbox/lead-activity";
+import { isSupervisor } from "@/lib/auth/roles";
+import { getLeadScope, visibleContactCondition } from "@/server/leads/scope";
 
 export const dynamic = "force-dynamic";
 
@@ -27,6 +29,7 @@ export const GET = withAuth(async (session, req: Request) => {
   const includeArchived = url.searchParams.get("archived") === "true";
 
   const db = getDb();
+  const scope = getLeadScope(session);
 
   // Etapa de cada contacto en una consulta aparte: una subconsulta
   // correlacionada aquí choca con el `id` de `lead` ("column reference id is
@@ -82,7 +85,9 @@ export const GET = withAuth(async (session, req: Request) => {
         schema.contact.organizationId,
         session.organizationId,
         search,
-        stageContactIds ? inArray(schema.contact.id, stageContactIds) : undefined
+        stageContactIds ? inArray(schema.contact.id, stageContactIds) : undefined,
+        // 022 — a sales rep only lists contacts whose lead is theirs.
+        visibleContactCondition(scope, schema.contact.id)
       )
     )
     .orderBy(desc(schema.contact.updatedAt))
@@ -162,6 +167,9 @@ export const POST = withAuth(async (session, req: Request) => {
     stageId: body.data.stageId,
     source: "dueno",
     actorUserId: session.userId,
+    // 022 — A rep keeps the prospect they capture (D6); a supervisor's
+    // capture goes into the rotation like any other new lead.
+    assignedUserId: isSupervisor(session.role) ? undefined : session.userId,
   });
   if (!lead) {
     return apiError(

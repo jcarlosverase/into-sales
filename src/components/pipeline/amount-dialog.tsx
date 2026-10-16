@@ -34,11 +34,11 @@ export function AmountDialog({
   onCancel: () => void;
   onSave: (cents: number | null) => void;
 }) {
-  const [texto, setTexto] = useState(
+  const [text, setText] = useState(
     amountCents === null ? "" : (amountCents / 100).toFixed(2)
   );
-  const parsed = texto.trim() ? parseMoneyToCents(texto) : null;
-  const invalido = texto.trim().length > 0 && parsed === null;
+  const parsed = text.trim() ? parseMoneyToCents(text) : null;
+  const invalid = text.trim().length > 0 && parsed === null;
 
   return (
     <div
@@ -56,14 +56,14 @@ export function AmountDialog({
         </label>
         <Input
           id="monto"
-          value={texto}
+          value={text}
           inputMode="decimal"
           autoFocus
-          onChange={(e) => setTexto(e.target.value)}
+          onChange={(e) => setText(e.target.value)}
           placeholder="12,500.00"
           className="mt-1"
         />
-        {invalido ? (
+        {invalid ? (
           <p className="mt-1 text-xs text-danger-text">
             No reconozco ese número. Escríbelo como 12500 o 12,500.00
           </p>
@@ -86,7 +86,7 @@ export function AmountDialog({
           <Button variant="ghost" onClick={onCancel}>
             Cancelar
           </Button>
-          <Button disabled={invalido} onClick={() => onSave(parsed)}>
+          <Button disabled={invalid} onClick={() => onSave(parsed)}>
             Guardar
           </Button>
         </div>

@@ -24,7 +24,7 @@ export function HygieneSection({
   currency: string;
 }) {
   const money = (c: number) => formatMoneyCents(c, currency) ?? "—";
-  const enLista = data ? Math.min(data.silent.length, 8) : 0;
+  const inList = data ? Math.min(data.silent.length, 8) : 0;
 
   return (
     <Section
@@ -60,7 +60,7 @@ export function HygieneSection({
               ) : (
                 <>
                   <ul className="space-y-1.5 text-sm">
-                    {data.silent.slice(0, enLista).map((l) => (
+                    {data.silent.slice(0, inList).map((l) => (
                       <li key={l.leadId} className="flex items-baseline justify-between gap-2">
                         <Link
                           href={`/inbox?contact=${l.contactId}`}
@@ -75,9 +75,9 @@ export function HygieneSection({
                       </li>
                     ))}
                   </ul>
-                  {data.silentCount > enLista && (
+                  {data.silentCount > inList && (
                     <p className="mt-2 text-xs text-text-3">
-                      y {data.silentCount - enLista} más.
+                      y {data.silentCount - inList} más.
                     </p>
                   )}
                 </>

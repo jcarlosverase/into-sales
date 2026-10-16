@@ -12,7 +12,7 @@ de skills, scripts ni plugins de ningún asistente.
 - **Solo WhatsApp Cloud API oficial.** Nada de Baileys ni sesiones web. Todo tráfico a Meta pasa por `src/lib/meta/client.ts`.
 - **Secretos cifrados en reposo** (AES-256-GCM, `src/lib/crypto/`); jamás al cliente ni a logs. Los tokens de WhatsApp y del proveedor de IA solo enseñan sus últimos 4.
 - **El token de WhatsApp nunca sale del CRM.** Un bot externo conversa a través de `/api/bot/*`, no con Meta.
-- **Soberanía.** El núcleo depende solo de Postgres + WhatsApp Cloud API + un proveedor LLM OpenRouter-compatible opcional. Cualquier tercero entra como conector opcional tras bandera, apagado por defecto (`docs/adr-001-canales-opcionales.md`, `docs/adr-002-conectores-de-agenda.md`).
+- **Soberanía.** El núcleo depende solo de Postgres + WhatsApp Cloud API + un proveedor LLM OpenRouter-compatible opcional. Cualquier tercero entra como conector opcional tras bandera, apagado por defecto (`docs/adr-001-canales-opcionales.md`, `docs/adr-002-conectores-de-agenda.md`). El latido al servicio central de into es uno de ellos (`INTO_CENTRAL_URL`, `src/server/central/`, spec 028).
 - **Español** en código, comentarios, UI y documentación.
 - La autoridad máxima es `.specify/memory/constitution.md`; ante un conflicto, gana la constitución.
 
@@ -27,14 +27,14 @@ de skills, scripts ni plugins de ningún asistente.
 | Tiempo real | SSE en `GET /api/events` sobre un bus in-process (`src/server/events/bus.ts`); sin WebSockets ni colas: el trabajo en segundo plano corre dentro del proceso |
 | UI | Tailwind CSS con tokens en `src/app/globals.css`, tema claro/oscuro, white-label por organización |
 | Pruebas | Vitest (`tests/unit/`) + guiones E2E (`tests/e2e/*.md`) conducidos por `scripts/e2e-*.mjs` (fetch y, algunos, Playwright) contra la app con mocks |
-| Imagen | Docker multi-stage standalone, healthcheck `/api/health`, publicada en `ghcr.io/kevinrivm/vocero-crm:X.Y.Z` por `.github/workflows/imagen.yml` |
+| Imagen | Docker multi-stage standalone, healthcheck `/api/health`, publicada en `ghcr.io/jcarlosverase/into-sales:X.Y.Z` por `.github/workflows/imagen.yml` |
 
 ## Cómo correrlo
 
 ```bash
 pnpm install
-docker compose -f docker-compose.dev.yml up -d postgres   # Postgres local
-pnpm init-env                                              # crea .env con los secretos generados (DATABASE_URL apunta a `postgres`: cámbialo a localhost para pnpm dev)
+pnpm db:up                                                 # Postgres local en el puerto 5433 (pnpm db:down lo apaga)
+pnpm init-env                                              # crea .env con los secretos generados (DATABASE_URL apunta a `postgres`: cámbialo a localhost:5433 para pnpm dev)
 pnpm doctor                                                # valida el entorno y prueba la base
 pnpm db:migrate                                            # aplica drizzle/ en desarrollo
 pnpm dev                                                   # http://localhost:3000
@@ -42,10 +42,11 @@ pnpm dev                                                   # http://localhost:30
 
 | Comando | Qué hace |
 |---|---|
-| `pnpm typecheck` · `pnpm lint` · `pnpm test` · `pnpm build` | Los cuatro gates del CI (`pnpm test` es `vitest run`; `pnpm test:watch` para iterar) |
-| `pnpm test:e2e` | `scripts/e2e-selftest.mjs` contra la app viva con mocks. `test:e2e:calendario` y `test:e2e:resultados` conducen sus guiones; el resto de `scripts/e2e-*.mjs` se corre con `node --env-file=.env scripts/<nombre>.mjs` |
+| `pnpm typecheck` · `pnpm lint` · `pnpm test` · `pnpm build` | Los cuatro gates del CI (`pnpm test` es `vitest run`; `pnpm test:watch` para iterar). Con `TEST_DATABASE_URL` (p. ej. `postgresql://postgres:<clave>@localhost:5433/postgres`) corren además las pruebas de `tests/integration/` contra PostgreSQL: cada archivo crea y borra su propia base |
+| `pnpm test:e2e` | `scripts/e2e-selftest.mjs` contra la app viva con mocks. `test:e2e:calendar` y `test:e2e:results` conducen sus guiones; el resto de `scripts/e2e-*.mjs` se corre con `node --env-file=.env scripts/<nombre>.mjs` |
 | `pnpm db:generate` | Genera una migración nueva en `drizzle/` a partir de `src/lib/db/schema.ts` |
-| `pnpm seed:demo` | Carga la Ferretería El Martillo (también desde la UI al primer arranque) |
+| `pnpm seed:demo` | Carga la academia de ejemplo (también desde la UI al primer arranque) |
+| `pnpm seed:academy` · `seed:realestate` · `seed:fashion` | Datos de ejemplo por rubro: contactos, plantillas en borrador y agente (spec 023). Repetibles; `--reset` los quita, `--overwrite-agent` reemplaza el perfil del agente |
 | `pnpm init-env [--domain x]` | Crea `.env` desde `.env.example` con los secretos generados y `DOMAIN=localhost` (o el dominio dado); nunca pisa uno existente. Lógica en `src/server/doctor/init-env.ts` |
 | `pnpm doctor` | Una línea ✓/✗ por comprobación con el arreglo exacto: variables (mismo esquema zod de `src/lib/env.ts`), `select 1` a `DATABASE_URL`, escritura en `MEDIA_DIR` y, si hay número conectado, el token contra Meta. Sale con 1 si algo obligatorio falla. Lógica en `src/server/doctor/checks.ts` |
 
@@ -79,26 +80,26 @@ Apagada, cada superficie responde 404 (no 403). El despliegue en producción est
 | Carpeta | Responsabilidad | Entrada |
 |---|---|---|
 | `agenda/` | Motor de citas: horarios, huecos, ofertas, reservas y conectores (enlace fijo, Zoom, Google) | `service.ts`, `flag.ts`, `http.ts`, `connectors/index.ts` |
-| `ai/` | Turno del agente incluido: coalesce + lock por conversación (con la cuenta de qué entrantes debe el siguiente turno, 025), prompt, acción tipada, handoff. `trigger.ts` decide tras cada entrante: despacho al cerebro si está activo, y si no, el agente incluido; nunca los dos. Credencial del proveedor de IA por organización (cifrada; estado `active` o pausada por 401/402), lo que valida y devuelve Ajustes → IA, y el aviso de «agente sin IA» | `pipeline.ts`, `orden-turno.ts`, `prompts.ts`, `actions.ts`, `credentials.ts`, `settings.ts`, `aviso.ts` |
+| `ai/` | Turno del agente incluido: coalesce + lock por conversación (con la cuenta de qué entrantes debe el siguiente turno, 025), prompt, acción tipada, handoff. `trigger.ts` decide tras cada entrante: despacho al cerebro si está activo, y si no, el agente incluido; nunca los dos. Credencial del proveedor de IA por organización (cifrada; estado `active` o pausada por 401/402), lo que valida y devuelve Ajustes → IA, y el aviso de «agente sin IA» | `pipeline.ts`, `turn-order.ts`, `prompts.ts`, `actions.ts`, `credentials.ts`, `settings.ts`, `notice.ts` |
 | `analytics/` | Números de Resultados (ventas, agente, anuncios, higiene) agregados en SQL; excluye el Laboratorio | `sales.ts`, `bot.ts`, `ads.ts`, `hygiene.ts`, `shared.ts` |
 | `attribution/` | De qué anuncio llegó cada conversación y reporte a la CAPI tras `ATRIBUCION` | `referral.ts`, `store.ts`, `conversions.ts`, `flag.ts` |
 | `auth/` | Registro cerrado tras la primera organización; alta del primer dueño con pipeline y perfil sembrados | `registration.ts`, `on-signup.ts` |
 | `bot/` | API de servicio para un cerebro externo: auth por `X-API-Key`, perfil, ficha, handoff, «quién responde» | `auth.ts`, `status.ts`, `profile.ts` |
 | `brains/` | 021 — El despacho hacia el cerebro: forma del evento y firma (pura; el orden de las claves es contrato), si hay despacho configurado, y el POST firmado. 026 — el evento `conversation.deleted` (`construirEventoOlvido`, `avisarOlvido`: un intento, fuera del outbox) | `contract.ts`, `config.ts`, `deliver.ts` |
 | `channels/` | Qué canales están encendidos y qué puede hacer cada uno (duración de la ventana, plantillas, longitud en bytes o caracteres, tope de mensajes desde el último entrante). 023 — el estado de cada canal para Ajustes → Estado | `enabled.ts`, `capabilities.ts`, `status.ts` |
-| `dispatch/` | 021 — Outbox del despacho en Postgres: un despacho vivo por conversación (índice único parcial), lease, tres intentos, caída a humano; el worker en proceso y lo que la tarjeta enseña. 025 — cada despacho anota qué entrantes debe (`message_ids`) | `outbox.ts`, `worker.ts`, `encolar.ts`, `estado.ts` |
+| `dispatch/` | 021 — Outbox del despacho en Postgres: un despacho vivo por conversación (índice único parcial), lease, tres intentos, caída a humano; el worker en proceso y lo que la tarjeta enseña. 025 — cada despacho anota qué entrantes debe (`message_ids`) | `outbox.ts`, `worker.ts`, `enqueue.ts`, `status.ts` |
 | `dev/` | Estado en memoria de los mocks (wa, ai, zernio, zoom, google); solo con mocks activos | `wa-mock-state.ts`, `ai-mock.ts` |
 | `events/` | Bus in-process por organización que alimenta el SSE; publicar siempre tras el commit | `bus.ts` |
-| `inbox/` | Ingesta idempotente, identidad del contacto, envío con guardas, ventana de servicio (la duración es del canal), tope de mensajes del canal, estados monotónicos. 026 — eliminar una conversación (hilo o contacto): lo que las cascadas no hacen (adjuntos, ficha, cita por venir) | `ingest.ts`, `send.ts`, `identity.ts`, `webhook.ts`, `window.ts`, `outbound-cap.ts`, `eliminar.ts` |
+| `inbox/` | Ingesta idempotente, identidad del contacto, envío con guardas, ventana de servicio (la duración es del canal), tope de mensajes del canal, estados monotónicos. 026 — eliminar una conversación (hilo o contacto): lo que las cascadas no hacen (adjuntos, ficha, cita por venir) | `ingest.ts`, `send.ts`, `identity.ts`, `webhook.ts`, `window.ts`, `outbound-cap.ts`, `delete-conversation.ts` |
 | `instagram/` | Adaptador del canal de Instagram (Meta o Zernio), tras `CHANNELS` | `ingest.ts`, `send.ts`, `credentials.ts` |
 | `lab/` | Laboratorio: corrida en segundo plano con personas guionadas y juez LLM; conversaciones `is_test` | `runner.ts`, `personas.ts`, `judge.ts` |
 | `leads/` | Única puerta que escribe `lead.stage_id` (con bitácora) y prioridad del lead | `stage-history.ts`, `priority.ts` |
 | `messenger/` | Adaptador del canal de Messenger (Meta o Zernio), tras `CHANNELS` | `ingest.ts`, `send.ts`, `credentials.ts` |
 | `tiktok/` | 022 — Adaptador del canal de TikTok (solo Zernio), tras `CHANNELS` | `ingest.ts`, `send.ts`, `credentials.ts` |
 | `onboarding/` | Guía de inicio: qué falta para que el agente conteste (perfil, IA, WhatsApp y, con `AGENDA`, agenda), los pasos que ve el dueño y si la guía es la primera pantalla (`guideFirst`) | `status.ts`, `guide.ts`, `calendar-verifiers.ts` |
-| `seed/` | Negocio demo idempotente «Ferretería El Martillo» | `demo.ts` |
+| `seed/` | Demo y datos de ejemplo por rubro (academia, inmobiliaria, moda), idempotentes | `demo.ts`, `industry.ts`, `industries/` |
 | `whatsapp/` | Credenciales cifradas, prueba de conexión y suscripción del webhook, media, plantillas | `credentials.ts`, `connect.ts`, `media.ts`, `templates.ts` |
-| `zernio/` | Transporte y firma de la API unificada de Zernio; reparte cada evento al canal que toca. 023 — resuelve la cuenta contra `GET /accounts` al guardar, da de alta el webhook limitado a las cuentas de la organización, y verifica la firma contra los secretos guardados y los que Zernio tiene para esta instancia | `index.ts`, `dispatch.ts`, `cuentas.ts`, `webhooks.ts`, `conexiones.ts`, `guardar.ts` |
+| `zernio/` | Transporte y firma de la API unificada de Zernio; reparte cada evento al canal que toca. 023 — resuelve la cuenta contra `GET /accounts` al guardar, da de alta el webhook limitado a las cuentas de la organización, y verifica la firma contra los secretos guardados y los que Zernio tiene para esta instancia | `index.ts`, `dispatch.ts`, `accounts.ts`, `webhooks.ts`, `connections.ts`, `save-connection.ts` |
 
 Sueltos: `contacts.ts` (serialización), `contact-source.ts` (fuente del prospecto), `branding.ts` (marca guardada en la organización), `health.ts` (lo que responde `/api/health`: BD, versión, banderas activas, `mediaWritable`), `media-dir.ts` (sondeo de escritura de `MEDIA_DIR`, cacheado 60 s; lo comparten el arranque y el health).
 
@@ -106,7 +107,7 @@ Sueltos: `contacts.ts` (serialización), `contact-source.ts` (fuente del prospec
 
 | Ruta | Qué hay |
 |---|---|
-| `src/lib/` | Fronteras y utilidades sin estado: `env.ts` (validación lazy), `db/` (`schema.ts`, `tenant.ts` con `scoped()`, `ids.ts` con prefijos `ct_`, `cv_`, `msg_`…), `auth/` (sesión y `roles.ts`: quién configura), `crypto/`, `meta/` (`client.ts` Graph API, `capi.ts`, `destinatario.ts`, `send-errors.ts`), `ai/` (adaptador LLM con `chatJson<T>`; `provider.ts` resuelve con quién habla —la fila de Ajustes → IA y, de respaldo, `OPENROUTER_*`—, `probe.ts` prueba la conexión y lista modelos, `presets.ts` el catálogo), `api.ts` (`withAuth`, `parseBody`, `apiError`), `rate-limit.ts`, `dev-guard.ts`, `version.ts`, catálogos compartidos con la UI (`channels.ts`, `agenda-connectors.ts`, `analytics.ts`, `types.ts`, `nav.ts`: grupos del menú y secciones de Ajustes según banderas y rol), marca y tema (`brand.ts`, `branding.ts`, `theme.ts`, `favicon.ts`), tiempo y dinero (`time/`, `money.ts`) |
+| `src/lib/` | Fronteras y utilidades sin estado: `env.ts` (validación lazy), `db/` (`schema.ts`, `tenant.ts` con `scoped()`, `ids.ts` con prefijos `ct_`, `cv_`, `msg_`…), `auth/` (sesión y `roles.ts`: quién configura), `crypto/`, `meta/` (`client.ts` Graph API, `capi.ts`, `recipient.ts`, `send-errors.ts`), `ai/` (adaptador LLM con `chatJson<T>`; `provider.ts` resuelve con quién habla —la fila de Ajustes → IA y, de respaldo, `OPENROUTER_*`—, `probe.ts` prueba la conexión y lista modelos, `presets.ts` el catálogo), `api.ts` (`withAuth`, `parseBody`, `apiError`), `rate-limit.ts`, `dev-guard.ts`, `version.ts`, catálogos compartidos con la UI (`channels.ts`, `agenda-connectors.ts`, `analytics.ts`, `types.ts`, `nav.ts`: grupos del menú y secciones de Ajustes según banderas y rol), marca y tema (`brand.ts`, `branding.ts`, `theme.ts`, `favicon.ts`), tiempo y dinero (`time/`, `money.ts`) |
 | `src/components/` | React: primitivos en `ui/` (incluido `empty-state.tsx`, el estado vacío común); una carpeta por pantalla (`inbox/`, `pipeline/`, `contacts/`, `agent/`, `lab/`, `results/`, `bookings/`, `onboarding/`, `settings/`); `app-shell.tsx`, `app-nav.tsx`, `use-events.ts` (cliente SSE), `use-theme.ts` |
 | `src/app/(app)/` | Pantallas autenticadas: `onboarding` (guía de inicio: primera pantalla mientras falte un paso o el agente siga apagado; `src/app/page.tsx` decide), `inbox`, `pipeline`, `contacts`, `results`, `agent`, `lab`, `bookings` (AGENDA) y `settings/{whatsapp,branding,templates,team,ai,calendar,ads,messenger,tiktok}`. En `(auth)/`: `login` y `register` |
 | `src/app/api/` | Route handlers: `auth/[...all]` (Better Auth) · `conversations`, `contacts`, `pipeline`, `kb`, `agent`, `lab`, `templates`, `analytics`, `bookings`, `calendar`, `media`, `branding`, `seed`, `onboarding/status` (sesión + organización) · `settings/*` (WhatsApp, webhook, marca, equipo, IA —`ai`, con `ai/test` y `ai/models`—, capi, zoom, google, instagram, messenger, tiktok) · `bot/*` (X-API-Key) · `webhooks/{wa,ig,messenger,tiktok}/[webhookToken]` (públicos) · `events` (SSE) · `health` · `dev/*` (mocks, 404 en producción) |
@@ -125,7 +126,7 @@ Sueltos: `contacts.ts` (serialización), `contact-source.ts` (fuente del prospec
 5. Los `statuses` del webhook pasan por `inbox/status.ts` (nunca degradan) y salen como `message.status`.
 6. `GET /api/events` (`src/app/api/events/route.ts`) emite los eventos de la organización; `src/components/use-events.ts` los recibe y la bandeja hace catch-up con `since=`.
 
-Con `BRAIN_DISPATCH_URL` y `BOT_API_KEY`, el paso 3 no piensa: `ai/trigger.ts` encola un despacho (`dispatch/encolar.ts`), el worker espera la misma ventana `AGENT_COALESCE_MS`, arma el evento con la ráfaga (`brains/deliver.ts`) y lo entrega firmado al cerebro, que responde con `POST /api/bot/messages` y entra en el paso 4. La ráfaga es lo posterior al último saliente más lo que el despacho tiene anotado como debido (`dispatch.message_ids`): lo que el cliente escribió mientras el cerebro pensaba viaja aunque ya haya una respuesta después (025). Vale igual para Instagram, Messenger y TikTok: todos los canales pasan por `ingestInboundMessage`. Sin esa variable, un cerebro externo también puede recibir el webhook por su cuenta y conversar por `/api/bot/*` con el agente incluido apagado.
+Con `BRAIN_DISPATCH_URL` y `BOT_API_KEY`, el paso 3 no piensa: `ai/trigger.ts` encola un despacho (`dispatch/enqueue.ts`), el worker espera la misma ventana `AGENT_COALESCE_MS`, arma el evento con la ráfaga (`brains/deliver.ts`) y lo entrega firmado al cerebro, que responde con `POST /api/bot/messages` y entra en el paso 4. La ráfaga es lo posterior al último saliente más lo que el despacho tiene anotado como debido (`dispatch.message_ids`): lo que el cliente escribió mientras el cerebro pensaba viaja aunque ya haya una respuesta después (025). Vale igual para Instagram, Messenger y TikTok: todos los canales pasan por `ingestInboundMessage`. Sin esa variable, un cerebro externo también puede recibir el webhook por su cuenta y conversar por `/api/bot/*` con el agente incluido apagado.
 
 ## Invariantes al modificar
 
@@ -138,11 +139,11 @@ Con `BRAIN_DISPATCH_URL` y `BOT_API_KEY`, el paso 3 no piensa: `ai/trigger.ts` e
 - **Una sola puerta por invariante**: `lead.stage_id` solo se escribe en `src/server/leads/stage-history.ts` (una prueba escanea `src/`); el tráfico a Meta solo por `src/lib/meta/client.ts`; el LLM solo por `src/lib/ai/`.
 - **Idempotencia**: dedup por `wa_message_id` UNIQUE, estados monotónicos, seeds y migraciones re-ejecutables.
 - **Mocks** (`src/app/api/dev/*`) solo con `WA_MOCK_ENABLED=true` y fuera de producción (`src/lib/dev-guard.ts`); jamás como fallback en runtime.
-- **`/api/bot/*` y el evento de despacho son contrato público**: no cambies formas ni códigos sin versionar. Agregar una llave cabe; quitar o renombrar, no. El evento solo se arma en `armarEvento` (`src/server/brains/contract.ts`): se firma el JSON tal como sale, y `tests/unit/despacho-contrato.test.ts` fija un cuerpo y su firma byte a byte.
+- **`/api/bot/*` y el evento de despacho son contrato público**: no cambies formas ni códigos sin versionar. Agregar una llave cabe; quitar o renombrar, no. El evento solo se arma en `armarEvento` (`src/server/brains/contract.ts`): se firma el JSON tal como sale, y `tests/unit/dispatch-contract.test.ts` fija un cuerpo y su firma byte a byte.
 - **Bandeja primero, cerebro después**: un despacho se encola solo cuando el mensaje ya está guardado. Lo que falle después no pierde el mensaje; lo deja con una persona.
 - **«Sin responder» no es «sin entregar»** (025): quien lleva el turno anota el id del entrante que lo provoca —el despacho en `dispatch.message_ids`, el agente incluido en su entrada de coalesce— y lo debe hasta que el cerebro lo reciba o una persona conteste. Un saliente del agente no salda un mensaje que no leyó; uno de una persona (`ai_generated = false`) sí. Un despacho sin mensajes se descarta, nunca se entrega.
 - **Módulos opcionales** van tras bandera, apagados por defecto, con superficie en 404 y migración aplicada igual. Nunca en una rama aparte.
-- **UI con tokens**: colores por variables de `globals.css` mapeadas en `tailwind.config.ts` (`bg-background`, `text-foreground`, `bg-primary`, `text-muted-foreground`…); nada de `text-white` ni hex sueltos salvo colores de marca de terceros. `tests/unit/contraste-temas.test.ts` mide los tokens reales en ambos temas. White-label: ningún «Vocero» cableado en la UI.
+- **UI con tokens**: colores por variables de `globals.css` mapeadas en `tailwind.config.ts` (`bg-background`, `text-foreground`, `bg-primary`, `text-muted-foreground`…); nada de `text-white` ni hex sueltos salvo colores de marca de terceros. `tests/unit/theme-contrast.test.ts` mide los tokens reales en ambos temas. White-label: ningún «Vocero» cableado en la UI.
 - **`route.ts` solo exporta handlers** (`GET`, `POST`… y `dynamic`): la lógica va en `src/server/` para poder probarla; Next rechaza otros exports al construir.
 - **Credenciales nuevas**: placeholder `REEMPLAZA_...` en `.env.example` con guía inline; en producción van en la plataforma (runtime, no build).
 
@@ -155,7 +156,7 @@ Con `BRAIN_DISPATCH_URL` y `BOT_API_KEY`, el paso 3 no piensa: `ai/trigger.ts` e
 | `GET /api/bot/context?waIdentity=…` | Contacto, etapa, ficha, handoff, ventana de 24 h y (con AGENDA) citas |
 | `POST /api/bot/messages` | Responder; sale por `inbox/send.ts` marcado como IA |
 | `GET /api/bot/profile` | Perfil del agente y knowledge base |
-| `PUT /api/bot/ficha` | Guardar lo que el bot descubre del lead (claves libres) |
+| `PUT /api/bot/qualification` | Guardar lo que el bot descubre del lead (claves libres; `/api/bot/ficha` sigue respondiendo) |
 | `POST /api/bot/handoff` | Devolver la conversación a un humano |
 | `POST /api/bot/typing` | Marcar leído y «escribiendo…» |
 | `GET /api/bot/media/{mediaId}` | Descargar un adjunto entrante sin tocar Meta |
@@ -165,7 +166,7 @@ Con `BRAIN_DISPATCH_URL` y `BOT_API_KEY`, el paso 3 no piensa: `ai/trigger.ts` e
 
 Documentación: README («Trae tu propio agente»), guion `tests/e2e/us-bot-api.md`, pruebas `tests/unit/bot-*.test.ts` y, para la agenda, `specs/015-motor-agenda-universal/contracts/agenda.md`.
 
-**Despacho (CRM → cerebro)** — con `BRAIN_DISPATCH_URL`, un `POST` firmado (`X-Vocero-Signature: sha256=<HMAC-SHA256 del cuerpo crudo con BOT_API_KEY>`, `X-Vocero-Dispatch-Id`, `X-Vocero-Organization`) con la ráfaga de la conversación: `dispatchId`, `organization`, `conversation` (`channel`, ventana), `contact` (`identity`) y `messages`. 2xx = recibido; 429 y 5xx se reintentan (tres intentos); otro 4xx no, y la conversación pasa a un humano (`handoff_reason = error`). `messages` nunca viaja vacío, y un mensaje puede ser anterior a la última respuesta del cerebro (025). Contrato en `specs/021-despacho-estandar/contracts/despacho.md`, guion `tests/e2e/us-despacho.md`, arnés `scripts/e2e-despacho.mjs`.
+**Despacho (CRM → cerebro)** — con `BRAIN_DISPATCH_URL`, un `POST` firmado (`X-Vocero-Signature: sha256=<HMAC-SHA256 del cuerpo crudo con BOT_API_KEY>`, `X-Vocero-Dispatch-Id`, `X-Vocero-Organization`) con la ráfaga de la conversación: `dispatchId`, `organization`, `conversation` (`channel`, ventana), `contact` (`identity`) y `messages`. 2xx = recibido; 429 y 5xx se reintentan (tres intentos); otro 4xx no, y la conversación pasa a un humano (`handoff_reason = error`). `messages` nunca viaja vacío, y un mensaje puede ser anterior a la última respuesta del cerebro (025). Contrato en `specs/021-despacho-estandar/contracts/despacho.md`, guion `tests/e2e/us-despacho.md`, arnés `scripts/e2e-dispatch.mjs`.
 
 **Webhooks de entrada** — `GET`/`POST /api/webhooks/wa/[token]` (contrato en `specs/001-vocero-core/contracts/webhook.md`); `/api/webhooks/ig/[token]` y `/api/webhooks/messenger/[token]` aceptan Meta o Zernio por la misma URL y existen solo con su canal en `CHANNELS` (specs 014 y 017); `/api/webhooks/tiktok/[token]` acepta solo Zernio (spec 022). Un evento de Zernio se reparte por plataforma llegue a cuál de las tres llegue, y su firma se verifica en `isAuthenticZernioDelivery` (`src/server/zernio/dispatch.ts`): vale cualquier secreto de Zernio de la organización, o el del webhook que Zernio tiene hacia esta instancia. Siempre 200 tras validar; el procesamiento es asíncrono.
 
@@ -177,7 +178,7 @@ Documentación: README («Trae tu propio agente»), guion `tests/e2e/us-bot-api.
 2. Antes de abrir el PR: `pnpm typecheck && pnpm lint && pnpm test && pnpm build`. El CI (`.github/workflows/ci.yml`) corre esos cuatro gates en dos configuraciones, banderas apagadas y `CHANNELS` + `AGENDA` encendidas; `imagen.yml` construye la imagen Docker en cada PR.
 3. Comportamiento observable nuevo: amplía o escribe su guion en `tests/e2e/` y, si se puede, su arnés en `scripts/e2e-*.mjs`; córrelo contra la app con mocks (`WA_MOCK_ENABLED=true`, `META_GRAPH_BASE_URL` → `/api/dev/wa-mock/graph`, `OPENROUTER_BASE_URL` → `/api/dev/ai-mock`, `BOT_API_KEY`; receta en `specs/001-vocero-core/quickstart.md`). Prueba también el camino infeliz.
 4. Specs (`specs/`): si tocas el modelo de datos o un contrato publicado, ciclo completo en `specs/NNN-nombre/`; comportamiento nuevo sin eso, un `spec.md` ligero; arreglos, refactors y dependencias quedan exentos (Principio VI de la constitución).
-5. Versión y release: sube `version` en `package.json`, el default de `VOCERO_CRM_VERSION` en `docker-compose.yml` (`tests/unit/version.test.ts` exige que coincidan) y la etiqueta de la imagen en `render.yaml`, `fly.toml` y `railway.toml` (`tests/unit/manifests-plataformas.test.ts`), añade la entrada en `CHANGELOG.md` con su «Actualizar desde…» y actualiza la etiqueta de la imagen en `INSTALL-IA.md`. El tag `vX.Y.Z` publica la imagen.
+5. Versión y release: sube `version` en `package.json`, el default de `VOCERO_CRM_VERSION` en `docker-compose.yml` (`tests/unit/version.test.ts` exige que coincidan) y la etiqueta de la imagen en `render.yaml`, `fly.toml` y `railway.toml` (`tests/unit/platform-manifests.test.ts`), añade la entrada en `CHANGELOG.md` con su «Actualizar desde…» y actualiza la etiqueta de la imagen en `INSTALL-IA.md`. El tag `vX.Y.Z` publica la imagen.
 6. Dependencias: `pnpm install --frozen-lockfile` debe pasar; un tercero nuevo en el núcleo necesita justificación constitucional (Principio II).
 
 Las instrucciones específicas de Claude Code están en `CLAUDE.md`.

@@ -26,7 +26,7 @@
 
 ## Envío instantáneo
 
-Automatizado en `scripts/e2e-envio-instantaneo.mjs`.
+Automatizado en `scripts/e2e-instant-send.mjs`.
 
 8. **Enter no espera a Meta**: escribir un renglón y pulsar Enter.
    ✅ El campo queda libre de inmediato (menos de 300 ms), sin esperar el viaje
@@ -41,7 +41,7 @@ Automatizado en `scripts/e2e-envio-instantaneo.mjs`.
 
 ## Ficha del lead
 
-Automatizado en `scripts/e2e-ficha-lead.mjs`. `PUT /api/bot/ficha` ya dejaba al
+Automatizado en `scripts/e2e-qualification.mjs`. `PUT /api/bot/qualification` (antes `/api/bot/ficha`) ya dejaba al
 agente guardar lo que averigua; sin esta sección era un cajón que se llenaba y
 no se abría.
 

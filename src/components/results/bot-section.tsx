@@ -51,7 +51,7 @@ export function BotSection({
               value={
                 data.firstResponseSeconds === null
                   ? "—"
-                  : formatSegundos(data.firstResponseSeconds)
+                  : formatSeconds(data.firstResponseSeconds)
               }
               hint={
                 data.firstResponseSample === 0
@@ -76,7 +76,7 @@ export function BotSection({
                   <StatCard
                     label="Citas"
                     value={String(data.sessions.booked)}
-                    hint={pendientes(data.sessions)}
+                    hint={pending(data.sessions)}
                   />
                   <StatCard label="Realizadas" value={String(data.sessions.done)} />
                   <StatCard label="No llegaron" value={String(data.sessions.noShow)} />
@@ -102,7 +102,7 @@ export function BotSection({
 
             <div>
               <Subhead>Ficha del prospecto</Subhead>
-              {data.fichaCoverage === null ? (
+              {data.qualificationCoverage === null ? (
                 // `null` NO es 0 %: es que el agente de esta instancia no escribe
                 // ficha. Enseñar 0 % sería acusarlo de no hacer algo que nunca se
                 // le pidió.
@@ -114,7 +114,7 @@ export function BotSection({
               ) : (
                 <>
                   <p className="text-sm">
-                    <Rate rate={data.fichaCoverage} unit="contactos nuevos" />
+                    <Rate rate={data.qualificationCoverage} unit="contactos nuevos" />
                   </p>
                   <p className="mt-1 text-xs text-text-3">
                     De los contactos que llegaron en este periodo, a cuántos les sacó datos.
@@ -130,14 +130,14 @@ export function BotSection({
 }
 
 /** Las citas del periodo que todavía no tienen desenlace (siguen agendadas). */
-function pendientes(s: NonNullable<BotBlockDto["sessions"]>): string | undefined {
+function pending(s: NonNullable<BotBlockDto["sessions"]>): string | undefined {
   const n = s.booked - s.done - s.noShow - s.cancelled;
   if (n <= 0) return undefined;
   return n === 1 ? "1 sin desenlace todavía" : `${n} sin desenlace todavía`;
 }
 
 /** Segundos en algo que se lee de un vistazo. */
-export function formatSegundos(s: number): string {
+export function formatSeconds(s: number): string {
   if (s < 60) return `${Math.round(s)} s`;
   if (s < 3600) return `${Math.round(s / 60)} min`;
   return `${Math.round((s / 3600) * 10) / 10} h`;

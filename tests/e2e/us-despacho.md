@@ -1,6 +1,6 @@
 # E2E — Despacho estándar: el CRM le pasa cada turno al cerebro (021, #89; 025)
 
-Arnés: `scripts/e2e-despacho.mjs`. Contrato:
+Arnés: `scripts/e2e-dispatch.mjs`. Contrato:
 [`specs/021-despacho-estandar/contracts/despacho.md`](../../specs/021-despacho-estandar/contracts/despacho.md).
 
 Precondición: app corriendo (`next dev`) sobre una base migrada, con mocks
@@ -16,7 +16,7 @@ proceso, verifica la firma de cada despacho sobre el cuerpo crudo y contesta
 por `/api/bot/messages`. El turno cruza HTTP de verdad en las dos direcciones.
 
 ```bash
-node --env-file=.env scripts/e2e-despacho.mjs
+node --env-file=.env scripts/e2e-dispatch.mjs
 ```
 
 **Dos modos (025).** El arnés mira cómo arrancó la app. Con
@@ -144,7 +144,7 @@ y devuelve lo que se le preguntó (`peticiones`, sin el prompt de sistema).
 **025·AC9** (un mensaje que entra con el turno arrancado pero antes de que abra
 el historial se contesta en ese turno) es una ventana de milisegundos que el
 guion no puede provocar: lo cubre `quedanDebidos` en
-`tests/unit/orden-turno.test.ts`.
+`tests/unit/turn-order.test.ts`.
 
 ## Comprobaciones a mano
 

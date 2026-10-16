@@ -8,8 +8,8 @@ export async function GET(req: Request) {
   const guard = mockGuard();
   if (guard) return guard;
 
-  const rechazo = aiMockAuthFailure(req.headers.get("authorization"));
-  if (rechazo) return Response.json(rechazo.body, { status: rechazo.status });
+  const rejection = aiMockAuthFailure(req.headers.get("authorization"));
+  if (rejection) return Response.json(rejection.body, { status: rejection.status });
 
   return Response.json({ data: aiMockModels() });
 }

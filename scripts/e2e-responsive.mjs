@@ -49,7 +49,7 @@ const until = async (fn, ms = 20000) => {
 const PHONE = { width: 390, height: 844 };
 const TABLET = { width: 820, height: 1180 };
 const DESKTOP = { width: 1440, height: 900 };
-const RUTAS = [
+const ROUTES = [
   "/inbox",
   "/pipeline",
   "/contacts",
@@ -98,11 +98,11 @@ await req.post(`${BASE}/api/dev/wa-mock/inbound`, {
     waMessageId: `wamid.resp.${S}`,
   },
 });
-const listo = await until(async () => {
+const ready = await until(async () => {
   const d = await (await req.get(`${BASE}/api/conversations`)).json();
   return d.conversations.some((c) => c.contact.name === NAME);
 });
-ok("conversación de prueba creada", listo);
+ok("conversación de prueba creada", ready);
 
 // Calienta cada ruta: en `pnpm dev` la primera visita compila (3-4 s) y el
 // guion mediría la compilación, no el diseño.
@@ -112,12 +112,12 @@ ok("conversación de prueba creada", listo);
 // vivo a la vez dejan clavado al servidor de desarrollo.
 ctx.setDefaultNavigationTimeout(120000);
 ctx.setDefaultTimeout(30000);
-for (const ruta of RUTAS) {
-  await req.get(`${BASE}${ruta}`, { timeout: 180000 });
+for (const routeValue of ROUTES) {
+  await req.get(`${BASE}${routeValue}`, { timeout: 180000 });
 }
 
 /** Ancho real del contenido contra el ancho visible del contenedor. */
-const desborde = (page) =>
+const overflow = (page) =>
   page.evaluate(() => {
     const main = document.querySelector("main");
     const doc = document.documentElement;
@@ -127,20 +127,20 @@ const desborde = (page) =>
     };
   });
 
-async function recorrer(page, etiqueta) {
-  for (const ruta of RUTAS) {
-    await page.goto(`${BASE}${ruta}`, { waitUntil: "domcontentloaded" });
+async function walk(page, labelValue) {
+  for (const routeValue of ROUTES) {
+    await page.goto(`${BASE}${routeValue}`, { waitUntil: "domcontentloaded" });
     // Nada de `networkidle`: el canal SSE queda abierto a propósito y la
     // espera nunca se cumpliría.
     await sleep(900);
-    const d = await desborde(page);
+    const d = await overflow(page);
     ok(
-      `${etiqueta} ${ruta} sin recorte horizontal`,
+      `${labelValue} ${routeValue} sin recorte horizontal`,
       d.mainOver <= 1 && d.docOver <= 1,
       `main +${d.mainOver}px · documento +${d.docOver}px`
     );
     await page.screenshot({
-      path: `${SHOTS}/${etiqueta}${ruta.replace(/\//g, "-")}.png`,
+      path: `${SHOTS}/${labelValue}${routeValue.replace(/\//g, "-")}.png`,
       fullPage: false,
     });
   }
@@ -149,25 +149,25 @@ async function recorrer(page, etiqueta) {
 console.log("\n== 1. Teléfono (390×844): ninguna pantalla se recorta ==");
 const phone = await ctx.newPage();
 await phone.setViewportSize(PHONE);
-await recorrer(phone, "phone");
+await walk(phone, "phone");
 
 console.log("\n== 2. Teléfono: el lateral es un cajón con hamburguesa ==");
 await phone.goto(`${BASE}/pipeline`);
-const hamburguesa = phone.getByRole("button", { name: "Abrir el menú" });
-await hamburguesa.waitFor({ timeout: 20000 });
-ok("la hamburguesa se ve", await hamburguesa.isVisible());
-const linkBandeja = phone.getByRole("link", { name: /Bandeja/ });
+const hamburger = phone.getByRole("button", { name: "Abrir el menú" });
+await hamburger.waitFor({ timeout: 20000 });
+ok("la hamburguesa se ve", await hamburger.isVisible());
+const linkInbox = phone.getByRole("link", { name: /Bandeja/ });
 ok(
   "el lateral arranca oculto (sus enlaces no son alcanzables)",
-  !(await linkBandeja.isVisible())
+  !(await linkInbox.isVisible())
 );
-await hamburguesa.click();
+await hamburger.click();
 ok(
   "al tocar la hamburguesa el cajón abre",
-  await until(async () => await linkBandeja.isVisible(), 3000)
+  await until(async () => await linkInbox.isVisible(), 3000)
 );
 // El cajón NO debe empujar el contenido: sale encima.
-const encima = await phone.evaluate(() => {
+const above = await phone.evaluate(() => {
   const aside = document.querySelector("aside");
   const main = document.querySelector("main");
   if (!aside || !main) return null;
@@ -177,41 +177,41 @@ const encima = await phone.evaluate(() => {
 });
 ok(
   "el cajón flota encima del contenido (no lo empuja)",
-  encima !== null && encima.asideLeft <= 1 && encima.mainLeft <= 1,
-  JSON.stringify(encima)
+  above !== null && above.asideLeft <= 1 && above.mainLeft <= 1,
+  JSON.stringify(above)
 );
 await phone.screenshot({ path: `${SHOTS}/phone-cajon-abierto.png` });
-await linkBandeja.click();
+await linkInbox.click();
 await until(async () => phone.url().includes("/inbox"), 15000);
 ok("navegar desde el cajón lleva a la Bandeja", phone.url().includes("/inbox"));
 ok(
   "el cajón se cierra solo al navegar",
-  await until(async () => !(await linkBandeja.isVisible()), 5000)
+  await until(async () => !(await linkInbox.isVisible()), 5000)
 );
 
 console.log("\n== 3. Teléfono: la Bandeja es maestro-detalle ==");
 await phone.goto(`${BASE}/inbox`);
-const fila = phone.getByText(NAME).first();
-await fila.waitFor({ timeout: 20000 });
-ok("la lista de conversaciones ocupa la pantalla", await fila.isVisible());
-const anchoLista = await phone.evaluate(() => {
+const row = phone.getByText(NAME).first();
+await row.waitFor({ timeout: 20000 });
+ok("la lista de conversaciones ocupa la pantalla", await row.isVisible());
+const widthList = await phone.evaluate(() => {
   const sec = document.querySelector("main > div > section");
   return sec ? Math.round(sec.getBoundingClientRect().width) : 0;
 });
 ok(
   "la lista usa el ancho completo del teléfono",
-  anchoLista >= PHONE.width - 8,
-  `${anchoLista}px de ${PHONE.width}`
+  widthList >= PHONE.width - 8,
+  `${widthList}px de ${PHONE.width}`
 );
-await fila.click();
+await row.click();
 const composer = phone.getByPlaceholder("Escribe una respuesta");
 ok(
   "al elegir una conversación se abre el hilo",
   await until(async () => await composer.isVisible(), 15000)
 );
-ok("la lista cede la pantalla al hilo", !(await fila.isVisible()));
-const volver = phone.getByRole("button", { name: "Volver a las conversaciones" });
-ok("aparece el botón de volver", await volver.isVisible());
+ok("la lista cede la pantalla al hilo", !(await row.isVisible()));
+const goBack = phone.getByRole("button", { name: "Volver a las conversaciones" });
+ok("aparece el botón de volver", await goBack.isVisible());
 await phone.screenshot({ path: `${SHOTS}/phone-hilo.png` });
 
 // El compositor debe quedar DENTRO de la pantalla (100dvh, no 100vh).
@@ -222,21 +222,21 @@ ok(
   compBox ? `borde inferior en ${Math.round(compBox.y + compBox.height)}px` : "sin caja"
 );
 // iOS: menos de 16px = zoom automático al enfocar.
-const fuenteComp = await composer.evaluate((el) =>
+const sourceComp = await composer.evaluate((el) =>
   parseFloat(getComputedStyle(el).fontSize)
 );
 ok(
   "el compositor usa ≥16px (iOS no hace zoom al enfocar)",
-  fuenteComp >= 16,
-  `${fuenteComp}px`
+  sourceComp >= 16,
+  `${sourceComp}px`
 );
 
 console.log("\n== 4. Teléfono: los detalles flotan sobre el hilo ==");
-const abrirDetalles = phone.getByRole("button", { name: "Mostrar detalles" });
-ok("el panel de detalles arranca cerrado en el teléfono", await abrirDetalles.isVisible());
-await abrirDetalles.click();
+const openDetails = phone.getByRole("button", { name: "Mostrar detalles" });
+ok("el panel de detalles arranca cerrado en el teléfono", await openDetails.isVisible());
+await openDetails.click();
 await sleep(500);
-const cajonDetalles = await phone.evaluate(() => {
+const drawerDetails = await phone.evaluate(() => {
   const secs = [...document.querySelectorAll("main > div > section")];
   const panel = secs[secs.length - 1];
   if (!panel) return null;
@@ -249,17 +249,17 @@ const cajonDetalles = await phone.evaluate(() => {
 });
 ok(
   "los detalles entran como cajón pegado al borde derecho",
-  cajonDetalles !== null &&
-    cajonDetalles.fixed &&
-    Math.abs(cajonDetalles.right - PHONE.width) <= 2 &&
-    cajonDetalles.width <= PHONE.width,
-  JSON.stringify(cajonDetalles)
+  drawerDetails !== null &&
+    drawerDetails.fixed &&
+    Math.abs(drawerDetails.right - PHONE.width) <= 2 &&
+    drawerDetails.width <= PHONE.width,
+  JSON.stringify(drawerDetails)
 );
-const dEnDetalles = await desborde(phone);
+const dInDetails = await overflow(phone);
 ok(
   "con los detalles abiertos la pantalla sigue sin recortarse",
-  dEnDetalles.docOver <= 1,
-  `documento +${dEnDetalles.docOver}px`
+  dInDetails.docOver <= 1,
+  `documento +${dInDetails.docOver}px`
 );
 await phone.screenshot({ path: `${SHOTS}/phone-detalles.png` });
 await phone
@@ -271,25 +271,25 @@ await sleep(400);
 console.log("\n== 5. Tableta (820×1180) ==");
 const tablet = phone;
 await tablet.setViewportSize(TABLET);
-await recorrer(tablet, "tablet");
+await walk(tablet, "tablet");
 await tablet.goto(`${BASE}/inbox`);
 await tablet.getByText(NAME).first().click();
 await tablet.getByPlaceholder("Escribe una respuesta").waitFor({ timeout: 20000 });
-const dosColumnas = await tablet.evaluate(() => {
+const twoColumns = await tablet.evaluate(() => {
   const secs = [...document.querySelectorAll("main > div > section")];
   return secs.slice(0, 2).map((s) => Math.round(s.getBoundingClientRect().width));
 });
 ok(
   "en tableta conviven lista e hilo (dos columnas)",
-  dosColumnas.length === 2 && dosColumnas[0] > 200 && dosColumnas[1] > 300,
-  JSON.stringify(dosColumnas)
+  twoColumns.length === 2 && twoColumns[0] > 200 && twoColumns[1] > 300,
+  JSON.stringify(twoColumns)
 );
 await tablet.screenshot({ path: `${SHOTS}/tablet-inbox.png` });
 
 console.log("\n== 6. Escritorio (1440×900): nada cambió ==");
 const desk = tablet;
 await desk.setViewportSize(DESKTOP);
-await recorrer(desk, "desktop");
+await walk(desk, "desktop");
 await desk.goto(`${BASE}/inbox`);
 await desk.getByText(NAME).first().click();
 await desk.getByPlaceholder("Escribe una respuesta").waitFor({ timeout: 20000 });
@@ -298,7 +298,7 @@ ok(
   !(await desk.getByRole("button", { name: "Abrir el menú" }).isVisible()) &&
     (await desk.getByRole("link", { name: /Bandeja/ }).isVisible())
 );
-const medirColumnas = () =>
+const measureColumns = () =>
   desk.evaluate(() => {
     const aside = document.querySelector("aside");
     const secs = [...document.querySelectorAll("main > div > section")];
@@ -309,14 +309,14 @@ const medirColumnas = () =>
   });
 // El panel abre con transición de 220 ms: medir apenas aparece el compositor
 // atraparía un ancho a medio camino.
-const columnasOk = (t) =>
+const columnsOk = (t) =>
   t.aside === 224 && t.secs[0] === 360 && t.secs.at(-1) === 320;
-await until(async () => columnasOk(await medirColumnas()), 8000);
-const tres = await medirColumnas();
+await until(async () => columnsOk(await measureColumns()), 8000);
+const three = await measureColumns();
 ok(
   "escritorio conserva lateral 224px + lista 360px + hilo + detalles 320px",
-  columnasOk(tres),
-  JSON.stringify(tres)
+  columnsOk(three),
+  JSON.stringify(three)
 );
 await desk.screenshot({ path: `${SHOTS}/desktop-inbox.png` });
 
@@ -324,7 +324,7 @@ console.log("\n== 7. Barra bicolor e interruptores (#53) ==");
 // Luminancia relativa (WCAG) de un `rgb(...)` calculado: se afirma que la
 // barra es OSCURA y la página CLARA, no un hex concreto que un ajuste de
 // tokens cambiaría.
-const luminancia = (rgb) => {
+const luminance = (rgb) => {
   const [r, g, b] = (rgb.match(/\d+(\.\d+)?/g) ?? []).slice(0, 3).map((v) => {
     const c = Number(v) / 255;
     return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
@@ -332,82 +332,82 @@ const luminancia = (rgb) => {
   return 0.2126 * r + 0.7152 * g + 0.0722 * b;
 };
 // El contexto no manda la cookie de tema: la página está en claro.
-const barra = await desk.evaluate(() => {
+const bar = await desk.evaluate(() => {
   const aside = document.querySelector("aside");
   return {
-    tema: document.documentElement.dataset.theme,
-    fondo: aside ? getComputedStyle(aside).backgroundColor : "",
-    tinta: aside ? getComputedStyle(aside).color : "",
+    theme: document.documentElement.dataset.theme,
+    background: aside ? getComputedStyle(aside).backgroundColor : "",
+    ink: aside ? getComputedStyle(aside).color : "",
     pagina: getComputedStyle(document.body).backgroundColor,
   };
 });
 ok(
   "con el tema claro, la barra lateral es azul marino y su texto claro",
-  barra.tema === "light" &&
-    luminancia(barra.fondo) < 0.05 &&
-    luminancia(barra.tinta) > 0.6 &&
-    luminancia(barra.pagina) > 0.8,
-  JSON.stringify(barra)
+  bar.theme === "light" &&
+    luminance(bar.background) < 0.05 &&
+    luminance(bar.ink) > 0.6 &&
+    luminance(bar.pagina) > 0.8,
+  JSON.stringify(bar)
 );
 
 /** Dónde queda el pomo respecto a su pista (px). */
-const medirInterruptor = (page, nombre) =>
+const measureSwitch = (page, nameValue) =>
   page.evaluate((label) => {
-    const pista = document.querySelector(`[role="switch"][aria-label="${label}"]`);
-    const pomo = pista?.querySelector("span");
-    if (!pista || !pomo) return null;
-    const p = pista.getBoundingClientRect();
-    const k = pomo.getBoundingClientRect();
+    const hint = document.querySelector(`[role="switch"][aria-label="${label}"]`);
+    const knob = hint?.querySelector("span");
+    if (!hint || !knob) return null;
+    const p = hint.getBoundingClientRect();
+    const k = knob.getBoundingClientRect();
     const r = (n) => Math.round(n * 10) / 10;
     return {
-      on: pista.getAttribute("aria-checked") === "true",
-      izq: r(k.left - p.left),
+      on: hint.getAttribute("aria-checked") === "true",
+      left: r(k.left - p.left),
       der: r(p.right - k.right),
-      arriba: r(k.top - p.top),
-      abajo: r(p.bottom - k.bottom),
+      top: r(k.top - p.top),
+      below: r(p.bottom - k.bottom),
     };
-  }, nombre);
+  }, nameValue);
 // Dentro de la pista por los cuatro lados, y pegado al extremo de su estado.
 // El pomo que arrancaba del centro (#53) tenía `izq` ≈ 12 apagado y `der` < 0
 // encendido.
-const pomoEnSuSitio = (m) =>
+const knobInPlace = (m) =>
   m !== null &&
-  m.izq >= 0 && m.der >= 0 && m.arriba >= 0 && m.abajo >= 0 &&
-  (m.on ? m.der <= 3 : m.izq <= 3);
+  m.left >= 0 && m.der >= 0 && m.top >= 0 && m.below >= 0 &&
+  (m.on ? m.der <= 3 : m.left <= 3);
 
-async function probarInterruptor(page, nombre) {
-  const sw = page.locator(`[role="switch"][aria-label="${nombre}"]`);
+async function testSwitch(page, nameValue) {
+  const sw = page.locator(`[role="switch"][aria-label="${nameValue}"]`);
   await sw.waitFor({ timeout: 20000 });
-  const revisar = async (cuando) => {
+  const check = async (when) => {
     // La transición dura 150 ms: se espera a que el pomo llegue.
-    const bien = await until(async () => pomoEnSuSitio(await medirInterruptor(page, nombre)), 3000);
-    const m = await medirInterruptor(page, nombre);
+    const good = await until(async () => knobInPlace(await measureSwitch(page, nameValue)), 3000);
+    const m = await measureSwitch(page, nameValue);
     ok(
-      `«${nombre}» ${m?.on ? "encendido" : "apagado"} (${cuando}): el pomo queda dentro, en su extremo`,
-      bien,
+      `«${nameValue}» ${m?.on ? "encendido" : "apagado"} (${when}): el pomo queda dentro, en su extremo`,
+      good,
       JSON.stringify(m)
     );
     return m?.on;
   };
-  const inicial = await revisar("al cargar");
+  const initial = await check("al cargar");
   if (await sw.isDisabled()) {
     // El del Agente sin OPENROUTER_API_TOKEN: atenuado y sin reaccionar, a
     // propósito. Se mide, pero no hay nada que alternar.
-    console.log(`  · «${nombre}» deshabilitado (sin proveedor de IA): solo se mide`);
+    console.log(`  · «${nameValue}» deshabilitado (sin proveedor de IA): solo se mide`);
     return;
   }
   await sw.click();
   ok(
-    `«${nombre}»: un clic lo cambia`,
-    await until(async () => (await medirInterruptor(page, nombre))?.on === !inicial, 15000)
+    `«${nameValue}»: un clic lo cambia`,
+    await until(async () => (await measureSwitch(page, nameValue))?.on === !initial, 15000)
   );
-  await revisar("tras el clic");
+  await check("tras el clic");
   // De vuelta como estaba, y con el teclado: es un <button>, Espacio lo opera.
   await sw.focus();
   await page.keyboard.press("Space");
   ok(
-    `«${nombre}»: con el teclado vuelve a como estaba`,
-    await until(async () => (await medirInterruptor(page, nombre))?.on === inicial, 15000)
+    `«${nameValue}»: con el teclado vuelve a como estaba`,
+    await until(async () => (await measureSwitch(page, nameValue))?.on === initial, 15000)
   );
 }
 
@@ -419,66 +419,66 @@ await req.patch(`${BASE}/api/conversations/${convResp?.id}`, {
 });
 await desk.goto(`${BASE}/inbox`);
 await desk.getByText(NAME).first().click();
-await probarInterruptor(desk, "IA en esta conversación");
+await testSwitch(desk, "IA en esta conversación");
 
 await desk.goto(`${BASE}/agent`, { waitUntil: "domcontentloaded" });
-await probarInterruptor(desk, "Agente encendido");
+await testSwitch(desk, "Agente encendido");
 await desk.screenshot({ path: `${SHOTS}/desktop-agente.png` });
 
 console.log("\n== 8. Tema oscuro: el bicolor no desaparece (R8) ==");
 // Mismo criterio que la barra en claro: luminancias medidas en el navegador,
 // no un hex. Con el tema oscuro de antes, barra y página quedaban a 1.04:1.
-const contraste = (a, b) => {
-  const [x, y] = [luminancia(a), luminancia(b)].sort((p, q) => q - p);
+const contrast = (a, b) => {
+  const [x, y] = [luminance(a), luminance(b)].sort((p, q) => q - p);
   return (x + 0.05) / (y + 0.05);
 };
 await ctx.addCookies([{ name: "vocero-theme", value: "dark", url: BASE }]);
 await desk.goto(`${BASE}/contacts`, { waitUntil: "domcontentloaded" });
-const nuevo = desk.getByRole("button", { name: /Nuevo contacto/ });
-const dialogo = desk.locator('[role="dialog"][aria-label="Nuevo contacto"]');
+const newOne = desk.getByRole("button", { name: /Nuevo contacto/ });
+const dialog = desk.locator('[role="dialog"][aria-label="Nuevo contacto"]');
 // Un clic antes de hidratar se pierde: reintenta hasta que aparezca.
 await until(async () => {
-  await nuevo.click();
-  return dialogo.isVisible();
+  await newOne.click();
+  return dialog.isVisible();
 }, 20000);
-const oscuro = await desk.evaluate(() => {
+const dark = await desk.evaluate(() => {
   const aside = document.querySelector("aside");
   const dlg = document.querySelector('[role="dialog"][aria-label="Nuevo contacto"]');
   return {
-    tema: document.documentElement.dataset.theme,
-    barra: aside ? getComputedStyle(aside).backgroundColor : "",
+    theme: document.documentElement.dataset.theme,
+    bar: aside ? getComputedStyle(aside).backgroundColor : "",
     pagina: getComputedStyle(document.body).backgroundColor,
-    dialogo: dlg ? getComputedStyle(dlg).backgroundColor : "",
+    dialog: dlg ? getComputedStyle(dlg).backgroundColor : "",
   };
 });
 ok(
   "en oscuro, la barra es más oscura que la página (≥ 1.25:1)",
-  oscuro.tema === "dark" &&
-    luminancia(oscuro.barra) < luminancia(oscuro.pagina) &&
-    contraste(oscuro.barra, oscuro.pagina) >= 1.25,
-  JSON.stringify(oscuro)
+  dark.theme === "dark" &&
+    luminance(dark.bar) < luminance(dark.pagina) &&
+    contrast(dark.bar, dark.pagina) >= 1.25,
+  JSON.stringify(dark)
 );
 ok(
   "en oscuro, el diálogo flota un escalón arriba de la página",
-  luminancia(oscuro.dialogo) > luminancia(oscuro.pagina),
-  JSON.stringify(oscuro)
+  luminance(dark.dialog) > luminance(dark.pagina),
+  JSON.stringify(dark)
 );
 await desk.keyboard.press("Escape");
 await desk.setViewportSize(PHONE);
 await desk.goto(`${BASE}/inbox`, { waitUntil: "domcontentloaded" });
 await desk.getByRole("button", { name: "Abrir el menú" }).waitFor({ timeout: 20000 });
-const franja = await desk.evaluate(() => {
+const band = await desk.evaluate(() => {
   const aside = document.querySelector("aside");
-  const barra = document.querySelector("main")?.previousElementSibling;
+  const bar = document.querySelector("main")?.previousElementSibling;
   return {
-    barra: barra ? getComputedStyle(barra).backgroundColor : "",
-    lateral: aside ? getComputedStyle(aside).backgroundColor : "",
+    bar: bar ? getComputedStyle(bar).backgroundColor : "",
+    sidebar: aside ? getComputedStyle(aside).backgroundColor : "",
   };
 });
 ok(
   "en el teléfono, la franja de arriba es la misma pieza que la barra",
-  franja.barra !== "" && franja.barra === franja.lateral,
-  JSON.stringify(franja)
+  band.bar !== "" && band.bar === band.sidebar,
+  JSON.stringify(band)
 );
 await desk.screenshot({ path: `${SHOTS}/phone-inbox-oscuro.png` });
 

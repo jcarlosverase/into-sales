@@ -23,9 +23,9 @@ export const PERSONAS: Persona[] = [
     contactName: "[Prueba] Comprador decidido",
     script: [
       "Hola, buenas tardes",
-      "¿Tienen taladros inalámbricos disponibles?",
-      "Perfecto, ¿cuánto cuesta el más vendido?",
-      "Me convence, lo compro. ¿Cómo pago?",
+      "Vi lo que publicaron, ¿todavía está disponible?",
+      "Perfecto, ¿cuánto cuesta?",
+      "Me convence, lo quiero. ¿Cómo pago?",
     ],
   },
   {
@@ -35,10 +35,10 @@ export const PERSONAS: Persona[] = [
     phone: "5210000000002",
     contactName: "[Prueba] Preguntón de precios",
     script: [
-      "Hola, ¿qué precio tiene el martillo?",
-      "¿Y el desarmador de cruz?",
-      "¿Cuánto la caja de clavos de 2 pulgadas?",
-      "¿Hay descuento si llevo varias cosas?",
+      "Hola, ¿qué precio tiene lo que anunciaron?",
+      "¿Y la otra opción que tienen?",
+      "¿Cuánto me sale si llevo dos?",
+      "¿Hay algún descuento?",
       "Ok, lo voy a pensar",
     ],
   },
@@ -50,7 +50,7 @@ export const PERSONAS: Persona[] = [
     contactName: "[Prueba] Cliente enojado",
     script: [
       "Oigan, esto es el colmo",
-      "Compré una lijadora la semana pasada y ya no prende, es una porquería",
+      "Les compré la semana pasada y no es lo que me ofrecieron, es una estafa",
       "¿Me van a responder o qué? Quiero una solución YA",
       "Pues espero que sí porque no pienso perder mi dinero",
     ],
@@ -84,14 +84,14 @@ export const PERSONAS: Persona[] = [
   {
     key: "errores_modismos",
     label: "Errores y modismos",
-    description: "Escribe con faltas de ortografía y modismos mexicanos.",
+    description: "Escribe con faltas de ortografía y modismos.",
     phone: "5210000000006",
     contactName: "[Prueba] Errores y modismos",
     script: [
-      "ke onda, si benden pintura?",
-      "oiga y no le sabe si tienen tiner",
-      "cuanto x el galon d pintura blanca pa interiores",
-      "va, orita paso x la tienda, sale",
+      "ola kiero info porfa",
+      "cuanto esta?? y q incluye",
+      "ya pe, y se puede pagar x yape?",
+      "ya listo, mas rato te escribo",
     ],
   },
 ];

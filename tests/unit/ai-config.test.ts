@@ -5,21 +5,21 @@ import {
   last4,
   modelsUrl,
   OPENROUTER_BASE_URL,
-  presetDeBaseUrl,
+  presetFromBaseUrl,
 } from "@/lib/ai/presets";
 import {
   envAiProvider,
-  interpretarCredencial,
-  mensajeDeEstado,
-  resolver,
+  interpretCredential,
+  statusMessage,
+  resolve,
   type AiProvider,
 } from "@/lib/ai/provider";
-import { estadoSegunRespuesta } from "@/server/ai/credentials";
+import { statusFromResponse } from "@/server/ai/credentials";
 import {
   aiModelsSchema,
   aiProbeSchema,
   aiSettingsPutSchema,
-  baseUrlEfectiva,
+  baseUrlEffective,
 } from "@/server/ai/settings";
 import type { AiCredentialSecret } from "@/server/ai/credentials";
 
@@ -29,7 +29,7 @@ import type { AiCredentialSecret } from "@/server/ai/credentials";
  * estado, y qué acepta el `PUT`.
  */
 
-const FILA: AiCredentialSecret = {
+const ROW: AiCredentialSecret = {
   provider: "openrouter",
   baseUrl: OPENROUTER_BASE_URL,
   model: "org/modelo",
@@ -41,7 +41,7 @@ const FILA: AiCredentialSecret = {
   token: "sk-or-fila-1234",
 };
 
-const ENTORNO: AiProvider = {
+const ENVIRONMENT: AiProvider = {
   source: "env",
   baseUrl: "https://entorno.test",
   model: "env/modelo",
@@ -62,9 +62,9 @@ describe("URLs del proveedor", () => {
   });
 
   it("reconoce el preset por la base URL", () => {
-    expect(presetDeBaseUrl("https://openrouter.ai/api")).toBe("openrouter");
-    expect(presetDeBaseUrl("https://openrouter.ai/api/v1/")).toBe("openrouter");
-    expect(presetDeBaseUrl("https://api.openai.com")).toBe("openai_compatible");
+    expect(presetFromBaseUrl("https://openrouter.ai/api")).toBe("openrouter");
+    expect(presetFromBaseUrl("https://openrouter.ai/api/v1/")).toBe("openrouter");
+    expect(presetFromBaseUrl("https://api.openai.com")).toBe("openai_compatible");
   });
 
   it("last4 expone solo los últimos 4", () => {
@@ -74,11 +74,11 @@ describe("URLs del proveedor", () => {
 
 describe("resolución: la fila manda, el entorno es respaldo", () => {
   it("fila activa → la fila, aunque el entorno tenga su propio token", () => {
-    const r = resolver(FILA, ENTORNO);
+    const r = resolve(ROW, ENVIRONMENT);
     expect(r.ok).toBe(true);
     if (r.ok) {
       expect(r.provider.source).toBe("org");
-      expect(r.provider.token).toBe(FILA.token);
+      expect(r.provider.token).toBe(ROW.token);
       expect(r.provider.model).toBe("org/modelo");
       // Un solo modelo en la UI: el juez usa el mismo.
       expect(r.provider.judgeModel).toBe("org/modelo");
@@ -86,67 +86,67 @@ describe("resolución: la fila manda, el entorno es respaldo", () => {
   });
 
   it("sin fila → el entorno tal cual (con su juez aparte)", () => {
-    const r = resolver(null, ENTORNO);
+    const r = resolve(null, ENVIRONMENT);
     expect(r.ok).toBe(true);
-    if (r.ok) expect(r.provider).toEqual(ENTORNO);
+    if (r.ok) expect(r.provider).toEqual(ENVIRONMENT);
   });
 
   it("sin nada → no configurado", () => {
-    const r = resolver(null, null);
-    expect(r).toEqual({ ok: false, estado: { activa: false, motivo: "sin_configurar" } });
+    const r = resolve(null, null);
+    expect(r).toEqual({ ok: false, status: { active: false, reason: "sin_configurar" } });
   });
 
   it("fila pausada NO cae al entorno: el dueño configuró su llave y debe ver el problema", () => {
-    const r = resolver({ ...FILA, status: "paused_invalid_token" }, ENTORNO);
+    const r = resolve({ ...ROW, status: "paused_invalid_token" }, ENVIRONMENT);
     expect(r.ok).toBe(false);
     if (!r.ok) {
-      expect(r.estado).toEqual({
-        activa: false,
-        motivo: "token_invalido",
+      expect(r.status).toEqual({
+        active: false,
+        reason: "token_invalido",
         last4: "1234",
-        desde: FILA.statusChangedAt,
+        since: ROW.statusChangedAt,
       });
     }
-    const sinSaldo = resolver({ ...FILA, status: "paused_no_credit" }, null);
-    expect(sinSaldo.ok).toBe(false);
-    if (!sinSaldo.ok) expect(sinSaldo.estado.motivo).toBe("sin_saldo");
+    const withoutBalance = resolve({ ...ROW, status: "paused_no_credit" }, null);
+    expect(withoutBalance.ok).toBe(false);
+    if (!withoutBalance.ok) expect(withoutBalance.status.reason).toBe("sin_saldo");
   });
 
   it("interpretarCredencial distingue el origen", () => {
-    expect(interpretarCredencial(FILA, { last4: "9999" })).toEqual({
-      activa: true,
-      origen: "org",
+    expect(interpretCredential(ROW, { last4: "9999" })).toEqual({
+      active: true,
+      source: "org",
       last4: "1234",
     });
-    expect(interpretarCredencial(null, { last4: "9999" })).toEqual({
-      activa: true,
-      origen: "env",
+    expect(interpretCredential(null, { last4: "9999" })).toEqual({
+      active: true,
+      source: "env",
       last4: "9999",
     });
-    expect(interpretarCredencial(null, null)).toEqual({
-      activa: false,
-      motivo: "sin_configurar",
+    expect(interpretCredential(null, null)).toEqual({
+      active: false,
+      reason: "sin_configurar",
     });
   });
 });
 
 describe("la máquina de estados la dicta quien cobra", () => {
   it("401 pausa por llave, 402 por saldo; 429 y 500 no pausan", () => {
-    expect(estadoSegunRespuesta(401)).toBe("paused_invalid_token");
-    expect(estadoSegunRespuesta(402)).toBe("paused_no_credit");
-    expect(estadoSegunRespuesta(429)).toBeNull();
-    expect(estadoSegunRespuesta(500)).toBeNull();
-    expect(estadoSegunRespuesta(200)).toBeNull();
+    expect(statusFromResponse(401)).toBe("paused_invalid_token");
+    expect(statusFromResponse(402)).toBe("paused_no_credit");
+    expect(statusFromResponse(429)).toBeNull();
+    expect(statusFromResponse(500)).toBeNull();
+    expect(statusFromResponse(200)).toBeNull();
   });
 
   it("cada motivo manda a Ajustes → IA; activa no dice nada", () => {
-    expect(mensajeDeEstado({ activa: true, origen: "org", last4: "1234" })).toBeNull();
-    for (const motivo of ["sin_configurar", "token_invalido", "sin_saldo"] as const) {
-      const estado =
-        motivo === "sin_configurar"
-          ? { activa: false as const, motivo }
-          : { activa: false as const, motivo, last4: "1234", desde: null };
-      expect(mensajeDeEstado(estado)).toContain("Ajustes → IA");
+    expect(statusMessage({ active: true, source: "org", last4: "1234" })).toBeNull();
+    for (const reason of ["sin_configurar", "token_invalido", "sin_saldo"] as const) {
+      const status =
+        reason === "sin_configurar"
+          ? { active: false as const, reason: reason }
+          : { active: false as const, reason: reason, last4: "1234", since: null };
+      expect(statusMessage(status)).toContain("Ajustes → IA");
     }
   });
 });
@@ -161,7 +161,7 @@ describe("validación del PUT /api/settings/ai", () => {
     expect(r.success).toBe(true);
     if (r.success) {
       expect(r.data.model).toBe("anthropic/claude-sonnet-4.5");
-      expect(baseUrlEfectiva(r.data.provider, "https://otra.cosa")).toBe(OPENROUTER_BASE_URL);
+      expect(baseUrlEffective(r.data.provider, "https://otra.cosa")).toBe(OPENROUTER_BASE_URL);
     }
   });
 
@@ -189,7 +189,7 @@ describe("validación del PUT /api/settings/ai", () => {
     });
     expect(ok.success).toBe(true);
     if (ok.success) {
-      expect(baseUrlEfectiva(ok.data.provider, ok.data.baseUrl)).toBe("https://api.x.com");
+      expect(baseUrlEffective(ok.data.provider, ok.data.baseUrl)).toBe("https://api.x.com");
     }
   });
 

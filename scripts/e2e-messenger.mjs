@@ -24,8 +24,8 @@ const RUN = Date.now().toString(36);
 const PSID_META = `psid-meta-${RUN}`;
 const PSID_ZERNIO = `psid-zernio-${RUN}`;
 /** Marca de esta corrida: el arnes se puede repetir sobre la misma base. */
-const MARCA = `#${RUN}`;
-const NOMBRE_ZERNIO = `Jane Doe ${MARCA}`;
+const BRAND = `#${RUN}`;
+const NAME_ZERNIO = `Jane Doe ${BRAND}`;
 
 let cookie = "";
 let failures = 0;
@@ -88,7 +88,7 @@ function zernioEvent(over = {}) {
       conversationId: "zconv-001",
       direction: "incoming",
       text: "Hola desde Facebook",
-      sender: { id: PSID_ZERNIO, name: NOMBRE_ZERNIO, username: "jane_doe" },
+      sender: { id: PSID_ZERNIO, name: NAME_ZERNIO, username: "jane_doe" },
       ...(over.message ?? {}),
     },
     account: { id: ACCOUNT, platform: "facebook", ...(over.account ?? {}) },
@@ -180,12 +180,12 @@ async function main() {
         sender: { id: PSID_META },
         recipient: { id: PAGE },
         timestamp: Date.now(),
-        message: { mid: `m_${PSID_META}_1`, text: `Hola, ¿tienen envíos a Guadalajara? ${MARCA}` },
+        message: { mid: `m_${PSID_META}_1`, text: `Hola, ¿tienen envíos a Guadalajara? ${BRAND}` },
       },
     ])
   );
   ok("el proveedor recibe 200 de inmediato", first.status === 200);
-  const convMeta = await waitForConversation((c) => c.preview?.includes(MARCA));
+  const convMeta = await waitForConversation((c) => c.preview?.includes(BRAND));
   ok("la conversación aparece en la bandeja", Boolean(convMeta));
   ok("con canal messenger", convMeta?.channel === "messenger", convMeta?.channel);
   ok(
@@ -198,7 +198,7 @@ async function main() {
 
   console.log("\n== Idempotencia y ruido (Meta) ==");
   await webhook(
-    metaEvent([{ sender: { id: PSID_META }, message: { mid: `m_${PSID_META}_1`, text: `Hola, ¿tienen envíos a Guadalajara? ${MARCA}` } }])
+    metaEvent([{ sender: { id: PSID_META }, message: { mid: `m_${PSID_META}_1`, text: `Hola, ¿tienen envíos a Guadalajara? ${BRAND}` } }])
   );
   await webhook(
     metaEvent([
@@ -217,7 +217,7 @@ async function main() {
   const inbound = (msgs.json?.messages ?? []).filter((m) => m.direction === "in");
   ok(
     "el webhook repetido NO duplica el mensaje",
-    inbound.filter((m) => m.text?.includes(MARCA)).length === 1,
+    inbound.filter((m) => m.text?.includes(BRAND)).length === 1,
     `in=${inbound.length}`
   );
   ok("echo, acuses y lectura no crean mensajes", inbound.every((m) => m.text !== "eco"));
@@ -315,39 +315,39 @@ async function main() {
   );
 
   console.log("\n== Firma del webhook de Zernio ==");
-  const evtFirma = zernioEvent();
-  const sinFirma = await webhook(evtFirma);
-  ok("sin firma con secreto configurado → 401", sinFirma.status === 401, String(sinFirma.status));
-  const malFirmada = await webhook(evtFirma, { signature: "deadbeef" });
-  ok("firma inválida → 401", malFirmada.status === 401, String(malFirmada.status));
+  const evtSignature = zernioEvent();
+  const withoutSignature = await webhook(evtSignature);
+  ok("sin firma con secreto configurado → 401", withoutSignature.status === 401, String(withoutSignature.status));
+  const badlySigned = await webhook(evtSignature, { signature: "deadbeef" });
+  ok("firma inválida → 401", badlySigned.status === 401, String(badlySigned.status));
 
   console.log("\n== Entrante por Zernio ==");
   const evt = zernioEvent();
-  const okFirma = await webhook(evt, { signature: sign(evt) });
-  ok("firma válida → 200", okFirma.status === 200, String(okFirma.status));
-  const convZ = await waitForConversation((c) => c.contact?.name === NOMBRE_ZERNIO);
+  const okSignature = await webhook(evt, { signature: sign(evt) });
+  ok("firma válida → 200", okSignature.status === 200, String(okSignature.status));
+  const convZ = await waitForConversation((c) => c.contact?.name === NAME_ZERNIO);
   ok("la conversación aparece en la bandeja", Boolean(convZ));
   ok("con canal messenger", convZ?.channel === "messenger", convZ?.channel);
-  ok("el nombre viene del evento, sin consultar a nadie", convZ?.contact?.name === NOMBRE_ZERNIO, convZ?.contact?.name);
+  ok("el nombre viene del evento, sin consultar a nadie", convZ?.contact?.name === NAME_ZERNIO, convZ?.contact?.name);
 
   console.log("\n== Zernio: ruido de otras plataformas y duplicados ==");
-  const otra = zernioEvent({
+  const other = zernioEvent({
     account: { platform: "instagram" },
     message: { id: "zmsg-ig", text: "esto es de instagram", sender: { id: "igsid-x", name: "Otro" } },
   });
-  await webhook(otra, { signature: sign(otra) });
+  await webhook(other, { signature: sign(other) });
   const dup = { ...evt };
   await webhook(dup, { signature: sign(dup) });
-  const salida = zernioEvent({ message: { id: "zmsg-out", direction: "outgoing", text: "respuesta mía" } });
-  await webhook(salida, { signature: sign(salida) });
+  const output = zernioEvent({ message: { id: "zmsg-out", direction: "outgoing", text: "respuesta mía" } });
+  await webhook(output, { signature: sign(output) });
   await sleep(1500);
   const msgsZ = await api(`/api/conversations/${convZ?.id}/messages`);
   const inZ = (msgsZ.json?.messages ?? []).filter((m) => m.direction === "in");
   ok("el evento repetido NO duplica el mensaje", inZ.length === 1, `in=${inZ.length}`);
-  const todas = await api("/api/conversations");
+  const allOnes = await api("/api/conversations");
   ok(
     "un mensaje de Instagram por el mismo webhook NO entra como Messenger",
-    !(todas.json?.conversations ?? []).some((c) => c.preview?.includes("esto es de instagram"))
+    !(allOnes.json?.conversations ?? []).some((c) => c.preview?.includes("esto es de instagram"))
   );
   ok(
     "un `outgoing` de la bandeja de Zernio no se ingiere como entrante",
@@ -355,21 +355,21 @@ async function main() {
   );
 
   console.log("\n== Zernio: defensa entre fuentes ==");
-  const metaMientrasZernio = await webhook(
+  const metaWhileZernio = await webhook(
     metaEvent([{ sender: { id: "psid-intruso" }, message: { mid: "m_intruso", text: "payload de meta" } }])
   );
   await sleep(1000);
-  const trasIntruso = await api("/api/conversations");
+  const afterIntruder = await api("/api/conversations");
   ok(
     "un payload de Meta con la instancia en modo Zernio se descarta",
-    metaMientrasZernio.status === 200 &&
-      !(trasIntruso.json?.conversations ?? []).some((c) => c.preview?.includes("payload de meta"))
+    metaWhileZernio.status === 200 &&
+      !(afterIntruder.json?.conversations ?? []).some((c) => c.preview?.includes("payload de meta"))
   );
 
   console.log("\n== Salida por Zernio ==");
   const replyZ = await api(`/api/conversations/${convZ?.id}/messages`, {
     method: "POST",
-    body: JSON.stringify({ text: `Claro, te mando el catálogo ${MARCA}` }),
+    body: JSON.stringify({ text: `Claro, te mando el catálogo ${BRAND}` }),
   });
   ok("POST /messages → 200/201", replyZ.res.ok, JSON.stringify(replyZ.json));
   const sentZ = await fetch(`${BASE}/api/dev/zernio-mock/_sent`).then((r) => r.json());
@@ -380,7 +380,7 @@ async function main() {
     lastZ?.conversationId === "zconv-001" && lastZ?.accountId === ACCOUNT,
     JSON.stringify(lastZ)
   );
-  ok("con el texto que escribió el operador", lastZ?.message === `Claro, te mando el catálogo ${MARCA}`);
+  ok("con el texto que escribió el operador", lastZ?.message === `Claro, te mando el catálogo ${BRAND}`);
   ok(
     "dentro de la ventana NO va etiquetado como agente humano",
     !lastZ?.messageTag,

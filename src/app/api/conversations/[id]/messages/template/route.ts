@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { apiError, parseBody, withAuth } from "@/lib/api";
 import { SendError } from "@/server/inbox/send";
+import { canSeeConversation, getLeadScope } from "@/server/leads/scope";
 import {
   sendTemplate,
   TemplateError,
@@ -20,6 +21,9 @@ const bodySchema = z.object({
 
 export const POST = withAuth(async (session, req: Request, ctx: Params) => {
   const { id } = await ctx.params;
+  if (!(await canSeeConversation(getLeadScope(session), session.organizationId, id))) {
+    return apiError(404, "not_found", "Conversación no encontrada");
+  }
   const body = await parseBody(req, bodySchema);
   if (!body.ok) return body.response;
 

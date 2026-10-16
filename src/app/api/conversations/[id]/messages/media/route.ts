@@ -1,5 +1,6 @@
 import { apiError, withAuth } from "@/lib/api";
 import { getConversation } from "@/server/inbox/queries";
+import { canSeeConversation, getLeadScope } from "@/server/leads/scope";
 import { SendError, sendMediaMessage } from "@/server/inbox/send";
 import { MediaValidationError } from "@/server/whatsapp/media";
 
@@ -26,6 +27,9 @@ const SEND_ERROR_STATUS: Record<SendError["code"], number> = {
  */
 export const POST = withAuth(async (session, req: Request, ctx: Params) => {
   const { id } = await ctx.params;
+  if (!(await canSeeConversation(getLeadScope(session), session.organizationId, id))) {
+    return apiError(404, "not_found", "Conversación no encontrada");
+  }
   const conv = await getConversation(session.organizationId, id);
   if (!conv) return apiError(404, "not_found", "Conversación no encontrada");
 

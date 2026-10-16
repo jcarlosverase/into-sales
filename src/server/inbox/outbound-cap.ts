@@ -16,9 +16,9 @@ import { capabilitiesFor } from "@/server/channels/capabilities";
  */
 
 /** Pura: ¿cabe un mensaje más? Un canal sin tope siempre dice que sí. */
-export function cabeOtroMensaje(channel: Channel, enviados: number): boolean {
-  const tope = capabilitiesFor(channel).maxOutboundPerWindow;
-  return tope === null || enviados < tope;
+export function anotherMessageFits(channel: Channel, sent: number): boolean {
+  const cap = capabilitiesFor(channel).maxOutboundPerWindow;
+  return cap === null || sent < cap;
 }
 
 /**
@@ -28,7 +28,7 @@ export function cabeOtroMensaje(channel: Channel, enviados: number): boolean {
  * fallido no gastó nada en la plataforma. La comparación de horas se hace en
  * Postgres, que guarda microsegundos.
  */
-export async function salientesDesdeElUltimoEntrante(
+export async function outboundSinceLastInbound(
   organizationId: string,
   conversationId: string
 ): Promise<number> {
@@ -44,7 +44,7 @@ export async function salientesDesdeElUltimoEntrante(
         where e.organization_id = ${organizationId}
           and e.conversation_id = ${conversationId}
           and e.direction = 'in'
-      ), '-infinity'::timestamp)
+      ), '-infinity'::timestamptz)
   `);
   return Number(rows[0]?.n ?? 0);
 }

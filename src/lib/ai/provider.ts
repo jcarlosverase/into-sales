@@ -28,19 +28,19 @@ export type AiProvider = {
   token: string;
 };
 
-export type EstadoIa =
-  | { activa: true; origen: "org" | "env"; last4: string }
-  | { activa: false; motivo: "sin_configurar" }
+export type AiStatus =
+  | { active: true; source: "org" | "env"; last4: string }
+  | { active: false; reason: "sin_configurar" }
   | {
-      activa: false;
-      motivo: "token_invalido" | "sin_saldo";
+      active: false;
+      reason: "token_invalido" | "sin_saldo";
       last4: string;
-      desde: Date | null;
+      since: Date | null;
     };
 
 export type AiResolution =
   | { ok: true; provider: AiProvider }
-  | { ok: false; estado: Exclude<EstadoIa, { activa: true }> };
+  | { ok: false; status: Exclude<AiStatus, { active: true }> };
 
 /**
  * El respaldo del entorno, o `null` sin `OPENROUTER_API_TOKEN`. El modelo
@@ -55,58 +55,58 @@ export type AiResolution =
  */
 export function envAiProvider(): AiProvider | null {
   if (!isAiConfiguredByEnv()) return null;
-  const model = leer("OPENROUTER_MODEL") ?? "";
+  const model = read("OPENROUTER_MODEL") ?? "";
   return {
     source: "env",
-    baseUrl: leer("OPENROUTER_BASE_URL") ?? OPENROUTER_BASE_URL,
+    baseUrl: read("OPENROUTER_BASE_URL") ?? OPENROUTER_BASE_URL,
     model,
-    judgeModel: leer("OPENROUTER_JUDGE_MODEL") ?? model,
-    token: leer("OPENROUTER_API_TOKEN") ?? "",
+    judgeModel: read("OPENROUTER_JUDGE_MODEL") ?? model,
+    token: read("OPENROUTER_API_TOKEN") ?? "",
   };
 }
 
-function leer(nombre: string): string | undefined {
-  const v = process.env[nombre];
+function read(name: string): string | undefined {
+  const v = process.env[name];
   return typeof v === "string" && v.trim() !== "" ? v.trim() : undefined;
 }
 
-type CredEstado = Pick<
+type CredStatus = Pick<
   AiCredentialPublic,
   "status" | "tokenLast4" | "statusChangedAt"
 >;
 
 /** Pura: la fila manda; sin fila, el entorno; sin nada, sin configurar. */
-export function interpretarCredencial(
-  cred: CredEstado | null,
+export function interpretCredential(
+  cred: CredStatus | null,
   env: { last4: string } | null
-): EstadoIa {
+): AiStatus {
   if (cred) {
     if (cred.status === "active") {
-      return { activa: true, origen: "org", last4: cred.tokenLast4 };
+      return { active: true, source: "org", last4: cred.tokenLast4 };
     }
     return {
-      activa: false,
-      motivo:
+      active: false,
+      reason:
         cred.status === "paused_invalid_token" ? "token_invalido" : "sin_saldo",
       last4: cred.tokenLast4,
-      desde: cred.statusChangedAt,
+      since: cred.statusChangedAt,
     };
   }
-  if (env) return { activa: true, origen: "env", last4: env.last4 };
-  return { activa: false, motivo: "sin_configurar" };
+  if (env) return { active: true, source: "env", last4: env.last4 };
+  return { active: false, reason: "sin_configurar" };
 }
 
 /** Pura: la resolución completa, con el token, para el adaptador. */
-export function resolver(
+export function resolve(
   cred: AiCredentialSecret | null,
   env: AiProvider | null
 ): AiResolution {
-  const estado = interpretarCredencial(
+  const status = interpretCredential(
     cred,
     env ? { last4: last4(env.token) } : null
   );
-  if (!estado.activa) return { ok: false, estado };
-  if (estado.origen === "org" && cred) {
+  if (!status.active) return { ok: false, status: status };
+  if (status.source === "org" && cred) {
     return {
       ok: true,
       provider: {
@@ -120,7 +120,7 @@ export function resolver(
     };
   }
   if (env) return { ok: true, provider: env };
-  return { ok: false, estado: { activa: false, motivo: "sin_configurar" } };
+  return { ok: false, status: { active: false, reason: "sin_configurar" } };
 }
 
 /**
@@ -133,26 +133,26 @@ export async function resolveAiProvider(
   const cred = organizationId
     ? await getAiCredentialSecret(organizationId)
     : null;
-  return resolver(cred, envAiProvider());
+  return resolve(cred, envAiProvider());
 }
 
-export async function estadoIaDe(organizationId: string): Promise<EstadoIa> {
+export async function aiStatusOf(organizationId: string): Promise<AiStatus> {
   const cred = await getAiCredentialPublic(organizationId);
   const env = envAiProvider();
-  return interpretarCredencial(cred, env ? { last4: last4(env.token) } : null);
+  return interpretCredential(cred, env ? { last4: last4(env.token) } : null);
 }
 
 /** Atajo para los sitios que solo necesitan el sí/no. */
 export async function isAiConfiguredFor(
   organizationId: string
 ): Promise<boolean> {
-  return (await estadoIaDe(organizationId)).activa;
+  return (await aiStatusOf(organizationId)).active;
 }
 
 /** El mensaje que ve el dueño cuando su agente no puede contestar. */
-export function mensajeDeEstado(estado: EstadoIa): string | null {
-  if (estado.activa) return null;
-  switch (estado.motivo) {
+export function statusMessage(status: AiStatus): string | null {
+  if (status.active) return null;
+  switch (status.reason) {
     case "sin_configurar":
       // «Apagado» no: el interruptor de la pantalla Agente puede decir
       // «Encendido». El problema no es que esté apagado, es que no tiene con

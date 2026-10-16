@@ -9,7 +9,7 @@ guiones E2E en verde. Probada en vivo con la imagen `1.6.0-rc.3` (bitácora).
 
 **Input**: quinta spec de la 1.6.0 (`PLAN-2.0.md`, aprobado por el dueño el
 2026-10-13). Puerto de Vocero Cloud #106 (`fdf3c17`): `DELETE
-/api/conversations/{id}`, `src/server/inbox/eliminar.ts`, el evento
+/api/conversations/{id}`, `src/server/inbox/delete-conversation.ts`, el evento
 `conversation.deleted` y su diálogo. Sin lo que es de cloud: cuotas de
 almacenamiento, cotizaciones, cerebros compartidos y la prueba de activación.
 

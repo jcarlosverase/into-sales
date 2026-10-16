@@ -15,7 +15,7 @@ import { SalesSection } from "./sales-section";
 
 type Block<T> = { data: T | null; loading: boolean; error: string | null };
 
-const inicial = <T,>(): Block<T> => ({ data: null, loading: true, error: null });
+const initial = <T,>(): Block<T> => ({ data: null, loading: true, error: null });
 
 /**
  * Pide un bloque y lo deja en su estado. Mientras llega, CONSERVA lo anterior
@@ -23,7 +23,7 @@ const inicial = <T,>(): Block<T> => ({ data: null, loading: true, error: null })
  * pantalla. Una respuesta que llega tarde, de un rango que ya no es el
  * elegido, se descarta con el `AbortSignal`.
  */
-async function cargar<T>(
+async function load<T>(
   url: string,
   set: (update: (prev: Block<T>) => Block<T>) => void,
   signal: AbortSignal
@@ -73,24 +73,24 @@ export function ResultsClient({
   timezone: string;
 }) {
   const [range, setRange] = useState<Range>(() => defaultRange(today));
-  const [sales, setSales] = useState<Block<SalesBlockDto>>(inicial);
-  const [ads, setAds] = useState<Block<AdsBlockDto>>(inicial);
-  const [bot, setBot] = useState<Block<BotBlockDto>>(inicial);
-  const [hygiene, setHygiene] = useState<Block<HygieneBlockDto>>(inicial);
+  const [sales, setSales] = useState<Block<SalesBlockDto>>(initial);
+  const [ads, setAds] = useState<Block<AdsBlockDto>>(initial);
+  const [bot, setBot] = useState<Block<BotBlockDto>>(initial);
+  const [hygiene, setHygiene] = useState<Block<HygieneBlockDto>>(initial);
 
   useEffect(() => {
     const ctl = new AbortController();
     const q = `from=${range.from}&to=${range.to}`;
-    void cargar(`/api/analytics/sales?${q}`, setSales, ctl.signal);
-    void cargar(`/api/analytics/ads?${q}`, setAds, ctl.signal);
-    void cargar(`/api/analytics/bot?${q}`, setBot, ctl.signal);
+    void load(`/api/analytics/sales?${q}`, setSales, ctl.signal);
+    void load(`/api/analytics/ads?${q}`, setAds, ctl.signal);
+    void load(`/api/analytics/bot?${q}`, setBot, ctl.signal);
     return () => ctl.abort();
   }, [range]);
 
   // La higiene describe el AHORA: no depende del rango elegido.
   useEffect(() => {
     const ctl = new AbortController();
-    void cargar("/api/analytics/hygiene", setHygiene, ctl.signal);
+    void load("/api/analytics/hygiene", setHygiene, ctl.signal);
     return () => ctl.abort();
   }, []);
 

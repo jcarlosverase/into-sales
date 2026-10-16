@@ -6,6 +6,7 @@ import { listBookings, listBookingsInRange } from "@/server/agenda/queries";
 import { getSettings } from "@/server/agenda/settings";
 import { createBlock, createSessionBooking } from "@/server/agenda/service";
 import { bookingErrorResponse, bookingPayload } from "@/server/agenda/http";
+import { canSeeContact, getLeadScope } from "@/server/leads/scope";
 
 export const dynamic = "force-dynamic";
 
@@ -26,7 +27,7 @@ export const GET = withAuth(async (session, req: Request) => {
   const query = parseRangeQuery(url.searchParams.get("from"), url.searchParams.get("to"));
   if (!query.ok) return apiError(422, "invalid_range", query.message);
   if (!query.range) {
-    const bookings = await listBookings(session.organizationId);
+    const bookings = await listBookings(session.organizationId, undefined, getLeadScope(session));
     return Response.json({ bookings });
   }
 
@@ -34,7 +35,8 @@ export const GET = withAuth(async (session, req: Request) => {
   const { bookings, truncated } = await listBookingsInRange(
     session.organizationId,
     query.range,
-    settings
+    settings,
+    getLeadScope(session)
   );
   return Response.json({
     bookings,
@@ -87,6 +89,10 @@ export const POST = withAuth(async (session, req: Request) => {
       return Response.json({ booking: { id: block.id } }, { status: 201 });
     }
 
+    // 022, D11: a rep only books their own contacts; anyone else's is 404.
+    if (!(await canSeeContact(getLeadScope(session), session.organizationId, body.data.contactId))) {
+      return apiError(404, "not_found", "Contacto no encontrado");
+    }
     const result = await createSessionBooking({
       organizationId: session.organizationId,
       contactId: body.data.contactId,

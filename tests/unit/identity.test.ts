@@ -73,6 +73,15 @@ describe("resolveIdentity: sin wa_id (mundo BSUID)", () => {
     expect(r!.identity).toBe(`${BSUID_PREFIX}bsu_456`);
   });
 
+  it("sin from, pero con wa_id junto al user_id en contacts[]: usa ese teléfono", () => {
+    const r = resolveIdentity(msg({ from_user_id: "bsu_789" }), [
+      { wa_id: "51987654321", user_id: "bsu_789", profile: { name: "Cliente" } },
+    ]);
+    expect(r!.identity).toBe("51987654321");
+    expect(r!.phone).toBe("51987654321");
+    expect(r!.waUserId).toBe("bsu_789");
+  });
+
   it("sin from y sin user_id → null (descartar con log, no reventar)", () => {
     expect(resolveIdentity(msg({}), [])).toBeNull();
     expect(resolveIdentity(msg({}), undefined)).toBeNull();

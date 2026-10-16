@@ -23,7 +23,7 @@ export type CalendarReadiness = "ready" | "pending" | "unsupported";
 /** Qué conectores tienen credencial guardada y aceptada. */
 export type CalendarConnections = { google: boolean; zoom: boolean };
 
-const HORA = /^\d{2}:\d{2}$/;
+const HOUR = /^\d{2}:\d{2}$/;
 
 /** ¿Hay al menos un día con un intervalo bien formado y no vacío? */
 export function hasWeeklyHours(weeklyHours: unknown): boolean {
@@ -37,8 +37,8 @@ export function hasWeeklyHours(weeklyHours: unknown): boolean {
         return (
           typeof start === "string" &&
           typeof end === "string" &&
-          HORA.test(start) &&
-          HORA.test(end) &&
+          HOUR.test(start) &&
+          HOUR.test(end) &&
           start < end
         );
       })

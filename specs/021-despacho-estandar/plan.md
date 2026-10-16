@@ -14,7 +14,7 @@ cerebro, generación ni cortacircuitos.
 ## Technical Context
 
 - **Stack**: Next.js 15, TypeScript estricto, Drizzle + PostgreSQL, Vitest,
-  arnés `scripts/e2e-despacho.mjs`.
+  arnés `scripts/e2e-dispatch.mjs`.
 - **Dependencias nuevas**: ninguna (`node:crypto`, `fetch`).
 - **Trabajo en segundo plano**: dentro del proceso, como el resto del repo. Lo
   que lo hace fiable es el outbox: lease que vence y reanudación al arrancar.
@@ -49,7 +49,7 @@ src/server/brains/config.ts           ¿hay despacho? URL + llave, y el problema
 src/server/brains/deliver.ts          armar el evento y el POST firmado
 src/server/dispatch/outbox.ts         encolar, tomar, lease, reintentar, caducar, descartar
 src/server/dispatch/worker.ts         barrido, cita al vencer la ventana, procesar
-src/server/dispatch/estado.ts         lo que la tarjeta enseña del despacho
+src/server/dispatch/status.ts         lo que la tarjeta enseña del despacho
 src/server/ai/trigger.ts              despacho o agente incluido, nunca los dos
 src/instrumentation-node.ts           reanudar pendientes al arrancar
 src/server/bot/status.ts, src/lib/brain-status.ts   la tarjeta
@@ -57,7 +57,7 @@ src/app/api/agent/brain-status/route.ts
 src/components/agent/brain-status-card.tsx, inbox/contact-panel.tsx
 src/server/doctor/checks.ts           aviso de configuración
 tests/unit/despacho-*.test.ts, brain-status.test.ts
-tests/e2e/us-despacho.md, scripts/e2e-despacho.mjs
+tests/e2e/us-despacho.md, scripts/e2e-dispatch.mjs
 .env.example, AGENTS.md, README.md, CHANGELOG.md
 ```
 

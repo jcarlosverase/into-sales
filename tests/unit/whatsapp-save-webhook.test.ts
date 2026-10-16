@@ -40,7 +40,7 @@ vi.mock("@/lib/auth/session", () => ({
 }));
 vi.mock("@/server/channels/enabled", () => ({ isChannelEnabled: () => false }));
 vi.mock("@/server/whatsapp/credentials", () => ({
-  desconectarCanal: disconnect,
+  disconnectChannel: disconnect,
   getCredentialsByOrg: async () => creds.current,
   saveCredentials: save,
   tokenLast4: (t: string) => t.slice(-4),
@@ -58,7 +58,7 @@ vi.mock("@/server/whatsapp/connect", () => ({
 import { DELETE, PUT } from "@/app/api/settings/whatsapp/route";
 import { GET as webhookGet, POST as webhookPost } from "@/app/api/settings/webhook/route";
 
-const URL_FIJA = "https://crm.ejemplo.test/api/webhooks/wa/verify-abc";
+const FIXED_URL = "https://crm.ejemplo.test/api/webhooks/wa/verify-abc";
 
 const put = () =>
   PUT(
@@ -87,7 +87,7 @@ describe("guardar la conexión registra el webhook", () => {
       wabaId: "111",
       phoneNumberId: "222",
       token: "EAAG-token",
-      webhookUrl: URL_FIJA,
+      webhookUrl: FIXED_URL,
       verifyToken: "verify-abc",
     });
     expect(await res.json()).toEqual({
@@ -179,7 +179,7 @@ describe("«Registrar en Meta» con la conexión guardada", () => {
       wabaId: "111",
       phoneNumberId: "222",
       token: "EAAG-guardado",
-      webhookUrl: URL_FIJA,
+      webhookUrl: FIXED_URL,
       verifyToken: "verify-abc",
     });
     expect(await res.json()).toEqual({ ok: true, appWithoutWebhook: true });
@@ -195,9 +195,9 @@ describe("«Registrar en Meta» con la conexión guardada", () => {
       verifiedName: null,
     };
     register.mockResolvedValueOnce({ ok: false, code: "missing_permission", message: "sin permiso" });
-    const rechazo = await webhookPost();
-    expect(rechazo.status).toBe(422);
-    expect((await rechazo.json()).error).toEqual({ code: "missing_permission", message: "sin permiso" });
+    const rejection = await webhookPost();
+    expect(rejection.status).toBe(422);
+    expect((await rejection.json()).error).toEqual({ code: "missing_permission", message: "sin permiso" });
 
     register.mockResolvedValueOnce({ ok: false, code: "meta_unavailable", message: "caída" });
     expect((await webhookPost()).status).toBe(503);
@@ -206,7 +206,7 @@ describe("«Registrar en Meta» con la conexión guardada", () => {
   it("GET sigue enseñando la URL fija y el verify token para el respaldo manual", async () => {
     const res = await webhookGet();
     expect(await res.json()).toMatchObject({
-      url: URL_FIJA,
+      url: FIXED_URL,
       verifyToken: "verify-abc",
       isHttps: true,
       signatureLayer: false,

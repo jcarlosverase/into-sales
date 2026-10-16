@@ -25,7 +25,7 @@ export type ConversationDto = {
   humanWindow: { open: boolean; remainingMs: number } | null;
   preview: string | null;
   /** 018: el anuncio que abrió la conversación, para la marca de la lista. */
-  anuncio: {
+  ad: {
     headline: string | null;
     sourceId: string | null;
     /** `post` si fue una publicación y no un anuncio. */
@@ -34,7 +34,7 @@ export type ConversationDto = {
 };
 
 /** 018 — De qué anuncio llegó un contacto, como lo ve la bandeja. */
-export type AnuncioDto = {
+export type AdDto = {
   sourceId: string | null;
   sourceType: string | null;
   /** Solo https. */
@@ -103,14 +103,14 @@ export type StageDto = {
 };
 
 /** Un dato de la ficha. Escalar a propósito: ver `server/bot/ficha`. */
-export type FichaValue = string | number | boolean;
+export type QualificationValue = string | number | boolean;
 
 /**
  * Ficha de calificación del lead. Claves libres: cada negocio califica
  * distinto, así que las define quien pregunta —el agente o el dueño— y el CRM
  * no las cablea.
  */
-export type FichaDto = Record<string, FichaValue>;
+export type QualificationDto = Record<string, QualificationValue>;
 
 export type ContactDto = {
   id: string;
@@ -126,7 +126,7 @@ export type ContactDto = {
   /** Prioridad del lead asociado; null si nadie la fijó. */
   priority?: PriorityValue | null;
   /** Lo que se sabe del lead. `{}` mientras nadie haya calificado. */
-  ficha?: FichaDto;
+  ficha?: QualificationDto;
 };
 
 /* ============================================================

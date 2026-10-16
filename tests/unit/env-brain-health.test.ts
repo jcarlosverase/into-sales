@@ -25,11 +25,11 @@ afterEach(() => {
 describe("BRAIN_HEALTH_URL no tumba el arranque", () => {
   it.each(["nea:8000/health", "ftp://nea/health", "no es una url"])(
     "%s → getEnv no lanza y la conserva tal cual",
-    async (valor) => {
-      process.env = { ...original, ...BASE, BRAIN_HEALTH_URL: valor };
+    async (value) => {
+      process.env = { ...original, ...BASE, BRAIN_HEALTH_URL: value };
       vi.resetModules();
       const { getEnv } = await import("@/lib/env");
-      expect(getEnv().BRAIN_HEALTH_URL).toBe(valor);
+      expect(getEnv().BRAIN_HEALTH_URL).toBe(value);
     }
   );
 });

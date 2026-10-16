@@ -18,7 +18,7 @@ porque sin esquema y sin bandera no hay nada que encender ni que probar.
       `atribucionEnabled`, `atribucionDisabledResponse` (404 sin cuerpo), con el
       porqué escrito — calco de `server/agenda/flag.ts`.
 - [x] **T005** `src/lib/env.ts`: `ATRIBUCION` opcional, documentada inline. [P]
-- [x] **T006** `tests/unit/atribucion-flag.test.ts`: valores encendidos,
+- [x] **T006** `tests/unit/attribution-flag.test.ts`: valores encendidos,
       apagados y basura. [P]
 
 ## Fase 2 — US1: la bandera (P1)

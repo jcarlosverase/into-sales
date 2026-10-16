@@ -24,18 +24,18 @@ import {
 } from "@/server/whatsapp/connect";
 import { webhookPath, webhookUrl, webhookVerifyToken } from "@/server/whatsapp/webhook-url";
 
-const URL_PROPIA = "https://crm.ejemplo.test/api/webhooks/wa/verify-token-xyz";
+const OWN_URL = "https://crm.ejemplo.test/api/webhooks/wa/verify-token-xyz";
 const opts = {
   wabaId: "111",
   phoneNumberId: "222",
   token: "EAAG-token",
-  webhookUrl: URL_PROPIA,
+  webhookUrl: OWN_URL,
   verifyToken: "verify-token-xyz",
 };
 
 describe("la URL del webhook de esta instancia", () => {
   it("es APP_BASE_URL sin barra final + /api/webhooks/<canal>/<verify token>", () => {
-    expect(webhookUrl()).toBe(URL_PROPIA);
+    expect(webhookUrl()).toBe(OWN_URL);
     expect(webhookUrl("ig")).toBe("https://crm.ejemplo.test/api/webhooks/ig/verify-token-xyz");
     expect(webhookUrl("messenger")).toBe(
       "https://crm.ejemplo.test/api/webhooks/messenger/verify-token-xyz"
@@ -72,15 +72,15 @@ describe("registro automático del webhook en Meta", () => {
     vi.restoreAllMocks();
   });
 
-  const sinOverride = () => respond({ data: [{ whatsapp_business_api_data: { id: "app-1" } }] });
-  const confirmado = (application = "https://app-de-meta.test/webhook") =>
-    respond({ webhook_configuration: { phone_number: URL_PROPIA, application }, id: "222" });
+  const withoutOverride = () => respond({ data: [{ whatsapp_business_api_data: { id: "app-1" } }] });
+  const confirmed = (application = "https://app-de-meta.test/webhook") =>
+    respond({ webhook_configuration: { phone_number: OWN_URL, application }, id: "222" });
 
   it("suscribe la app a la WABA, pone el override en el NÚMERO con el verify token y lo confirma", async () => {
-    sinOverride();
+    withoutOverride();
     respond({ success: true });
     respond({ success: true });
-    confirmado();
+    confirmed();
 
     expect(await registerWebhookForNumber(opts)).toEqual({
       ok: true,
@@ -105,7 +105,7 @@ describe("registro automático del webhook en Meta", () => {
       method: "POST",
       body: {
         webhook_configuration: {
-          override_callback_uri: URL_PROPIA,
+          override_callback_uri: OWN_URL,
           verify_token: "verify-token-xyz",
         },
       },
@@ -119,18 +119,41 @@ describe("registro automático del webhook en Meta", () => {
   });
 
   it("avisa si la app de Meta no tiene webhook propio", async () => {
-    sinOverride();
+    withoutOverride();
     respond({ success: true });
     respond({ success: true });
-    respond({ webhook_configuration: { phone_number: URL_PROPIA }, id: "222" });
+    respond({ webhook_configuration: { phone_number: OWN_URL }, id: "222" });
     expect(await registerWebhookForNumber(opts)).toEqual({
       ok: true,
       appWithoutWebhook: true,
     });
   });
 
+  it("app nueva sin webhook propio: explica el paso manual en vez del error crudo de Meta", async () => {
+    withoutOverride();
+    respond({ success: true });
+    metaError(
+      400,
+      100,
+      "(#100) Before override the current callback uri, your app must be subscribed to receive messages for WhatsApp Business Account"
+    );
+    const res = await registerWebhookForNumber(opts);
+    expect(res).toMatchObject({ ok: false, code: "app_webhook_missing" });
+    expect(!res.ok && res.message).toContain("una vez a mano");
+    expect(!res.ok && res.message).not.toContain("#100");
+  });
+
+  it("otro error 100 de Meta sigue llegando tal cual", async () => {
+    withoutOverride();
+    respond({ success: true });
+    metaError(400, 100, "(#100) Invalid parameter");
+    const res = await registerWebhookForNumber(opts);
+    expect(res).toMatchObject({ ok: false, code: "meta_error" });
+    expect(!res.ok && res.message).toContain("Invalid parameter");
+  });
+
   it("sin permiso de gestión: lo dice y no sigue con el override", async () => {
-    sinOverride();
+    withoutOverride();
     metaError(403, 200, "(#200) Permissions error");
     const res = await registerWebhookForNumber(opts);
     expect(res).toMatchObject({ ok: false, code: "missing_permission" });
@@ -139,7 +162,7 @@ describe("registro automático del webhook en Meta", () => {
   });
 
   it("si Meta no puede verificar la URL (2200), devuelve su motivo", async () => {
-    sinOverride();
+    withoutOverride();
     respond({ success: true });
     metaError(400, 2200, "(#2200) Callback verification failed");
     const res = await registerWebhookForNumber(opts);
@@ -149,7 +172,7 @@ describe("registro automático del webhook en Meta", () => {
   });
 
   it("no da por bueno un override que Meta no confirma", async () => {
-    sinOverride();
+    withoutOverride();
     respond({ success: true });
     respond({ success: true });
     respond({ webhook_configuration: { application: "https://app.test/w" }, id: "222" });
@@ -176,16 +199,16 @@ describe("registro automático del webhook en Meta", () => {
   });
 
   describe("al desconectar", () => {
-    const quitar = {
+    const remove = {
       phoneNumberId: "222",
       token: "EAAG-token",
       webhookPath: "/api/webhooks/wa/verify-token-xyz",
     };
 
     it("quita el override del número si es el de esta instancia (aunque cambió el dominio)", async () => {
-      respond({ webhook_configuration: { phone_number: URL_PROPIA.replace("crm.", "viejo.") } });
+      respond({ webhook_configuration: { phone_number: OWN_URL.replace("crm.", "viejo.") } });
       respond({ success: true });
-      await unregisterWebhookForNumber(quitar);
+      await unregisterWebhookForNumber(remove);
       expect(call(1)).toMatchObject({
         url: "https://graph.facebook.com/v25.0/222",
         method: "POST",
@@ -195,19 +218,19 @@ describe("registro automático del webhook en Meta", () => {
 
     it("no toca un override ajeno", async () => {
       respond({ webhook_configuration: { phone_number: "https://otra-plataforma.test/webhook" } });
-      await unregisterWebhookForNumber(quitar);
+      await unregisterWebhookForNumber(remove);
       expect(fetchMock).toHaveBeenCalledTimes(1);
     });
 
     it("sin override en el número, no hay nada que quitar", async () => {
       respond({ webhook_configuration: { application: "https://app.test/w" } });
-      await unregisterWebhookForNumber(quitar);
+      await unregisterWebhookForNumber(remove);
       expect(fetchMock).toHaveBeenCalledTimes(1);
     });
 
     it("no falla si Meta no contesta: desconectar sigue", async () => {
       fetchMock.mockRejectedValueOnce(new TypeError("fetch failed"));
-      await expect(unregisterWebhookForNumber(quitar)).resolves.toBeUndefined();
+      await expect(unregisterWebhookForNumber(remove)).resolves.toBeUndefined();
     });
   });
 });

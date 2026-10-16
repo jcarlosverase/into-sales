@@ -3,9 +3,9 @@ import { chatCompletionsUrl } from "@/lib/ai/presets";
 import {
   resolveAiProvider,
   type AiProvider,
-  type EstadoIa,
+  type AiStatus,
 } from "@/lib/ai/provider";
-import { marcarEstadoPorRespuesta } from "@/server/ai/credentials";
+import { markStatusFromResponse } from "@/server/ai/credentials";
 
 /**
  * Adaptador LLM OpenRouter-compatible — ÚNICA frontera con el proveedor de IA
@@ -59,7 +59,7 @@ export async function chatJson<T>(
     return {
       ok: false,
       error: "not_configured",
-      detail: detalleNoConfigurado(resolved.estado),
+      detail: notConfiguredDetail(resolved.status),
     };
   }
   const provider = resolved.provider;
@@ -123,12 +123,12 @@ export async function chatJson<T>(
         provider.source === "org" &&
         opts?.organizationId
       ) {
-        const pausada = await marcarEstadoPorRespuesta(
+        const paused = await markStatusFromResponse(
           opts.organizationId,
           err.status,
           lastDetail
         ).catch(() => false);
-        if (pausada) break;
+        if (paused) break;
       }
       if (attempt < MAX_ATTEMPTS) {
         await sleep(RETRY_DELAY_MS * attempt);
@@ -145,14 +145,14 @@ export async function chatJson<T>(
   };
 }
 
-function detalleNoConfigurado(estado: Exclude<EstadoIa, { activa: true }>): string {
-  switch (estado.motivo) {
+function notConfiguredDetail(statusValue: Exclude<AiStatus, { active: true }>): string {
+  switch (statusValue.reason) {
     case "sin_configurar":
       return "Sin proveedor de IA: configúralo en Ajustes → IA (u OPENROUTER_API_TOKEN en el entorno)";
     case "token_invalido":
-      return `La llave de IA (…${estado.last4}) está pausada: el proveedor la rechazó`;
+      return `La llave de IA (…${statusValue.last4}) está pausada: el proveedor la rechazó`;
     case "sin_saldo":
-      return `La llave de IA (…${estado.last4}) está pausada: la cuenta no tiene saldo`;
+      return `La llave de IA (…${statusValue.last4}) está pausada: la cuenta no tiene saldo`;
   }
 }
 

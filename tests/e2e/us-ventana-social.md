@@ -1,6 +1,6 @@
 # E2E — Texto del agente en redes y ventana humana (024)
 
-Arnés: `scripts/e2e-ventana-social.mjs`. Spec:
+Arnés: `scripts/e2e-social-window.mjs`. Spec:
 [`specs/024-texto-social-ventana-humana/spec.md`](../../specs/024-texto-social-ventana-humana/spec.md).
 
 Precondición: app corriendo (`next dev`) sobre una base migrada, **sin**
@@ -16,7 +16,7 @@ de **persona** (la bandeja), y lee lo que salió hacia cada plataforma
 (`/api/dev/zernio-mock/_sent`, `/api/dev/wa-mock/outbox`).
 
 ```bash
-node --env-file=.env scripts/e2e-ventana-social.mjs
+node --env-file=.env scripts/e2e-social-window.mjs
 ```
 
 ## D1 — El texto de la IA sale plano en redes

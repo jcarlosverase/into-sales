@@ -33,7 +33,7 @@ const context = await browser.newContext({
   viewport: VIEWPORT,
   deviceScaleFactor: 1,
   locale: "es-MX",
-  timezoneId: "America/Mexico_City",
+  timezoneId: "America/Lima",
   colorScheme: "light",
   reducedMotion: "reduce",
 });
@@ -104,7 +104,7 @@ async function shoot(path, file, ready) {
 
 await shoot("/inbox", "bandeja.png", async () => {
   await page.getByRole("button", { name: /María Fernanda/ }).first().click();
-  await page.getByText("¿Tienen taladros inalámbricos?").waitFor();
+  await page.getByText("Hola, vi su anuncio del ciclo de verano", { exact: false }).first().waitFor();
   await page.getByText("Etapa del pipeline").waitFor();
 });
 

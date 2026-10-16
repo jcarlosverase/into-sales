@@ -37,9 +37,9 @@ export function notLabContact(contactIdColumn: PgColumn): SQL {
 }
 
 /**
- * Fecha local del negocio para agrupar series. Las columnas son `timestamp`
- * sin zona y guardan UTC: el primer `AT TIME ZONE` las interpreta como UTC y
- * el segundo las lleva a la hora del negocio.
+ * Fecha local del negocio para agrupar series. Las columnas son `timestamptz`
+ * (1002): `AT TIME ZONE` las lleva directo a la hora de pared del negocio,
+ * sin depender de la zona de la sesión.
  */
 export function localDateExpr(
   column: PgColumn,
@@ -47,7 +47,7 @@ export function localDateExpr(
   byMonth: boolean
 ): SQL<string> {
   const format = byMonth ? "YYYY-MM" : "YYYY-MM-DD";
-  return sql<string>`to_char((${column} at time zone 'UTC' at time zone ${timezone}), ${format})`;
+  return sql<string>`to_char((${column} at time zone ${timezone}), ${format})`;
 }
 
 /**

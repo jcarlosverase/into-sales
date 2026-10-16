@@ -29,7 +29,7 @@
 
 ## Bitácora de etapas
 
-Automatizado en `scripts/e2e-bitacora-etapas.mjs`. El tablero dice dónde está
+Automatizado en `scripts/e2e-stage-history.mjs`. El tablero dice dónde está
 cada lead HOY; la bitácora es lo que permite preguntar qué pasó antes.
 
 8. **Nace con su evento**: provocar un entrante de un número nuevo.
@@ -51,7 +51,7 @@ cada lead HOY; la bitácora es lo que permite preguntar qué pasó antes.
 
 ## Alta manual de prospectos
 
-Automatizado en `scripts/e2e-alta-manual.mjs`. El embudo ya no depende de que
+Automatizado en `scripts/e2e-manual-contact.mjs`. El embudo ya no depende de que
 la gente llegue por WhatsApp.
 
 12. **"Nuevo contacto"** en Contactos: nombre, teléfono, fuente y etapa inicial.
@@ -73,7 +73,7 @@ la gente llegue por WhatsApp.
 
 ## Monto de la negociación
 
-Automatizado en `scripts/e2e-monto-pipeline.mjs`. El tablero cuenta personas;
+Automatizado en `scripts/e2e-pipeline-amount.mjs`. El tablero cuenta personas;
 esto le agrega cuánto dinero hay en cada columna.
 
 16. **Capturar el monto** desde la tarjeta ("+ monto").
@@ -93,7 +93,7 @@ esto le agrega cuánto dinero hay en cada columna.
 
 ## Prioridad
 
-Automatizado en `scripts/e2e-prioridad.mjs`. A quién llamar primero.
+Automatizado en `scripts/e2e-priority.mjs`. A quién llamar primero.
 
 19. **La fija el dueño** desde la tarjeta (Alta / Media / Baja).
     ✅ Un lead nuevo nace **sin** prioridad — no con una "media" inventada.

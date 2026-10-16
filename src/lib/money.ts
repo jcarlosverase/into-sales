@@ -77,7 +77,7 @@ export function isCurrency(v: unknown): v is Currency {
  * inventa tipos de cambio miente. Lo que queda fuera se CUENTA aparte para
  * poder decirlo en pantalla, en vez de desaparecerlo.
  */
-export function sumable(
+export function summable(
   amount: { amountCents: number | null; currency: string | null },
   businessCurrency: string
 ): boolean {
@@ -112,22 +112,22 @@ export function formatMoneyCents(
  * después se lea como "no vale nada".
  */
 export function parseMoneyToCents(input: string): number | null {
-  const limpio = input.replace(/[^\d.,-]/g, "").trim();
-  if (!limpio) return null;
+  const clean = input.replace(/[^\d.,-]/g, "").trim();
+  if (!clean) return null;
   // El último separador manda como decimal; el resto son de millares.
-  const ultimoPunto = limpio.lastIndexOf(".");
-  const ultimaComa = limpio.lastIndexOf(",");
-  const corte = Math.max(ultimoPunto, ultimaComa);
-  let entero = limpio;
+  const lastDot = clean.lastIndexOf(".");
+  const lastComma = clean.lastIndexOf(",");
+  const cutoff = Math.max(lastDot, lastComma);
+  let whole = clean;
   let decimales = "";
-  if (corte !== -1 && limpio.length - corte <= 3) {
-    entero = limpio.slice(0, corte);
-    decimales = limpio.slice(corte + 1);
+  if (cutoff !== -1 && clean.length - cutoff <= 3) {
+    whole = clean.slice(0, cutoff);
+    decimales = clean.slice(cutoff + 1);
   }
-  const soloDigitos = entero.replace(/[^\d-]/g, "");
-  if (!soloDigitos || soloDigitos === "-") return null;
+  const onlyDigits = whole.replace(/[^\d-]/g, "");
+  if (!onlyDigits || onlyDigits === "-") return null;
   const cents =
-    Number(soloDigitos) * 100 + Number((decimales + "00").slice(0, 2)) *
-      (soloDigitos.startsWith("-") ? -1 : 1);
+    Number(onlyDigits) * 100 + Number((decimales + "00").slice(0, 2)) *
+      (onlyDigits.startsWith("-") ? -1 : 1);
   return Number.isFinite(cents) ? Math.trunc(cents) : null;
 }

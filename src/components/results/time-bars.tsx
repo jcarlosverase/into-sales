@@ -35,12 +35,12 @@ export function TimeBars({
   unit: string;
   emptyText?: string;
 }) {
-  const [activo, setActivo] = useState<number | null>(null);
+  const [isActive, setActive] = useState<number | null>(null);
   const max = Math.max(0, ...points.map((p) => p.value));
-  const tope = escalaLimpia(max);
+  const cap = cleanScale(max);
   const n = points.length;
   const total = points.reduce((a, p) => a + p.value, 0);
-  const cada = Math.max(1, Math.ceil(n / 6));
+  const each = Math.max(1, Math.ceil(n / 6));
 
   return (
     <figure className="min-w-0">
@@ -59,13 +59,13 @@ export function TimeBars({
         <>
           <div
             className="relative mt-3 h-36"
-            onPointerLeave={() => setActivo(null)}
+            onPointerLeave={() => setActive(null)}
             aria-hidden
           >
             {/* Una sola referencia de escala, recesiva: el tope, y la base. */}
             <div className="absolute inset-x-0 top-0 border-t border-border" />
             <span className="absolute right-0 top-0 -translate-y-full pb-0.5 text-[10px] leading-none text-text-3">
-              {format(tope)}
+              {format(cap)}
             </span>
             <div className="absolute inset-x-0 bottom-0 border-t border-border-strong" />
 
@@ -74,28 +74,28 @@ export function TimeBars({
                 <div
                   key={p.bucket}
                   className="flex h-full min-w-0 flex-1 items-end justify-center"
-                  onPointerEnter={() => setActivo(i)}
-                  onPointerDown={() => setActivo(i)}
+                  onPointerEnter={() => setActive(i)}
+                  onPointerDown={() => setActive(i)}
                 >
                   {p.value > 0 && (
                     <div
                       className={cn(
                         "w-[70%] max-w-[24px] rounded-t-[4px] bg-brand transition-opacity",
-                        activo !== null && activo !== i && "opacity-45"
+                        isActive !== null && isActive !== i && "opacity-45"
                       )}
-                      style={{ height: `${Math.max(2, (p.value / tope) * 100)}%` }}
+                      style={{ height: `${Math.max(2, (p.value / cap) * 100)}%` }}
                     />
                   )}
                 </div>
               ))}
             </div>
 
-            {activo !== null && points[activo] && (
+            {isActive !== null && points[isActive] && (
               <Tooltip
-                point={points[activo]}
-                index={activo}
+                point={points[isActive]}
+                index={isActive}
                 n={n}
-                bottomPct={(points[activo].value / tope) * 100}
+                bottomPct={(points[isActive].value / cap) * 100}
                 format={format}
               />
             )}
@@ -103,13 +103,13 @@ export function TimeBars({
 
           <div className="relative mt-1 h-4 text-[11px] text-text-3" aria-hidden>
             {points.map((p, i) =>
-              i % cada === 0 ? (
+              i % each === 0 ? (
                 <span
                   key={p.bucket}
                   className="absolute top-0 whitespace-nowrap"
-                  style={anclaje(i, n)}
+                  style={anchor(i, n)}
                 >
-                  {etiqueta(p.bucket)}
+                  {label(p.bucket)}
                 </span>
               ) : null
             )}
@@ -126,7 +126,7 @@ export function TimeBars({
             <tbody>
               {points.map((p) => (
                 <tr key={p.bucket}>
-                  <td>{etiqueta(p.bucket)}</td>
+                  <td>{label(p.bucket)}</td>
                   <td>
                     {format(p.value)}
                     {p.detail ? ` · ${p.detail}` : ""}
@@ -157,11 +157,11 @@ function Tooltip({
   return (
     <div
       className="pointer-events-none absolute z-10 whitespace-nowrap rounded-md border border-border-strong bg-popover px-2 py-1 text-xs shadow-md"
-      style={{ ...anclaje(index, n), bottom: `calc(${Math.min(bottomPct, 100)}% + 6px)` }}
+      style={{ ...anchor(index, n), bottom: `calc(${Math.min(bottomPct, 100)}% + 6px)` }}
     >
       <strong className="font-semibold text-foreground">{format(point.value)}</strong>
       {point.detail && <span className="text-text-2"> · {point.detail}</span>}
-      <span className="text-text-3"> · {etiqueta(point.bucket)}</span>
+      <span className="text-text-3"> · {label(point.bucket)}</span>
     </div>
   );
 }
@@ -171,32 +171,32 @@ function Tooltip({
  * orillas, donde se recarga hacia adentro para no salirse de la tarjeta (y no
  * ensanchar la página en un teléfono).
  */
-function anclaje(i: number, n: number): React.CSSProperties {
-  const centro = ((i + 0.5) / n) * 100;
-  if (centro < 15) return { left: `${(i / n) * 100}%` };
-  if (centro > 85) return { right: `${((n - i - 1) / n) * 100}%` };
-  return { left: `${centro}%`, transform: "translateX(-50%)" };
+function anchor(i: number, n: number): React.CSSProperties {
+  const center = ((i + 0.5) / n) * 100;
+  if (center < 15) return { left: `${(i / n) * 100}%` };
+  if (center > 85) return { right: `${((n - i - 1) / n) * 100}%` };
+  return { left: `${center}%`, transform: "translateX(-50%)" };
 }
 
 /**
  * El tope de la escala, redondeado a un número limpio (1, 2, 5 × 10ⁿ) que
  * cubre el máximo: una referencia de "37" no se lee; una de "40", sí.
  */
-export function escalaLimpia(max: number): number {
+export function cleanScale(max: number): number {
   if (max <= 0) return 1;
-  const potencia = 10 ** Math.floor(Math.log10(max));
-  for (const paso of [1, 2, 2.5, 5, 10]) {
-    if (paso * potencia >= max) return paso * potencia;
+  const power = 10 ** Math.floor(Math.log10(max));
+  for (const step of [1, 2, 2.5, 5, 10]) {
+    if (step * power >= max) return step * power;
   }
-  return 10 * potencia;
+  return 10 * power;
 }
 
-const MESES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
+const MONTHS = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
 
 /** `2026-08-13` → `13 ago` · `2026-08` → `ago 26`. */
-export function etiqueta(bucket: string): string {
+export function label(bucket: string): string {
   const partes = bucket.split("-");
-  const mes = MESES[Number(partes[1]) - 1] ?? "";
-  if (partes.length === 2) return `${mes} ${partes[0]!.slice(2)}`;
-  return `${Number(partes[2])} ${mes}`;
+  const month = MONTHS[Number(partes[1]) - 1] ?? "";
+  if (partes.length === 2) return `${month} ${partes[0]!.slice(2)}`;
+  return `${Number(partes[2])} ${month}`;
 }

@@ -49,16 +49,16 @@ export const POST = withAuth(async (session) => {
     );
   }
 
-  const resultado = await registerWebhookForNumber({
+  const result = await registerWebhookForNumber({
     wabaId: creds.wabaId,
     phoneNumberId: creds.phoneNumberId,
     token: creds.token,
     webhookUrl: webhookUrl("wa"),
     verifyToken: webhookVerifyToken(),
   });
-  if (!resultado.ok) {
-    const status = resultado.code === "meta_unavailable" ? 503 : 422;
-    return apiError(status, resultado.code, resultado.message);
+  if (!result.ok) {
+    const status = result.code === "meta_unavailable" ? 503 : 422;
+    return apiError(status, result.code, result.message);
   }
-  return Response.json(resultado);
+  return Response.json(result);
 });

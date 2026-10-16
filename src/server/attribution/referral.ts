@@ -12,7 +12,7 @@ import type { WebhookReferral } from "@/server/inbox/webhook";
  * esta, con la misma salida.
  */
 
-export type AnuncioDeOrigen = {
+export type OriginAd = {
   sourceId: string | null;
   sourceType: string | null;
   sourceUrl: string | null;
@@ -31,17 +31,17 @@ export type AnuncioDeOrigen = {
  * un webhook traiga un titular de un megabyte, y no tiene por qué acabar en la
  * base.
  */
-export const COTAS = {
+export const BOUNDS = {
   id: 128,
-  titular: 300,
-  texto: 2000,
+  headline: 300,
+  text: 2000,
   url: 2048,
   /** Tamaño máximo del `raw` serializado. */
   raw: 8_000,
 } as const;
 
 /** Claves de primer nivel que se conservan en `raw`. */
-const CLAVES_WHATSAPP = [
+const KEYS_WHATSAPP = [
   "source_url",
   "source_id",
   "source_type",
@@ -54,16 +54,16 @@ const CLAVES_WHATSAPP = [
   "ctwa_clid",
 ] as const;
 
-function esObjeto(v: unknown): v is Record<string, unknown> {
+function isObject(v: unknown): v is Record<string, unknown> {
   return typeof v === "object" && v !== null && !Array.isArray(v);
 }
 
 /** Texto útil recortado, o null. Cualquier cosa que no sea texto no cuenta. */
-function texto(v: unknown, max: number): string | null {
+function text(v: unknown, max: number): string | null {
   if (typeof v !== "string") return null;
-  const limpio = v.trim();
-  if (!limpio) return null;
-  return limpio.length > max ? limpio.slice(0, max) : limpio;
+  const clean = v.trim();
+  if (!clean) return null;
+  return clean.length > max ? clean.slice(0, max) : clean;
 }
 
 /**
@@ -72,7 +72,7 @@ function texto(v: unknown, max: number): string | null {
  * vuelven a filtrar (https y hosts de Meta).
  */
 function url(v: unknown): string | null {
-  const t = texto(v, COTAS.url);
+  const t = text(v, BOUNDS.url);
   if (!t) return null;
   try {
     const u = new URL(t);
@@ -82,13 +82,13 @@ function url(v: unknown): string | null {
   }
 }
 
-function recortarCampos(
-  origen: Record<string, unknown>,
-  claves: readonly string[]
+function trimFields(
+  origin: Record<string, unknown>,
+  keys: readonly string[]
 ): Record<string, string> {
   const out: Record<string, string> = {};
-  for (const k of claves) {
-    const v = texto(origen[k], k.endsWith("_url") ? COTAS.url : COTAS.texto);
+  for (const k of keys) {
+    const v = text(origin[k], k.endsWith("_url") ? BOUNDS.url : BOUNDS.text);
     if (v) out[k] = v;
   }
   return out;
@@ -99,34 +99,34 @@ function recortarCampos(
  * anuncio. Con cotas por campo no debería pasar, pero la cota total es la que
  * se promete.
  */
-function acotarRaw(raw: Record<string, unknown>, esencial: Record<string, unknown>) {
-  return JSON.stringify(raw).length <= COTAS.raw ? raw : esencial;
+function clampRaw(raw: Record<string, unknown>, essential: Record<string, unknown>) {
+  return JSON.stringify(raw).length <= BOUNDS.raw ? raw : essential;
 }
 
 /** WhatsApp Cloud API: `messages[].referral`. */
-export function anuncioDeWhatsapp(referral: unknown): AnuncioDeOrigen | null {
-  if (!esObjeto(referral)) return null;
+export function whatsappAd(referral: unknown): OriginAd | null {
+  if (!isObject(referral)) return null;
   const r = referral as WebhookReferral & Record<string, unknown>;
 
-  const sourceId = texto(r.source_id, COTAS.id);
-  const ctwaClid = texto(r.ctwa_clid, COTAS.texto);
-  const headline = texto(r.headline, COTAS.titular);
+  const sourceId = text(r.source_id, BOUNDS.id);
+  const ctwaClid = text(r.ctwa_clid, BOUNDS.text);
+  const headline = text(r.headline, BOUNDS.headline);
   const sourceUrl = url(r.source_url);
   // Sin nada que identifique el anuncio no hay nada que enseñar.
   if (!sourceId && !ctwaClid && !headline && !sourceUrl) return null;
 
-  const raw = recortarCampos(r, CLAVES_WHATSAPP);
+  const raw = trimFields(r, KEYS_WHATSAPP);
   return {
     sourceId,
-    sourceType: texto(r.source_type, COTAS.id),
+    sourceType: text(r.source_type, BOUNDS.id),
     sourceUrl,
     headline,
-    body: texto(r.body, COTAS.texto),
-    mediaType: texto(r.media_type, COTAS.id),
+    body: text(r.body, BOUNDS.text),
+    mediaType: text(r.media_type, BOUNDS.id),
     ctwaClid,
     // La miniatura pesa menos; `image_url` es el creativo completo.
     imageUrl: url(r.thumbnail_url) ?? url(r.image_url),
-    raw: acotarRaw(raw, { source_id: sourceId, headline }),
+    raw: clampRaw(raw, { source_id: sourceId, headline }),
   };
 }
 
@@ -135,8 +135,8 @@ export function anuncioDeWhatsapp(referral: unknown): AnuncioDeOrigen | null {
  * identificador de clic: ni en la columna ni dentro del `raw`. Una instancia que
  * no atribuye no acumula identificadores de Meta "por si acaso" (016).
  */
-export function sinIdentificadorDeClic(anuncio: AnuncioDeOrigen): AnuncioDeOrigen {
-  const raw = { ...anuncio.raw };
+export function withoutClickIdentifier(ad: OriginAd): OriginAd {
+  const raw = { ...ad.raw };
   delete raw.ctwa_clid;
-  return { ...anuncio, ctwaClid: null, raw };
+  return { ...ad, ctwaClid: null, raw };
 }

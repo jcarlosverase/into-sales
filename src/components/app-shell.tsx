@@ -28,7 +28,7 @@ export function AppShell({
   theme,
   commit,
   agenda = false,
-  aviso = null,
+  notice: notice = null,
   children,
 }: {
   branding: Branding;
@@ -47,7 +47,7 @@ export function AppShell({
    * no está mirando Ajustes, está mirando su bandeja y preguntándose por qué
    * no responde nadie.
    */
-  aviso?: React.ReactNode;
+  notice?: React.ReactNode;
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
@@ -105,7 +105,7 @@ export function AppShell({
           <BrandLogo branding={branding} className="min-w-0" />
         </header>
 
-        {aviso}
+        {notice}
 
         <main className="min-h-0 min-w-0 flex-1 overflow-hidden">{children}</main>
       </div>

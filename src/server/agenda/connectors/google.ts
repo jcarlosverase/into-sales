@@ -52,7 +52,7 @@ const POLL_DELAY_MS = 400;
  * Va como hash y no en claro porque esta clave vive en memoria del proceso y
  * no hay motivo para tener un refresh token dando vueltas en ella.
  */
-function claveDeToken(creds: GoogleCreds): string {
+function tokenKey(creds: GoogleCreds): string {
   // `JSON.stringify` del array y no un separador a mano: los valores son
   // opacos y una concatenación cruda podría colisionar entre credenciales
   // distintas. Aquí la ambigüedad la resuelve el propio formato.
@@ -69,7 +69,7 @@ function claveDeToken(creds: GoogleCreds): string {
 }
 
 async function getAccessToken(creds: GoogleCreds): Promise<string> {
-  const key = claveDeToken(creds);
+  const key = tokenKey(creds);
   const cached = getCachedGoogleToken(key);
   if (cached) return cached;
 
@@ -261,13 +261,13 @@ export const googleConnector: AgendaConnector<GoogleCreds> = {
        * Listar un evento sí entra en `calendar.events`, así que el scope
        * documentado sigue siendo el mínimo — que es la razón de pedirlo.
        */
-      const lista = (await googleFetch(
+      const list = (await googleFetch(
         creds,
         eventsPath(creds, "?maxResults=1")
       )) as { summary?: string } | null;
       // `summary` del listado es el nombre del calendario: el mismo dato que
       // se enseñaba antes, por una vía que el scope permite.
-      return { ok: true, detail: lista?.summary };
+      return { ok: true, detail: list?.summary };
     } catch (err) {
       return {
         ok: false,

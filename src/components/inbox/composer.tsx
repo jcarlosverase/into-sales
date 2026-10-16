@@ -222,7 +222,7 @@ export function Composer({
   // persona todavía puede contestar (hasta 7 días, sigue abajo con su aviso);
   // pasado ese plazo no hay nada que ofrecer salvo esperar al cliente.
   const human = conversation.humanWindow;
-  const canal = CHANNEL_LABEL[conversation.channel];
+  const channel = CHANNEL_LABEL[conversation.channel];
   if (!conversation.windowOpen && human && !human.open) {
     return (
       <div className="border-t bg-background px-[18px] py-3.5">
@@ -232,9 +232,9 @@ export function Composer({
         >
           <Clock3 className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={1.7} />
           <div>
-            <p className="font-medium">La ventana de atención de {canal} está cerrada.</p>
+            <p className="font-medium">La ventana de atención de {channel} está cerrada.</p>
             <p className="opacity-80">
-              {canal} deja contestar hasta 7 días después del último mensaje
+              {channel} deja contestar hasta 7 días después del último mensaje
               del cliente, y no tiene plantillas para reabrir la conversación.
               Podrás escribirle cuando vuelva a mandar un mensaje.
             </p>
@@ -277,7 +277,7 @@ export function Composer({
           <Clock3 className="mt-0.5 h-3.5 w-3.5 shrink-0" strokeWidth={1.7} />
           <p>
             <span className="font-semibold">Solo puede contestar una persona.</span>{" "}
-            Pasaron más de 24 horas desde el último mensaje del cliente: {canal}{" "}
+            Pasaron más de 24 horas desde el último mensaje del cliente: {channel}{" "}
             te deja responder a ti hasta 7 días, al agente ya no.
           </p>
         </div>

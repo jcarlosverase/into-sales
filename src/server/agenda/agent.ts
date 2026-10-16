@@ -65,9 +65,9 @@ export async function offerSlots(input: {
   );
 
   const shown = spread.slice(0, SHOWN);
-  const lista = shown.map((s) => `• ${s.dayLabel} a las ${s.time}`).join("\n");
+  const list = shown.map((s) => `• ${s.dayLabel} a las ${s.time}`).join("\n");
   const intro = input.intro?.trim() || "Tengo estos horarios disponibles:";
-  return { ok: true, text: `${intro}\n${lista}` };
+  return { ok: true, text: `${intro}\n${list}` };
 }
 
 export async function bookSlot(input: {
@@ -104,15 +104,15 @@ export async function bookSlot(input: {
     // Se ocupó o el modelo inventó la hora: en ambos casos se re-ofrece con
     // datos reales en vez de discutir con el cliente.
     if (err.slots.length > 0) {
-      const lista = err.slots
+      const list = err.slots
         .slice(0, SHOWN)
         .map((s) => `• ${s.label}`)
         .join("\n");
-      const disculpa =
+      const apology =
         err.code === "slot_taken"
           ? "Se me acaba de ocupar ese horario, ¡perdón!"
           : "Déjame confirmarte los horarios que tengo:";
-      return { ok: false, text: `${disculpa}\n${lista}` };
+      return { ok: false, text: `${apology}\n${list}` };
     }
     return {
       ok: false,

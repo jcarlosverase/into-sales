@@ -72,9 +72,9 @@ describe("computeScore (FR-033: judge_failed excluido del denominador)", () => {
   });
 
   it("6 verdes → 100; 6 rojos → 0", () => {
-    const verdes = Array(6).fill({ status: "done", veredicto: "verde" });
-    const rojos = Array(6).fill({ status: "done", veredicto: "rojo" });
-    expect(computeScore(verdes)).toBe(100);
-    expect(computeScore(rojos)).toBe(0);
+    const greenOnes = Array(6).fill({ status: "done", veredicto: "verde" });
+    const red = Array(6).fill({ status: "done", veredicto: "rojo" });
+    expect(computeScore(greenOnes)).toBe(100);
+    expect(computeScore(red)).toBe(0);
   });
 });

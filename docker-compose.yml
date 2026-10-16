@@ -21,7 +21,7 @@
 # ============================================================
 services:
   app:
-    image: ghcr.io/kevinrivm/vocero-crm:${VOCERO_CRM_VERSION:-1.5.1}
+    image: ghcr.io/jcarlosverase/into-sales:${VOCERO_CRM_VERSION:-1.5.0}
     build: .
     restart: unless-stopped
     environment:
@@ -44,6 +44,8 @@ services:
       ATRIBUCION: ${ATRIBUCION:-}
       BOT_API_KEY: ${BOT_API_KEY:-}
       BRAIN_HEALTH_URL: ${BRAIN_HEALTH_URL:-}
+      # Latido al servicio central de into (spec 028); vacía = apagado.
+      INTO_CENTRAL_URL: ${INTO_CENTRAL_URL:-}
     volumes:
       # Adjuntos, logo e icono (la imagen ya trae MEDIA_DIR=/data/media): sin
       # este volumen se pierden al recrear el contenedor.
@@ -60,6 +62,10 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: vocero
+      # Hora de Lima (UTC-5) para el servidor y quien abra la base; las fechas son
+      # timestamptz y guardan el instante, así que esto solo cambia cómo se ven.
+      TZ: America/Lima
+      PGTZ: America/Lima
     volumes:
       - vocero_pg:/var/lib/postgresql/data
     healthcheck:

@@ -3,7 +3,7 @@ import animate from "tailwindcss-animate";
 
 /**
  * Los nombres semánticos existentes (background, primary, muted…) se remapean
- * a los tokens del sistema de diseño de Vocero (la marca de vocerocrm.com) para
+ * a los tokens del sistema de diseño de IntoSales (marca into) para
  * que toda la app comparta el tema activo (claro u oscuro, ver globals.css);
  * la escala `brand-*` expone el acento white-label y las escalas de estado
  * exponen la tríada tint/soft/text.
@@ -123,7 +123,7 @@ const config: Config = {
       // Las tres voces de la marca (ver src/app/layout.tsx, donde next/font
       // las descarga en build y las sirve self-hosted, sin CDN en runtime).
       fontFamily: {
-        sans: ["var(--font-sans)", "Archivo", "system-ui", "-apple-system", "Segoe UI", "sans-serif"],
+        sans: ["var(--font-sans)", "Barlow", "system-ui", "-apple-system", "Segoe UI", "sans-serif"],
         serif: ["var(--font-serif)", "Instrument Serif", "Georgia", "serif"],
         mono: ["var(--font-mono)", "IBM Plex Mono", "ui-monospace", "Cascadia Code", "monospace"],
       },

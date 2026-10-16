@@ -1,5 +1,6 @@
 import { readMediaFile } from "@/server/whatsapp/media";
 import { getBrandingContext } from "@/server/branding";
+import { BRAND_LOGO_SRC, isBrandName } from "@/lib/brand";
 import { DEFAULT_BRANDING } from "@/lib/branding";
 import { FAVICON_ASSET, generatedFaviconSvg } from "@/lib/favicon";
 
@@ -13,7 +14,7 @@ export const dynamic = "force-dynamic";
  * impide que el navegador reinterprete el tipo. Cuesta dos cabeceras y quita
  * de la mesa toda esa clase de problema.
  */
-function cabeceras(mime: string, cacheable: boolean): HeadersInit {
+function headers(mime: string, cacheable: boolean): HeadersInit {
   return {
     "content-type": mime,
     "content-security-policy": "default-src 'none'; style-src 'unsafe-inline'",
@@ -42,7 +43,7 @@ export async function GET(req: Request) {
     try {
       const buf = await readMediaFile(ctx.organizationId, FAVICON_ASSET);
       return new Response(new Uint8Array(buf), {
-        headers: cabeceras(branding.favicon.mime, cacheable),
+        headers: headers(branding.favicon.mime, cacheable),
       });
     } catch {
       // El archivo se perdió (volumen sin montar, restauración a medias). Se
@@ -51,7 +52,13 @@ export async function GET(req: Request) {
     }
   }
 
+  // La marca IntoSales tiene su isotipo como archivo estático. Una URL vieja
+  // de esta ruta (cacheada antes del logo oficial) se manda ahí.
+  if (isBrandName(branding.name)) {
+    return Response.redirect(new URL(BRAND_LOGO_SRC, req.url), 307);
+  }
+
   return new Response(generatedFaviconSvg(branding), {
-    headers: cabeceras("image/svg+xml", cacheable),
+    headers: headers("image/svg+xml", cacheable),
   });
 }

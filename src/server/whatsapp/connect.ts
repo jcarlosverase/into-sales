@@ -104,7 +104,12 @@ export type WebhookRegistration =
     }
   | {
       ok: false;
-      code: "invalid_token" | "missing_permission" | "meta_unavailable" | "meta_error";
+      code:
+        | "invalid_token"
+        | "missing_permission"
+        | "app_webhook_missing"
+        | "meta_unavailable"
+        | "meta_error";
       message: string;
     };
 
@@ -289,6 +294,19 @@ function registrationError(err: unknown, context: string): WebhookRegistration {
       ok: false,
       code: "missing_permission",
       message: `${context}: el token no tiene el permiso whatsapp_business_management sobre esta cuenta.`,
+    };
+  }
+  // A brand-new Meta app has no app-level webhook yet, and Meta refuses a
+  // number override until it has one ("your app must be subscribed to
+  // receive messages"). The app-level webhook can only be set in the app
+  // dashboard (the app subscriptions API does not cover WhatsApp), so the
+  // owner has to do it once by hand; say exactly that.
+  if (err.code === 100 && /must be subscribed to receive messages/i.test(err.message)) {
+    return {
+      ok: false,
+      code: "app_webhook_missing",
+      message:
+        "Tu app de Meta todavía no tiene un webhook propio, y Meta pide configurarlo una vez a mano antes de aceptar el del número.",
     };
   }
   return { ok: false, code: "meta_error", message: `${context}: ${err.message}` };

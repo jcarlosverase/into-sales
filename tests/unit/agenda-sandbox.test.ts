@@ -24,7 +24,7 @@ const settings = {
   bufferMinutes: 0,
   minNoticeHours: 0,
   maxDaysAhead: 7,
-  timezone: "America/Mexico_City",
+  timezone: "America/Lima",
   connector: "zoom" as const,
   meetingLink: null,
 };
@@ -111,7 +111,7 @@ vi.mock("@/lib/db", () => ({
   },
 }));
 
-const CITA_DE_PRUEBA = {
+const TEST_BOOKING = {
   id: "bk_test",
   organizationId: "org_1",
   scheduledAt: new Date(SLOT),
@@ -131,7 +131,7 @@ describe("una cita del Laboratorio jamás llega al proveedor", () => {
   beforeEach(() => {
     selectRows.length = 0;
     lastInsert = null;
-    updatedRow = { ...CITA_DE_PRUEBA };
+    updatedRow = { ...TEST_BOOKING };
     createMeeting.mockClear();
     updateMeeting.mockClear();
     deleteMeeting.mockClear();
@@ -161,7 +161,7 @@ describe("una cita del Laboratorio jamás llega al proveedor", () => {
 
   it("al REPROGRAMAR: no se mueve nada en el proveedor", async () => {
     const { rescheduleBooking } = await import("@/server/agenda/service");
-    selectRows.push([CITA_DE_PRUEBA]);
+    selectRows.push([TEST_BOOKING]);
 
     await rescheduleBooking({
       organizationId: "org_1",
@@ -175,7 +175,7 @@ describe("una cita del Laboratorio jamás llega al proveedor", () => {
 
   it("al CANCELAR: no se borra nada en el proveedor", async () => {
     const { cancelBooking } = await import("@/server/agenda/service");
-    selectRows.push([CITA_DE_PRUEBA]);
+    selectRows.push([TEST_BOOKING]);
 
     await cancelBooking({ organizationId: "org_1", bookingId: "bk_test" });
 

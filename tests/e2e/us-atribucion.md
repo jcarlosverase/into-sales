@@ -79,7 +79,7 @@ Con `ATRIBUCION=on`, las mismas rutas responden con normalidad.
 ## 018 — De qué anuncio llegó cada conversación (siempre visible)
 
 Automatizado en la sección `018` de `scripts/e2e-selftest.mjs` (datos, con la
-bandera **apagada y encendida**) y en `scripts/e2e-anuncio-origen-ui.mjs`
+bandera **apagada y encendida**) y en `scripts/e2e-ad-origin-ui.mjs`
 (navegador: claro y oscuro, 1440 y 390 px). Los creativos los sirve el wa-mock
 (`/api/dev/wa-mock/media-file/creativo-*`), en el origen de
 `META_GRAPH_BASE_URL`: el único que la copia acepta fuera de los hosts de Meta,

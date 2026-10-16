@@ -4,6 +4,7 @@ import { apiError, parseBody, withAuth } from "@/lib/api";
 import { getDb, schema } from "@/lib/db";
 import { scoped } from "@/lib/db/tenant";
 import { getContactById } from "@/server/contacts";
+import { canSeeContact, getLeadScope } from "@/server/leads/scope";
 import { getOrCreateConversation } from "@/server/inbox/ingest";
 import { SendError } from "@/server/inbox/send";
 import { isWindowOpen } from "@/server/inbox/window";
@@ -32,6 +33,9 @@ const bodySchema = z.object({
  */
 export const POST = withAuth(async (session, req: Request, ctx: Params) => {
   const { id } = await ctx.params;
+  if (!(await canSeeContact(getLeadScope(session), session.organizationId, id))) {
+    return apiError(404, "not_found", "Contacto no encontrado");
+  }
   const contact = await getContactById(session.organizationId, id);
   if (!contact) return apiError(404, "not_found", "Contacto no encontrado");
   if (!contact.phone && !contact.waIdentity) {

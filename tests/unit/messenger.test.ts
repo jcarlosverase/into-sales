@@ -290,11 +290,11 @@ describe("017 · la hora del mensaje sale del evento, no de la ingesta", () => {
   });
 
   it("un `sentAt` ausente o ilegible cae a la hora actual, nunca a NaN", () => {
-    const ahora = Math.floor(Date.now() / 1000);
+    const now = Math.floor(Date.now() / 1000);
     for (const v of [undefined, "", "ayer por la tarde"]) {
       const s = Number(zernioSentAtSeconds(v));
       expect(Number.isFinite(s)).toBe(true);
-      expect(Math.abs(s - ahora)).toBeLessThan(5);
+      expect(Math.abs(s - now)).toBeLessThan(5);
     }
   });
 

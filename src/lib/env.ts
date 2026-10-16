@@ -67,6 +67,13 @@ export const envSchema = z.object({
   // por lo mismo que la de arriba: mal escrita, el despacho queda inactivo y
   // la tarjeta lo dice (server/brains/config.ts).
   BRAIN_DISPATCH_URL: z.string().optional(),
+  // 028: latido al servicio central de into (conector opcional, apagado por
+  // defecto). La URL base del central, p. ej. https://api.into.center. La
+  // llave de licencia NO va aquí: se pega en Ajustes → Plan y se guarda
+  // cifrada. Tampoco se valida aquí, por lo mismo que BRAIN_DISPATCH_URL: mal
+  // escrita, el latido queda inactivo y lo dicen el arranque y el doctor
+  // (server/central/flag.ts).
+  INTO_CENTRAL_URL: z.string().optional(),
   // 008: volumen local de adjuntos (constitución II: sin S3/R2).
   MEDIA_DIR: z.string().default("./.dev-media"),
   NODE_ENV: z.string().default("development"),

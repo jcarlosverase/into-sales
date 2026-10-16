@@ -11,54 +11,54 @@ beforeAll(() => {
 const { daysApart, median, PeriodError, resolvePeriod } = await import(
   "@/server/analytics/period"
 );
-const { bucketsDelPeriodo } = await import("@/lib/analytics");
+const { periodBuckets } = await import("@/lib/analytics");
 const { shortcuts } = await import("@/components/results/range-picker");
 
 /**
  * 019 — Los periodos de la pantalla Resultados (portado de Vocero Cloud).
  *
  * Lo que se fija aquí es que los cortes caen en la zona del NEGOCIO: con
- * cortes en UTC, todo lo que pasa después de las 18:00 en México cae en el día
+ * cortes en UTC, todo lo que pasa después de las 19:00 en Lima cae en el día
  * siguiente y el dueño compararía su lunes contra un lunes que no existe.
  */
 
-const MX = "America/Mexico_City";
+const LIMA = "America/Lima";
 
 describe("resolvePeriod", () => {
-  const ahora = new Date("2026-03-15T18:00:00Z");
+  const now = new Date("2026-03-15T18:00:00Z");
 
   it("sin fechas, son los últimos 30 días terminando hoy", () => {
-    const p = resolvePeriod({ timezone: MX, now: ahora });
+    const p = resolvePeriod({ timezone: LIMA, now: now });
     expect(p.dto.to).toBe("2026-03-15");
     expect(p.dto.from).toBe("2026-02-14");
     expect(p.dto.days).toBe(30);
   });
 
-  it("'hoy' es el del negocio: las 20:00 del 5 en México siguen siendo el 5", () => {
+  it("'hoy' es el del negocio: las 21:00 del 5 en Lima siguen siendo el 5", () => {
     // 2026-03-06T02:00Z ya es día 6 en UTC.
-    const p = resolvePeriod({ timezone: MX, now: new Date("2026-03-06T02:00:00Z") });
+    const p = resolvePeriod({ timezone: LIMA, now: new Date("2026-03-06T02:00:00Z") });
     expect(p.dto.to).toBe("2026-03-05");
   });
 
   it("el periodo anterior dura LO MISMO y termina justo antes", () => {
     // Si no, la comparación mezclaría un mes de 30 días con uno de 31 y el
     // "+8 %" de la pantalla sería un artefacto del calendario.
-    const p = resolvePeriod({ from: "2026-03-01", to: "2026-03-10", timezone: MX });
+    const p = resolvePeriod({ from: "2026-03-01", to: "2026-03-10", timezone: LIMA });
     expect(p.dto.days).toBe(10);
     expect(p.dto.previousTo).toBe("2026-02-28");
     expect(p.dto.previousFrom).toBe("2026-02-19");
   });
 
   it("el fin es EXCLUSIVO: arranca el día siguiente", () => {
-    const p = resolvePeriod({ from: "2026-03-01", to: "2026-03-01", timezone: MX });
+    const p = resolvePeriod({ from: "2026-03-01", to: "2026-03-01", timezone: LIMA });
     expect(p.dto.days).toBe(1);
     expect(p.end.getTime() - p.start.getTime()).toBe(86_400_000);
   });
 
   it("los cortes son medianoche en la zona del negocio, no en UTC", () => {
-    const p = resolvePeriod({ from: "2026-03-01", to: "2026-03-01", timezone: MX });
-    // Medianoche del 1 de marzo en México (UTC-6) son las 06:00Z.
-    expect(p.start.toISOString()).toBe("2026-03-01T06:00:00.000Z");
+    const p = resolvePeriod({ from: "2026-03-01", to: "2026-03-01", timezone: LIMA });
+    // Medianoche del 1 de marzo en Lima (UTC-5) son las 05:00Z.
+    expect(p.start.toISOString()).toBe("2026-03-01T05:00:00.000Z");
   });
 
   it("un día con cambio de horario dura lo que dura en la zona", () => {
@@ -72,45 +72,46 @@ describe("resolvePeriod", () => {
   });
 
   it("el anterior termina EXACTAMENTE donde empieza el actual, sin hueco", () => {
-    const p = resolvePeriod({ from: "2026-03-01", to: "2026-03-10", timezone: MX });
+    const p = resolvePeriod({ from: "2026-03-01", to: "2026-03-10", timezone: LIMA });
     expect(p.previousEnd.getTime()).toBe(p.start.getTime());
   });
 
   it("pasados 92 días agrupa por mes", () => {
-    const corto = resolvePeriod({ from: "2026-01-01", to: "2026-04-02", timezone: MX });
-    expect(corto.dto.days).toBe(92);
-    expect(corto.dto.granularity).toBe("day");
+    const short = resolvePeriod({ from: "2026-01-01", to: "2026-04-02", timezone: LIMA });
+    expect(short.dto.days).toBe(92);
+    expect(short.dto.granularity).toBe("day");
 
-    const largo = resolvePeriod({ from: "2026-01-01", to: "2026-04-03", timezone: MX });
-    expect(largo.dto.granularity).toBe("month");
+    const long = resolvePeriod({ from: "2026-01-01", to: "2026-04-03", timezone: LIMA });
+    expect(long.dto.granularity).toBe("month");
   });
 
   it("rechaza el rango invertido", () => {
     expect(() =>
-      resolvePeriod({ from: "2026-03-10", to: "2026-03-01", timezone: MX })
+      resolvePeriod({ from: "2026-03-10", to: "2026-03-01", timezone: LIMA })
     ).toThrow(PeriodError);
   });
 
   it("rechaza más de 366 días", () => {
     expect(() =>
-      resolvePeriod({ from: "2024-01-01", to: "2026-01-01", timezone: MX })
+      resolvePeriod({ from: "2024-01-01", to: "2026-01-01", timezone: LIMA })
     ).toThrow(PeriodError);
   });
 
   it("rechaza una fecha con formato inventado o que no existe", () => {
     // Llega de la barra de direcciones: tiene que ser un 422 con mensaje, no
     // un NaN que se propague hasta una consulta.
-    expect(() => resolvePeriod({ from: "ayer", to: "2026-03-01", timezone: MX })).toThrow(
+    expect(() => resolvePeriod({ from: "ayer", to: "2026-03-01", timezone: LIMA })).toThrow(
       PeriodError
     );
     expect(() =>
-      resolvePeriod({ from: "2026-02-31", to: "2026-03-01", timezone: MX })
+      resolvePeriod({ from: "2026-02-31", to: "2026-03-01", timezone: LIMA })
     ).toThrow(PeriodError);
   });
 
   it("una zona horaria inválida no tumba la pantalla", () => {
     const p = resolvePeriod({ from: "2026-03-01", to: "2026-03-02", timezone: "Marte/Olimpo" });
-    expect(p.timezone).toBe("America/Mexico_City");
+    // La zona por defecto es la de Lima (pedido de Juan Carlos, 2026-10-15).
+    expect(p.timezone).toBe("America/Lima");
   });
 });
 
@@ -121,22 +122,22 @@ describe("daysApart", () => {
   });
 });
 
-describe("bucketsDelPeriodo", () => {
+describe("periodBuckets", () => {
   it("un día sin movimientos es una cubeta en cero, no un hueco", () => {
     expect(
-      bucketsDelPeriodo({ from: "2026-02-27", to: "2026-03-02", granularity: "day" })
+      periodBuckets({ from: "2026-02-27", to: "2026-03-02", granularity: "day" })
     ).toEqual(["2026-02-27", "2026-02-28", "2026-03-01", "2026-03-02"]);
   });
 
   it("por mes, cruzando el año", () => {
     expect(
-      bucketsDelPeriodo({ from: "2025-11-15", to: "2026-02-03", granularity: "month" })
+      periodBuckets({ from: "2025-11-15", to: "2026-02-03", granularity: "month" })
     ).toEqual(["2025-11", "2025-12", "2026-01", "2026-02"]);
   });
 
   it("el rango más largo cabe entero", () => {
-    const p = resolvePeriod({ from: "2025-01-01", to: "2026-01-01", timezone: MX });
-    expect(bucketsDelPeriodo(p.dto)).toHaveLength(13);
+    const p = resolvePeriod({ from: "2025-01-01", to: "2026-01-01", timezone: LIMA });
+    expect(periodBuckets(p.dto)).toHaveLength(13);
   });
 });
 
@@ -156,10 +157,10 @@ describe("atajos del rango", () => {
   });
 
   it("'30 días' coincide con el periodo por defecto del servidor", () => {
-    const hoy = "2026-03-15";
-    const servidor = resolvePeriod({ timezone: MX, now: new Date("2026-03-15T18:00:00Z") });
-    const cliente = shortcuts(hoy).find((s) => s.label === "30 días")!.range;
-    expect(cliente).toEqual({ from: servidor.dto.from, to: servidor.dto.to });
+    const today = "2026-03-15";
+    const server = resolvePeriod({ timezone: LIMA, now: new Date("2026-03-15T18:00:00Z") });
+    const customer = shortcuts(today).find((s) => s.label === "30 días")!.range;
+    expect(customer).toEqual({ from: server.dto.from, to: server.dto.to });
   });
 });
 

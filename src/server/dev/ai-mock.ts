@@ -1,5 +1,5 @@
 import { JUDGE_MARKER } from "@/server/ai/prompts";
-import { CABECERA_HUECOS } from "@/server/agenda/offers";
+import { HEADER_SLOTS } from "@/server/agenda/offers";
 
 /**
  * Proveedor LLM determinista para el self-test (contrato mocks.md).
@@ -48,24 +48,24 @@ export function aiMockModels(): { id: string; name: string }[] {
  * sola no dice en qué ORDEN leyó la conversación — y ese orden es justo lo que
  * decide si atiende el mensaje que entró mientras pensaba.
  */
-type Peticion = { at: string; mensajes: InMessage[] };
-type EstadoIa = { demoraMs: number; peticiones: Peticion[] };
+type Request = { at: string; messages: InMessage[] };
+type AiStatus = { delayMs: number; requests: Request[] };
 
-const globalForIa = globalThis as unknown as { __voceroAiMock?: EstadoIa };
+const globalForIa = globalThis as unknown as { __voceroAiMock?: AiStatus };
 
-function estadoIa(): EstadoIa {
-  globalForIa.__voceroAiMock ??= { demoraMs: 0, peticiones: [] };
+function aiStatus(): AiStatus {
+  globalForIa.__voceroAiMock ??= { delayMs: 0, requests: [] };
   return globalForIa.__voceroAiMock;
 }
 
 /** Consulta o configura el mock: `?demoraMs=3000`, `?reset=1`. */
-export function aiMockEstado(params: URLSearchParams): EstadoIa {
-  const e = estadoIa();
-  const demoraMs = params.get("demoraMs");
-  if (demoraMs !== null) {
-    e.demoraMs = Math.min(Math.max(Number(demoraMs) || 0, 0), 60_000);
+export function aiMockStatus(params: URLSearchParams): AiStatus {
+  const e = aiStatus();
+  const delayMs = params.get("demoraMs");
+  if (delayMs !== null) {
+    e.delayMs = Math.min(Math.max(Number(delayMs) || 0, 0), 60_000);
   }
-  if (params.get("reset") === "1") e.peticiones = [];
+  if (params.get("reset") === "1") e.requests = [];
   return e;
 }
 
@@ -73,18 +73,18 @@ export function aiMockEstado(params: URLSearchParams): EstadoIa {
  * Anota la petición y espera lo configurado. El juez del Laboratorio no se
  * anota ni se demora: lo que se observa es la charla con el cliente.
  */
-export async function aiMockRegistrar(messages: InMessage[]): Promise<void> {
+export async function aiMockRegister(messages: InMessage[]): Promise<void> {
   if (messages.some((m) => m.role === "system" && m.content.includes(JUDGE_MARKER))) {
     return;
   }
-  const e = estadoIa();
+  const e = aiStatus();
   // Sin el prompt de sistema: es largo, y lo que se comprueba es la charla.
-  e.peticiones.push({
+  e.requests.push({
     at: new Date().toISOString(),
-    mensajes: messages.filter((m) => m.role !== "system"),
+    messages: messages.filter((m) => m.role !== "system"),
   });
-  if (e.peticiones.length > 50) e.peticiones.shift();
-  if (e.demoraMs > 0) await new Promise((r) => setTimeout(r, e.demoraMs));
+  if (e.requests.length > 50) e.requests.shift();
+  if (e.delayMs > 0) await new Promise((r) => setTimeout(r, e.delayMs));
 }
 
 export function aiMockCompletion(messages: InMessage[]): string {
@@ -134,8 +134,8 @@ export function aiMockCompletion(messages: InMessage[]): string {
    * Se buscan TODOS los mensajes `system`, no solo el primero: el mapa va al
    * final, después del historial.
    */
-  const huecos = messages
-    .filter((m) => m.role === "system" && m.content.includes(CABECERA_HUECOS))
+  const slots = messages
+    .filter((m) => m.role === "system" && m.content.includes(HEADER_SLOTS))
     .flatMap((m) => m.content.match(/\d{4}-\d{2}-\d{2}T[\d:.]+Z/g) ?? []);
 
   /**
@@ -144,21 +144,21 @@ export function aiMockCompletion(messages: InMessage[]): string {
    * la acepta), y el mock la contestaba igual: la conversación acababa en
    * "Error del proveedor de IA", algo que en producción no pasa (R11).
    */
-  const agendaEnseñada = messages.some(
+  const agendaTaught = messages.some(
     (m) => m.role === "system" && m.content.includes('"action":"offer_slots"')
   );
-  const quiereCita = /cita|agendar|agenda|horario|reserv/.test(text);
-  if (agendaEnseñada && quiereCita && huecos.length === 0) {
+  const wantsBooking = /cita|agendar|agenda|horario|reserv/.test(text);
+  if (agendaTaught && wantsBooking && slots.length === 0) {
     return JSON.stringify({
       action: "offer_slots",
       reply: "Claro, tengo estos horarios:",
     });
   }
-  const eligeUno = /primero|segundo|ese|esa|confirmo|quiero|me sirve/.test(text);
-  if (huecos.length > 0 && eligeUno) {
+  const pickOne = /primero|segundo|ese|esa|confirmo|quiero|me sirve/.test(text);
+  if (slots.length > 0 && pickOne) {
     return JSON.stringify({
       action: "book_slot",
-      startUtc: huecos[0],
+      startUtc: slots[0],
       reply: "¡Listo! Te agendé.",
     });
   }
@@ -182,9 +182,9 @@ export function aiMockCompletion(messages: InMessage[]): string {
     });
   }
 
-  const eco = lastUser.slice(0, 80);
+  const echo = lastUser.slice(0, 80);
   return JSON.stringify({
     action: "reply",
-    text: `Respuesta de prueba sobre: ${eco}`,
+    text: `Respuesta de prueba sobre: ${echo}`,
   });
 }

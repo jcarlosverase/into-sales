@@ -4,7 +4,7 @@ import { newId } from "@/lib/db/ids";
 import { scoped } from "@/lib/db/tenant";
 import { sendBusinessMessagingEvent } from "@/lib/meta/capi";
 import { getCredentialsByOrg } from "@/server/whatsapp/credentials";
-import { atribucionEnabled } from "@/server/attribution/flag";
+import { attributionEnabled } from "@/server/attribution/flag";
 import { getCapiSettings } from "@/server/attribution/settings";
 import { getAttributionForConversation } from "@/server/attribution/store";
 
@@ -173,7 +173,7 @@ export async function reportStageChange(input: {
   toStageId: string;
   toStageKind: "open" | "won" | "lost";
 }): Promise<void> {
-  if (!atribucionEnabled()) return;
+  if (!attributionEnabled()) return;
 
   try {
     const settings = await getCapiSettings(input.organizationId);

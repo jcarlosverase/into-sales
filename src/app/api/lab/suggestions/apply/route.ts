@@ -14,7 +14,7 @@ export const dynamic = "force-dynamic";
  */
 const bodySchema = z.object({
   caseId: z.string().min(1),
-  hallazgoIndex: z.number().int().min(0),
+  findingIndex: z.number().int().min(0),
   pregunta: z.string().trim().min(1).max(500),
   respuesta: z.string().trim().min(1).max(4000),
 });

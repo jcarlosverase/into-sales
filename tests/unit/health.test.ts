@@ -12,7 +12,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
  * que el migrador nunca abre.
  */
 
-const RAIZ = path.resolve(import.meta.dirname, "..", "..");
+const ROOT = path.resolve(import.meta.dirname, "..", "..");
 
 const { getEnv, getDb } = vi.hoisted(() => ({
   getEnv: vi.fn(),
@@ -45,26 +45,29 @@ afterEach(async () => {
 });
 
 describe("features: las banderas de despliegue", () => {
-  it("sin banderas: solo WhatsApp, agenda y atribución apagadas", () => {
+  it("sin banderas: solo WhatsApp, agenda, atribución y central apagados", () => {
     expect(healthFeatures({})).toEqual({
       agenda: false,
       channels: ["whatsapp"],
       atribucion: false,
+      central: false,
     });
   });
 
-  it("con las tres encendidas, los canales van en el orden del catálogo", () => {
+  it("con todas encendidas, los canales van en el orden del catálogo", () => {
     // El de la variable no: dos instancias iguales tienen que responder igual.
     expect(
       healthFeatures({
         AGENDA: "on",
         CHANNELS: "messenger, Instagram",
         ATRIBUCION: "1",
+        INTO_CENTRAL_URL: "https://api.into.center",
       })
     ).toEqual({
       agenda: true,
       channels: ["whatsapp", "instagram", "messenger"],
       atribucion: true,
+      central: true,
     });
   });
 
@@ -72,8 +75,8 @@ describe("features: las banderas de despliegue", () => {
     // Mismos parsers que usan las rutas para responder 404: si aquí dijera
     // `true` y la agenda respondiera 404, el health mentiría.
     expect(
-      healthFeatures({ AGENDA: "onn", CHANNELS: "telegram", ATRIBUCION: "off" })
-    ).toEqual({ agenda: false, channels: ["whatsapp"], atribucion: false });
+      healthFeatures({ AGENDA: "onn", CHANNELS: "telegram", ATRIBUCION: "off", INTO_CENTRAL_URL: "api.into.center" })
+    ).toEqual({ agenda: false, channels: ["whatsapp"], atribucion: false, central: false });
   });
 });
 
@@ -88,9 +91,9 @@ describe("mediaWritable: el volumen de adjuntos", () => {
   it("no escribible → false, pero `ok` sigue en true y el código en 200", async () => {
     // Un healthcheck en rojo reiniciaría en bucle un contenedor que atiende
     // clientes: sin adjuntos el CRM funciona, y esto solo lo hace visible.
-    const archivo = path.join(tmp, "no-soy-directorio");
-    await writeFile(archivo, "x");
-    getEnv.mockReturnValue({ MEDIA_DIR: path.join(archivo, "media") });
+    const file = path.join(tmp, "no-soy-directorio");
+    await writeFile(file, "x");
+    getEnv.mockReturnValue({ MEDIA_DIR: path.join(file, "media") });
 
     const r = await checkHealth();
     expect(r.status).toBe(200);
@@ -114,9 +117,9 @@ describe("mediaWritable: el volumen de adjuntos", () => {
     const t0 = 1_000_000;
     expect((await mediaDirStatus(t0))?.writable).toBe(true);
 
-    const archivo = path.join(tmp, "no-soy-directorio");
-    await writeFile(archivo, "x");
-    getEnv.mockReturnValue({ MEDIA_DIR: path.join(archivo, "media") });
+    const file = path.join(tmp, "no-soy-directorio");
+    await writeFile(file, "x");
+    getEnv.mockReturnValue({ MEDIA_DIR: path.join(file, "media") });
     expect((await mediaDirStatus(t0 + 1))?.writable).toBe(false);
   });
 
@@ -136,16 +139,16 @@ describe("GET /api/health", () => {
 
     const res = await GET();
     expect(res.status).toBe(200);
-    const cuerpo = await res.json();
-    expect(cuerpo).toMatchObject({
+    const body = await res.json();
+    expect(body).toMatchObject({
       ok: true,
       features: { agenda: true, channels: ["whatsapp", "instagram"], atribucion: false },
       mediaWritable: true,
     });
-    expect(typeof cuerpo.version).toBe("string");
+    expect(typeof body.version).toBe("string");
     // Los campos de antes siguen delante: quien ya lee `ok` y `version` no
     // nota el cambio.
-    expect(Object.keys(cuerpo).slice(0, 2)).toEqual(["ok", "version"]);
+    expect(Object.keys(body).slice(0, 2)).toEqual(["ok", "version"]);
   });
 
   it("BD caída: 503 y la misma respuesta de antes, sin features", async () => {
@@ -168,32 +171,32 @@ describe("la imagen no lleva lo que el migrador no lee", () => {
     // Si una versión nueva de drizzle-orm empezara a leer los snapshots en
     // runtime, el .dockerignore de abajo rompería las migraciones del
     // arranque: esto lo atrapa antes.
-    const migrador = readFileSync(
-      path.join(RAIZ, "node_modules", "drizzle-orm", "migrator.js"),
+    const migrator = readFileSync(
+      path.join(ROOT, "node_modules", "drizzle-orm", "migrator.js"),
       "utf8"
     );
-    expect(migrador).toContain("meta/_journal.json");
-    expect(migrador).toContain(".sql");
-    expect(migrador).not.toMatch(/snapshot/i);
+    expect(migrator).toContain("meta/_journal.json");
+    expect(migrator).toContain(".sql");
+    expect(migrator).not.toMatch(/snapshot/i);
   });
 
   it("scripts/migrate.mjs tampoco los toca", () => {
-    const script = readFileSync(path.join(RAIZ, "scripts", "migrate.mjs"), "utf8");
+    const script = readFileSync(path.join(ROOT, "scripts", "migrate.mjs"), "utf8");
     expect(script).toContain("drizzle-orm/postgres-js/migrator");
     expect(script).not.toMatch(/snapshot/i);
   });
 
   it(".dockerignore deja fuera meta/ salvo el journal, y los .sql se quedan", () => {
-    const lineas = readFileSync(path.join(RAIZ, ".dockerignore"), "utf8")
+    const lines = readFileSync(path.join(ROOT, ".dockerignore"), "utf8")
       .split(/\r?\n/)
       .map((l) => l.trim())
       .filter((l) => l && !l.startsWith("#"));
-    const excluye = lineas.indexOf("drizzle/meta/*");
-    const conserva = lineas.indexOf("!drizzle/meta/_journal.json");
-    expect(excluye).toBeGreaterThanOrEqual(0);
+    const excludes = lines.indexOf("drizzle/meta/*");
+    const keeps = lines.indexOf("!drizzle/meta/_journal.json");
+    expect(excludes).toBeGreaterThanOrEqual(0);
     // La excepción tiene que venir DESPUÉS: en .dockerignore manda la última
     // regla que coincide.
-    expect(conserva).toBeGreaterThan(excluye);
-    expect(lineas.some((l) => /^drizzle\/?\*?$/.test(l) || l.endsWith(".sql"))).toBe(false);
+    expect(keeps).toBeGreaterThan(excludes);
+    expect(lines.some((l) => /^drizzle\/?\*?$/.test(l) || l.endsWith(".sql"))).toBe(false);
   });
 });

@@ -292,7 +292,7 @@ export function AgendaClient() {
               id="tz"
               value={settings.timezone}
               onChange={(e) => patch({ timezone: e.target.value })}
-              placeholder="America/Mexico_City"
+              placeholder="America/Lima"
             />
           </div>
         </CardContent>

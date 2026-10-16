@@ -19,24 +19,24 @@ const profile = {
   greeting: null,
 } as unknown as Profile;
 
-function turno(agenda: boolean, texto: string) {
+function turn(agenda: boolean, text: string) {
   const system = buildAgentSystemPrompt({ profile, kb: [], stages: [{ name: "Nuevo" }], agenda });
   const raw = aiMockCompletion([
     { role: "system", content: system },
-    { role: "user", content: texto },
+    { role: "user", content: text },
   ]);
   return agentActionSchema(agenda).safeParse(JSON.parse(raw));
 }
 
 describe("ai-mock y la bandera AGENDA", () => {
   it("apagada: pedir cita NO produce offer_slots y el turno es válido", () => {
-    const r = turno(false, "Hola, ¿dan citas el sábado?");
+    const r = turn(false, "Hola, ¿dan citas el sábado?");
     expect(r.success).toBe(true);
     expect(r.data?.action).not.toBe("offer_slots");
   });
 
   it("encendida: pedir cita sigue ofreciendo horarios", () => {
-    const r = turno(true, "Hola, ¿dan citas el sábado?");
+    const r = turn(true, "Hola, ¿dan citas el sábado?");
     expect(r.success).toBe(true);
     expect(r.data?.action).toBe("offer_slots");
   });

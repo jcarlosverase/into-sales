@@ -1,13 +1,13 @@
 # E2E — Citas en calendario (215)
 
 Guion de comportamiento observable. Automatizado en
-`scripts/e2e-calendario.mjs`: con la app viva y los mocks encendidos,
-`pnpm test:e2e:calendario` lo conduce con Playwright y sale distinto de cero si
+`scripts/e2e-calendar.mjs`: con la app viva y los mocks encendidos,
+`pnpm test:e2e:calendar` lo conduce con Playwright y sale distinto de cero si
 algo falla.
 
 **Preparación**: app en `localhost` con `WA_MOCK_ENABLED=true`,
 `META_GRAPH_BASE_URL` → wa-mock y la BD migrada. El navegador corre en
-`Asia/Tokyo` y el negocio en `America/Mexico_City` (15 h de diferencia): todo
+`Asia/Tokyo` y el negocio en `America/Lima` (15 h de diferencia): todo
 lo que se pinta o se bloquea tiene que salir en la hora del NEGOCIO. La
 bandera `AGENDA` decide qué mitad corre.
 
@@ -35,7 +35,7 @@ bandera `AGENDA` decide qué mitad corre.
 
 1. `/bookings?vista=semana&fecha=D` pinta la semana; la cita de las 10:00
    queda a la altura de las 10:00 del negocio (no de Tokio) y la esquina dice
-   «GMT-6».
+   «GMT-5».
 2. Una cita del Laboratorio (`is_test`) a la misma hora no se pinta; el
    interruptor «Mostrar pruebas» la muestra y apagarlo la oculta.
 3. «Semana siguiente» mueve la fecha de la URL 7 días; «Hoy» vuelve al hoy del
@@ -50,7 +50,7 @@ bandera `AGENDA` decide qué mitad corre.
    calendario muestra ese día. Escape cierra el panel.
 6. **Fallo 1** (antes, la hora del navegador): tocar el hueco vacío de las
    15:10 abre «Bloquear horario» con ese día y las 15:00; al confirmar, el
-   bloqueo queda a las 15:00 de Ciudad de México (21:00 UTC), no a las 15:00
+   bloqueo queda a las 15:00 de Lima (20:00 UTC), no a las 15:00
    de Tokio, y se pinta rayado.
 7. **Fallo 3** (antes, cada evento recalculaba la disponibilidad): cinco
    bloqueos creados desde fuera aparecen solos por SSE, sin una sola petición

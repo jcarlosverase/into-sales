@@ -30,13 +30,13 @@ const SETTINGS: CalendarSettings = {
   bufferMinutes: 0,
   minNoticeHours: 0,
   maxDaysAhead: 7,
-  timezone: "America/Mexico_City",
+  timezone: "America/Lima",
   connector: "enlace-fijo",
   meetingLink: null,
 };
 
-// Lunes 21 sep 2026, 09:00 CDMX.
-const NOW = new Date("2026-09-21T15:00:00.000Z");
+// Lunes 21 sep 2026, 09:00 en Lima (UTC-5).
+const NOW = new Date("2026-09-21T14:00:00.000Z");
 
 vi.mock("@/server/agenda/flag", () => ({
   agendaEnabled: () => true,
@@ -100,7 +100,7 @@ beforeAll(async () => {
   ({ GET } = await import("@/app/api/bot/availability/route"));
 }, 60_000);
 
-async function pedir(qs: string) {
+async function ask(qs: string) {
   const res = await GET(new Request(`http://crm.test/api/bot/availability?${qs}`));
   let json: Record<string, unknown> | null = null;
   try {
@@ -110,7 +110,7 @@ async function pedir(qs: string) {
 }
 
 type Slot = { startUtc: string; label: string; dayIso: string; time: string };
-const ofertaRegistrada = () =>
+const offerRegistered = () =>
   (h.replaceOffers.mock.calls[0]?.[2] ?? []) as { startUtc: string; label: string }[];
 
 beforeEach(() => {
@@ -125,11 +125,11 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-const COMO_NEA = "conversationId=cv_1&limit=12&perDay=3&days=5";
+const AS_NEA = "conversationId=cv_1&limit=12&perDay=3&days=5";
 
 describe("con date: la tarde de mañana, y reservable", () => {
   it("devuelve el día completo con query.date y lo registra como oferta", async () => {
-    const { status, json } = await pedir(`${COMO_NEA}&date=2026-09-22`);
+    const { status, json } = await ask(`${AS_NEA}&date=2026-09-22`);
     expect(status).toBe(200);
     const slots = json!.slots as Slot[];
     expect(slots).toHaveLength(18);
@@ -150,13 +150,13 @@ describe("con date: la tarde de mañana, y reservable", () => {
     // puede reservar después.
     expect(h.replaceOffers).toHaveBeenCalledOnce();
     expect(h.replaceOffers.mock.calls[0]!.slice(0, 2)).toEqual(["org_1", "cv_1"]);
-    expect(ofertaRegistrada()).toEqual(
+    expect(offerRegistered()).toEqual(
       slots.map((s) => ({ startUtc: s.startUtc, label: s.label }))
     );
   });
 
   it("un día cerrado dice por qué y NO borra la oferta vigente", async () => {
-    const { status, json } = await pedir(`${COMO_NEA}&date=2026-09-26`);
+    const { status, json } = await ask(`${AS_NEA}&date=2026-09-26`);
     expect(status).toBe(200);
     expect(json!.slots).toEqual([]);
     expect(json!.query).toMatchObject({ date: "2026-09-26", status: "closed" });
@@ -166,10 +166,10 @@ describe("con date: la tarde de mañana, y reservable", () => {
   it.each([
     ["2026-09-20", "past"],
     ["2026-09-29", "beyond_horizon"],
-  ])("%s → %s, sin calcular nada ni tocar la oferta", async (date, estado) => {
-    const { status, json } = await pedir(`${COMO_NEA}&date=${date}`);
+  ])("%s → %s, sin calcular nada ni tocar la oferta", async (date, statusValue) => {
+    const { status, json } = await ask(`${AS_NEA}&date=${date}`);
     expect(status).toBe(200);
-    expect(json!.query).toMatchObject({ date, status: estado, horizonEnd: "2026-09-28" });
+    expect(json!.query).toMatchObject({ date, status: statusValue, horizonEnd: "2026-09-28" });
     expect(h.computeCalls).toEqual([]);
     expect(h.replaceOffers).not.toHaveBeenCalled();
   });
@@ -179,7 +179,7 @@ describe("fecha inválida", () => {
   it.each(["2026-02-31", "2026-13-01", "22-09-2026", "2026-9-22", "mañana", "2026-09-22T10:00"])(
     "%s → 422 invalid_body, nunca un 500 ni el reparto callado",
     async (date) => {
-      const { status, json } = await pedir(`${COMO_NEA}&date=${encodeURIComponent(date)}`);
+      const { status, json } = await ask(`${AS_NEA}&date=${encodeURIComponent(date)}`);
       expect(status).toBe(422);
       expect((json!.error as { code: string }).code).toBe("invalid_body");
       expect(h.computeCalls).toEqual([]);
@@ -188,19 +188,19 @@ describe("fecha inválida", () => {
   );
 
   it("date vacía cuenta como ausente: el reparto de siempre", async () => {
-    const { status, json } = await pedir(`${COMO_NEA}&date=`);
+    const { status, json } = await ask(`${AS_NEA}&date=`);
     expect(status).toBe(200);
     expect((json!.query as { date: unknown }).date).toBeNull();
   });
 
   it("sin conversationId sigue siendo 422 (la sonda de Nea depende de eso)", async () => {
-    const { status } = await pedir("date=2026-09-22");
+    const { status } = await ask("date=2026-09-22");
     expect(status).toBe(422);
   });
 
   it("una conversación que no es de esta instancia → 404, sin oferta", async () => {
     h.convRows = [];
-    const { status } = await pedir(`${COMO_NEA}&date=2026-09-22`);
+    const { status } = await ask(`${AS_NEA}&date=2026-09-22`);
     expect(status).toBe(404);
     expect(h.replaceOffers).not.toHaveBeenCalled();
   });
@@ -208,7 +208,7 @@ describe("fecha inválida", () => {
 
 describe("sin date: la misma forma de siempre, más query", () => {
   it("slots + diasConAgenda como antes, y la cobertura en query", async () => {
-    const { status, json } = await pedir(COMO_NEA);
+    const { status, json } = await ask(AS_NEA);
     expect(status).toBe(200);
     expect(Object.keys(json!).sort()).toEqual(["diasConAgenda", "query", "slots"]);
     const slots = json!.slots as Slot[];
@@ -234,11 +234,11 @@ describe("sin date: la misma forma de siempre, más query", () => {
       horizonEnd: "2026-09-28",
       perDay: 3,
     });
-    expect(ofertaRegistrada()).toHaveLength(12);
+    expect(offerRegistered()).toHaveLength(12);
   });
 
   it("sin limit/perDay/days aplica los defaults del contrato (12/3/5), no 1", async () => {
-    const { json } = await pedir("conversationId=cv_1");
+    const { json } = await ask("conversationId=cv_1");
     expect(json!.slots as Slot[]).toHaveLength(12);
     expect(json!.query).toMatchObject({ perDay: 3, coveredUntil: "2026-09-24" });
   });

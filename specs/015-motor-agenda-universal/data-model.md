@@ -28,7 +28,7 @@ rompe).
 | `buffer_minutes` | integer NOT NULL default 0 | 0–120 |
 | `min_notice_hours` | integer NOT NULL default 2 | 0–72 |
 | `max_days_ahead` | integer NOT NULL default 7 | 1–60 |
-| `timezone` | text NOT NULL default `America/Mexico_City` | IANA, validada contra el runtime (desconocida → 422) |
+| `timezone` | text NOT NULL default `America/Lima` | IANA, validada contra el runtime (desconocida → 422). El default era `America/Lima`; desde el 2026-10-15 es `America/Lima` (pedido de Juan Carlos, migración `0023`: solo cambia el DEFAULT, no las filas guardadas) |
 | `connector` | text NOT NULL default `enlace-fijo` | `enlace-fijo` \| `zoom` \| `google` (catálogo del código; un fork agrega el suyo) |
 | `meeting_link` | text NULL | la sala fija del conector `enlace-fijo`; vacío ⇒ reservas sin link |
 | `created_at` / `updated_at` | timestamp NOT NULL | |

@@ -29,9 +29,9 @@ export function OnboardingClient({
   // Antes del paso 1 el nombre es el de fábrica («Asistente») y se lee como
   // una palabra suelta, no como el nombre de alguien: se dice «tu agente».
   const agentReady = guide.steps.find((s) => s.key === "agent")?.done ?? false;
-  const agente = (agentReady && agentName) || "tu agente";
+  const agent = (agentReady && agentName) || "tu agente";
 
-  async function encender() {
+  async function turnOn() {
     setBusy(true);
     setError("");
     const res = await fetch("/api/agent/profile", {
@@ -169,14 +169,14 @@ export function OnboardingClient({
             </>
           ) : guide.complete ? (
             <>
-              <h2 className="font-semibold">¡Todo listo! Enciende a {agente}</h2>
+              <h2 className="font-semibold">¡Todo listo! Enciende a {agent}</h2>
               <p className="mt-1 text-sm text-muted-foreground">
                 Desde ese momento contestará a tus clientes por WhatsApp. Puedes
                 apagarlo cuando quieras desde Agente.
               </p>
-              <Button className="mt-3" disabled={busy} onClick={() => void encender()}>
+              <Button className="mt-3" disabled={busy} onClick={() => void turnOn()}>
                 <Power className="h-4 w-4" />
-                {busy ? "Encendiendo…" : `Encender a ${agente}`}
+                {busy ? "Encendiendo…" : `Encender a ${agent}`}
               </Button>
               {error && (
                 <p role="alert" className="mt-2 text-sm text-destructive">
@@ -188,7 +188,7 @@ export function OnboardingClient({
             <>
               <h2 className="flex items-center gap-2 font-semibold">
                 <Power className="h-4 w-4 text-muted-foreground" />
-                Al final: encender a {agente}
+                Al final: encender a {agent}
               </h2>
               <p className="mt-1 text-sm text-muted-foreground">
                 Tu agente empieza apagado: mientras no lo enciendas no le

@@ -106,7 +106,7 @@ confunden.
   operaciones como `2 * 3`, identificadores `con_guiones`, idempotencia);
   `replyWindow` en los bordes (24 h y 7 días exactos, un milisegundo antes,
   sin fecha, fecha futura) para los cuatro canales.
-- **Guion `scripts/e2e-ventana-social.mjs`** con simuladores: texto de la IA
+- **Guion `scripts/e2e-social-window.mjs`** con simuladores: texto de la IA
   con formato por Instagram, Messenger y TikTok → llega plano y se guarda
   plano; por WhatsApp → intacto; texto del operador con asteriscos → intacto;
   el agente incluido contesta plano; a las 30 horas una persona envía con la

@@ -7,7 +7,7 @@ name: Imagen
 #   ahora el CI nunca construía la imagen, y el primero en enterarse de un
 #   Dockerfile roto era quien desplegaba.
 # - Al crear un tag `vX.Y.Z` se PUBLICA en GitHub Container Registry:
-#   ghcr.io/kevinrivm/vocero-crm:X.Y.Z (y X.Y, y `latest` si no es
+#   ghcr.io/jcarlosverase/into-sales:X.Y.Z (y X.Y, y `latest` si no es
 #   prerelease). Es lo que instala el starter: Coolify descarga la imagen en
 #   vez de construirla en el VPS (minutos de build y RAM que un VPS chico no
 #   tiene).

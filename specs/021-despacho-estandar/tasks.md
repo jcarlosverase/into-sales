@@ -13,8 +13,8 @@
 - [x] T006 `dispatch/outbox.ts`: encolar, tomar con lease, entregar, reintentar o caducar, descartar
 - [x] T007 `brains/deliver.ts`: la ráfaga, el evento con adjuntos y el POST firmado
 - [x] T008 `dispatch/worker.ts`: barrido, cita, procesar, caída a humano, mensaje que llega en vuelo
-- [x] T009 `ai/trigger.ts` + `dispatch/encolar.ts`: despacho o agente incluido; `instrumentation-node.ts` reanuda
-- [x] T010 `dispatch/estado.ts` + `bot/status.ts` + `brain-status`: la llave `dispatch`
+- [x] T009 `ai/trigger.ts` + `dispatch/enqueue.ts`: despacho o agente incluido; `instrumentation-node.ts` reanuda
+- [x] T010 `dispatch/status.ts` + `bot/status.ts` + `brain-status`: la llave `dispatch`
 
 ## UI
 
@@ -23,7 +23,7 @@
 ## Pruebas y documentación
 
 - [x] T012 Unitarias: contrato (firma byte a byte), configuración, cálculo de la tarjeta, doctor
-- [x] T013 Guion `tests/e2e/us-despacho.md` y arnés `scripts/e2e-despacho.mjs`
+- [x] T013 Guion `tests/e2e/us-despacho.md` y arnés `scripts/e2e-dispatch.mjs`
 - [x] T014 `pnpm doctor`, `.env.example`, `AGENTS.md`, README, CHANGELOG
 - [x] T015 Gate técnico y E2E (despacho, y el selftest sin la variable para AC12)
 
@@ -38,7 +38,7 @@
   despacho vivo y deja entrar otro tras entregar el primero. Con 50,000 filas
   entregadas, la consulta de la tarjeta sale por
   `Index Only Scan Backward using dispatch_org_status_updated_idx`.
-- `scripts/e2e-despacho.mjs` contra `next dev` con `CHANNELS` completo,
+- `scripts/e2e-dispatch.mjs` contra `next dev` con `CHANNELS` completo,
   `AGENDA` y `ATRIBUCION` encendidas y `AGENT_COALESCE_MS=1500`, sobre una base
   nueva: **75/75**. Messenger entró por Meta e Instagram por Zernio.
 - AC9 a mano: fila `pendiente` insertada con la app detenida; al arrancar, el

@@ -73,7 +73,7 @@ export type BrainDispatchDto = {
 };
 
 /** Lo que devuelve una instancia que no despacha. */
-export const SIN_DESPACHO: BrainDispatchDto = {
+export const WITHOUT_DISPATCH: BrainDispatchDto = {
   active: false,
   host: null,
   problem: null,
@@ -152,7 +152,7 @@ export function externalAnswerLabel(status: BrainStatusDto): string {
 }
 
 /** «hace 3 min». Tolera relojes desfasados: el futuro es «hace unos segundos». */
-export function haceCuanto(iso: string, now: number = Date.now()): string {
+export function howLongAgo(iso: string, now: number = Date.now()): string {
   const s = Math.max(0, Math.floor((now - Date.parse(iso)) / 1000));
   if (!Number.isFinite(s) || s < 60) return "hace unos segundos";
   const m = Math.floor(s / 60);
@@ -167,7 +167,7 @@ export function haceCuanto(iso: string, now: number = Date.now()): string {
  * 021 — El último turno no llegó al cerebro y desde entonces no ha llegado
  * ninguno. Un fallo viejo, con entregas después, ya no es una alarma.
  */
-export function despachoFallando(d: BrainDispatchDto): boolean {
+export function dispatchFailing(d: BrainDispatchDto): boolean {
   if (!d.active || !d.lastFailure) return false;
   if (!d.lastDeliveredAt) return true;
   return Date.parse(d.lastFailure.at) > Date.parse(d.lastDeliveredAt);

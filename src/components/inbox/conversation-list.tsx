@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Inbox, Megaphone, Search, Sparkles, UserRound, X } from "lucide-react";
 import type { ConversationDto } from "@/lib/types";
-import { etiquetaDeOrigen, titularDeOrigen } from "@/lib/anuncios";
+import { originLabel, originHeadline } from "@/lib/ad-origin";
 import { CHANNEL_LABEL, type Channel } from "@/lib/channels";
 import { ChannelBadge } from "@/components/channel-badge";
 import { matchesQuery } from "@/lib/search";
@@ -31,7 +31,7 @@ const STAGE_DOT_FALLBACK = "var(--text-3)";
  * (`ring-brand-soft`) queda a ~1.3:1 del fondo: aquí no hay borde que cambie
  * de color para compensarlo, y se veía menos que el del navegador.
  */
-const FOCO_SEPARADO =
+const FOCUS_SEPARATE =
   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background";
 
 function InboxEmptyState({ onSeeded }: { onSeeded: () => void }) {
@@ -124,22 +124,22 @@ export function ConversationList({
     searched.filter((c) => c.channel === ch).length;
   const unreadCount = inInbox.filter((c) => c.unreadCount > 0).length;
   // 018: las que abrió un anuncio (o una publicación con botón de WhatsApp).
-  const deAnuncios = inInbox.filter((c) => c.anuncio !== null);
+  const fromAds = inInbox.filter((c) => c.ad !== null);
   const visible =
     filter === "unread"
       ? inInbox.filter((c) => c.unreadCount > 0)
       : filter === "anuncios"
-        ? deAnuncios
+        ? fromAds
         : inInbox;
   // Sin ninguna conversación de anuncio el filtro no aparece: a quien no
   // anuncia no se le pinta un botón que siempre dice 0. Si está elegido, se
   // queda, para poder salir de él aunque el contador baje a cero.
-  const filtros: { id: typeof filter; label: string; count: number }[] = [
+  const filters: { id: typeof filter; label: string; count: number }[] = [
     { id: "all", label: "Todas", count: inInbox.length },
     { id: "unread", label: "No leídas", count: unreadCount },
   ];
-  if (deAnuncios.length > 0 || filter === "anuncios") {
-    filtros.push({ id: "anuncios", label: "Anuncios", count: deAnuncios.length });
+  if (fromAds.length > 0 || filter === "anuncios") {
+    filters.push({ id: "anuncios", label: "Anuncios", count: fromAds.length });
   }
   // Con un solo canal encendido no hay bandejas que distinguir: ni marca en
   // los renglones ni filtro. La pantalla queda exactamente como antes de 014.
@@ -179,7 +179,7 @@ export function ConversationList({
                     }
                     className={cn(
                       "flex items-center gap-1 rounded-full border py-[3px] pl-[5px] pr-2 text-[11.5px] font-medium transition-colors",
-                      FOCO_SEPARADO,
+                      FOCUS_SEPARATE,
                       on
                         ? "border-brand bg-brand-veil text-foreground"
                         : "text-text-3 hover:bg-accent",
@@ -223,13 +223,13 @@ export function ConversationList({
           etapa no caben en una columna de 300-360 px, y el selector se
           aplastaba hasta dejar solo la flecha. */}
       <div className="flex flex-wrap items-center gap-x-1.5 gap-y-2 border-b px-4 py-2.5">
-        {filtros.map((f) => (
+        {filters.map((f) => (
           <button
             key={f.id}
             onClick={() => setFilter(f.id)}
             className={cn(
               "flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-2.5 py-[5px] text-[12.5px] font-semibold transition-colors",
-              FOCO_SEPARADO,
+              FOCUS_SEPARATE,
               filter === f.id
                 ? "border-brand bg-brand text-brand-fg"
                 : "border-border-strong bg-chip text-text-2 hover:border-text-3"
@@ -254,7 +254,7 @@ export function ConversationList({
             aria-label="Filtrar por etapa del embudo"
             className={cn(
               "ml-auto min-w-0 max-w-[42%] truncate rounded-full border px-2 py-[5px] text-[12.5px] font-semibold transition-colors",
-              FOCO_SEPARADO,
+              FOCUS_SEPARATE,
               stage === "all"
                 ? "border-border-strong bg-chip text-text-2 hover:border-text-3"
                 : "border-brand bg-brand text-brand-fg"
@@ -358,15 +358,15 @@ export function ConversationList({
                             Atención humana
                           </span>
                         )}
-                        {c.anuncio && (
+                        {c.ad && (
                           <span
                             className="inline-flex min-w-0 items-center gap-1 rounded-full border border-info-soft bg-info-tint px-2 py-0.5 text-[11px] text-info-text"
-                            title={titularDeOrigen(c.anuncio.headline, c.anuncio.sourceType)}
+                            title={originHeadline(c.ad.headline, c.ad.sourceType)}
                           >
                             <Megaphone className="h-3 w-3 shrink-0" strokeWidth={1.7} />
                             <span className="truncate">
-                              {etiquetaDeOrigen(c.anuncio.sourceType)}
-                              {c.anuncio.headline ? ` · ${c.anuncio.headline}` : ""}
+                              {originLabel(c.ad.sourceType)}
+                              {c.ad.headline ? ` · ${c.ad.headline}` : ""}
                             </span>
                           </span>
                         )}

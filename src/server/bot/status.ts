@@ -1,6 +1,6 @@
 import {
   BRAIN_MODES,
-  SIN_DESPACHO,
+  WITHOUT_DISPATCH,
   type BrainDispatchDto,
   type BrainHealthDto,
   type BrainMode,
@@ -81,7 +81,7 @@ export type BrainStatusInput = {
 };
 
 export function computeBrainStatus(input: BrainStatusInput): BrainStatusDto {
-  const dispatch = input.dispatch ?? SIN_DESPACHO;
+  const dispatch = input.dispatch ?? WITHOUT_DISPATCH;
   // El despacho activo calla al agente incluido (`server/ai/trigger.ts`):
   // aunque tenga IA e interruptor, no es él quien contesta.
   const wouldAnswer = input.aiConfigured && input.agentEnabled;
@@ -322,13 +322,13 @@ function parseMode(v: unknown): BrainMode | undefined {
 function parseRelay(v: unknown): BrainRelayDto | undefined {
   if (!v || typeof v !== "object" || Array.isArray(v)) return undefined;
   const r = v as Record<string, unknown>;
-  const pendientes = nonNegative(r.pendientes, true);
-  const masViejoSegundos = nonNegative(r.masViejoSegundos, false);
-  const ultimoErrorEn = isoOrNull(r.ultimoErrorEn);
-  if (pendientes === null && masViejoSegundos === null && ultimoErrorEn === null) {
+  const pending = nonNegative(r.pendientes, true);
+  const oldestSeconds = nonNegative(r.masViejoSegundos, false);
+  const lastErrorIn = isoOrNull(r.ultimoErrorEn);
+  if (pending === null && oldestSeconds === null && lastErrorIn === null) {
     return undefined;
   }
-  return { pendientes, masViejoSegundos, ultimoErrorEn };
+  return { pendientes: pending, masViejoSegundos: oldestSeconds, ultimoErrorEn: lastErrorIn };
 }
 
 function nonNegative(v: unknown, integer: boolean): number | null {

@@ -16,14 +16,14 @@ import { describe, expect, it } from "vitest";
  */
 
 const SRC = path.resolve(import.meta.dirname, "..", "..", "src");
-const PUERTA = path.join("server", "leads", "stage-history.ts");
+const GATE = path.join("server", "leads", "stage-history.ts");
 
-function archivosTs(dir: string): string[] {
+function filesTs(dir: string): string[] {
   const out: string[] = [];
   for (const entry of readdirSync(dir)) {
     const full = path.join(dir, entry);
     if (statSync(full).isDirectory()) {
-      out.push(...archivosTs(full));
+      out.push(...filesTs(full));
     } else if (/\.(ts|tsx)$/.test(entry)) {
       out.push(full);
     }
@@ -32,27 +32,27 @@ function archivosTs(dir: string): string[] {
 }
 
 /** Trozo que sigue a cada `.update(schema.lead)`, donde vive el `.set({…})`. */
-function bloquesDeUpdate(code: string): string[] {
-  const bloques: string[] = [];
+function updateBlocks(code: string): string[] {
+  const blocks: string[] = [];
   const re = /\.update\(\s*schema\.lead\s*\)/g;
   let match: RegExpExecArray | null;
   while ((match = re.exec(code)) !== null) {
-    bloques.push(code.slice(match.index, match.index + 400));
+    blocks.push(code.slice(match.index, match.index + 400));
   }
-  return bloques;
+  return blocks;
 }
 
 describe("guardarraíl: una sola puerta escribe la etapa del lead", () => {
   it("ningún archivo fuera de stage-history.ts actualiza lead.stageId", () => {
     const infractores: string[] = [];
 
-    for (const file of archivosTs(SRC)) {
-      if (file.endsWith(PUERTA)) continue;
+    for (const file of filesTs(SRC)) {
+      if (file.endsWith(GATE)) continue;
       const code = readFileSync(file, "utf8");
       if (!code.includes("update(schema.lead)")) continue;
 
-      for (const bloque of bloquesDeUpdate(code)) {
-        if (/\bstageId\s*:/.test(bloque)) {
+      for (const block of updateBlocks(code)) {
+        if (/\bstageId\s*:/.test(block)) {
           infractores.push(path.relative(SRC, file));
           break;
         }
@@ -70,8 +70,8 @@ describe("guardarraíl: una sola puerta escribe la etapa del lead", () => {
   it("la puerta sí escribe la etapa (el test detectaría el patrón)", () => {
     // Si este test falla, la detección de arriba dejó de servir: alguien
     // reescribió la puerta con otra forma y el guardarraíl quedó ciego.
-    const code = readFileSync(path.join(SRC, PUERTA), "utf8");
-    const bloques = bloquesDeUpdate(code);
-    expect(bloques.some((b) => /\bstageId\s*:/.test(b))).toBe(true);
+    const code = readFileSync(path.join(SRC, GATE), "utf8");
+    const blocks = updateBlocks(code);
+    expect(blocks.some((b) => /\bstageId\s*:/.test(b))).toBe(true);
   });
 });

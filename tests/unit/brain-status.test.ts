@@ -3,12 +3,12 @@ import type { AddressInfo } from "node:net";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import type { BrainDispatchDto, BrainHealthDto } from "@/lib/brain-status";
 import {
-  SIN_DESPACHO,
+  WITHOUT_DISPATCH,
   externalAnswerLabel,
   externalAnswering,
   externalBrainName,
   externalDown,
-  haceCuanto,
+  howLongAgo,
 } from "@/lib/brain-status";
 import { resetRateLimit } from "@/lib/rate-limit";
 import { isBotKeyConfigured, requireBotKey } from "@/server/bot/auth";
@@ -32,8 +32,8 @@ import {
  */
 
 const NOW = new Date("2026-09-21T18:00:00.000Z");
-const HACE_3_MIN = new Date(NOW.getTime() - 3 * 60_000);
-const HACE_25_H = new Date(NOW.getTime() - 25 * 3_600_000);
+const AGO_3_MIN = new Date(NOW.getTime() - 3 * 60_000);
+const AGO_25_H = new Date(NOW.getTime() - 25 * 3_600_000);
 
 const EN_LINEA: BrainHealthDto = {
   reachable: true,
@@ -42,7 +42,7 @@ const EN_LINEA: BrainHealthDto = {
   version: "1.0.0",
   mode: "estándar",
 };
-const CAIDA: BrainHealthDto = {
+const DOWN: BrainHealthDto = {
   reachable: false,
   host: "nea:8000",
   checkedAt: NOW.toISOString(),
@@ -61,15 +61,15 @@ function status(over: Partial<BrainStatusInput>) {
   });
 }
 
-const DESPACHANDO: BrainDispatchDto = {
-  ...SIN_DESPACHO,
+const DISPATCHING: BrainDispatchDto = {
+  ...WITHOUT_DISPATCH,
   active: true,
   host: "nea:8000",
 };
 
 describe("computeBrainStatus — con el despacho (021)", () => {
   it("sin despacho, la llave nueva es la de una instancia que no despacha", () => {
-    expect(status({}).dispatch).toEqual(SIN_DESPACHO);
+    expect(status({}).dispatch).toEqual(WITHOUT_DISPATCH);
   });
 
   it("activo: calla al agente incluido aunque tenga IA e interruptor, y no hay doble respuesta", () => {
@@ -77,18 +77,18 @@ describe("computeBrainStatus — con el despacho (021)", () => {
       aiConfigured: true,
       agentEnabled: true,
       botKeyConfigured: true,
-      lastSeenAt: HACE_3_MIN,
+      lastSeenAt: AGO_3_MIN,
       health: EN_LINEA,
-      dispatch: DESPACHANDO,
+      dispatch: DISPATCHING,
     });
     expect(s.embedded).toEqual({ configured: true, enabled: true, answering: false, silenced: true });
     expect(s.external.active).toBe(true);
     expect(s.warning).toBeNull();
-    expect(s.dispatch).toEqual(DESPACHANDO);
+    expect(s.dispatch).toEqual(DISPATCHING);
   });
 
   it("activo y sin una sola llamada todavía: el cerebro cuenta como el que contesta", () => {
-    const s = status({ botKeyConfigured: true, dispatch: DESPACHANDO });
+    const s = status({ botKeyConfigured: true, dispatch: DISPATCHING });
     expect(s.external.active).toBe(true);
     expect(s.embedded.silenced).toBe(false);
     expect(s.warning).toBeNull();
@@ -100,16 +100,16 @@ describe("computeBrainStatus — con el despacho (021)", () => {
       aiConfigured: true,
       agentEnabled: true,
       botKeyConfigured: true,
-      health: CAIDA,
-      dispatch: DESPACHANDO,
+      health: DOWN,
+      dispatch: DISPATCHING,
     });
     expect(s.warning).toBeNull();
     expect(externalDown(s)).toBe(true);
   });
 
   it("mal configurado NO calla al agente incluido: todo sigue como en 1.5", () => {
-    const roto: BrainDispatchDto = { ...SIN_DESPACHO, host: "nea:8000", problem: "sin_llave" };
-    const s = status({ aiConfigured: true, agentEnabled: true, dispatch: roto });
+    const broken: BrainDispatchDto = { ...WITHOUT_DISPATCH, host: "nea:8000", problem: "sin_llave" };
+    const s = status({ aiConfigured: true, agentEnabled: true, dispatch: broken });
     expect(s.embedded).toEqual({ configured: true, enabled: true, answering: true, silenced: false });
     expect(s.external.active).toBe(false);
     expect(s.dispatch.problem).toBe("sin_llave");
@@ -118,10 +118,10 @@ describe("computeBrainStatus — con el despacho (021)", () => {
 
 describe("computeBrainStatus — los casos que ve el dueño", () => {
   it("solo Nea: llave usada hace 3 min, agente incluido apagado → sin aviso", () => {
-    const s = status({ botKeyConfigured: true, lastSeenAt: HACE_3_MIN, health: EN_LINEA });
+    const s = status({ botKeyConfigured: true, lastSeenAt: AGO_3_MIN, health: EN_LINEA });
     expect(s.embedded).toEqual({ configured: false, enabled: false, answering: false, silenced: false });
     expect(s.external.active).toBe(true);
-    expect(s.external.lastSeenAt).toBe(HACE_3_MIN.toISOString());
+    expect(s.external.lastSeenAt).toBe(AGO_3_MIN.toISOString());
     expect(s.warning).toBeNull();
   });
 
@@ -133,7 +133,7 @@ describe("computeBrainStatus — los casos que ve el dueño", () => {
   });
 
   it("los dos contestando → doble_respuesta (por la llamada reciente)", () => {
-    const s = status({ aiConfigured: true, agentEnabled: true, botKeyConfigured: true, lastSeenAt: HACE_3_MIN });
+    const s = status({ aiConfigured: true, agentEnabled: true, botKeyConfigured: true, lastSeenAt: AGO_3_MIN });
     expect(s.warning).toBe("doble_respuesta");
   });
 
@@ -168,31 +168,31 @@ describe("computeBrainStatus — los casos que ve el dueño", () => {
 
   it("una llamada de hace 25 h ya no cuenta; justo 24 h todavía sí", () => {
     const base = { aiConfigured: true, agentEnabled: true, botKeyConfigured: true };
-    expect(status({ ...base, lastSeenAt: HACE_25_H }).warning).toBeNull();
-    const justo = new Date(NOW.getTime() - EXTERNAL_SEEN_WINDOW_MS);
-    expect(status({ ...base, lastSeenAt: justo }).warning).toBe("doble_respuesta");
+    expect(status({ ...base, lastSeenAt: AGO_25_H }).warning).toBeNull();
+    const exact = new Date(NOW.getTime() - EXTERNAL_SEEN_WINDOW_MS);
+    expect(status({ ...base, lastSeenAt: exact }).warning).toBe("doble_respuesta");
   });
 
   it("un /health caído no cuenta como activo, pero la llamada reciente sí", () => {
     const base = { aiConfigured: true, agentEnabled: true, botKeyConfigured: true };
-    expect(status({ ...base, health: CAIDA }).warning).toBeNull();
-    expect(status({ ...base, health: CAIDA, lastSeenAt: HACE_3_MIN }).warning).toBe("doble_respuesta");
+    expect(status({ ...base, health: DOWN }).warning).toBeNull();
+    expect(status({ ...base, health: DOWN, lastSeenAt: AGO_3_MIN }).warning).toBe("doble_respuesta");
   });
 
   it("todas las combinaciones cumplen las tres reglas", () => {
     const bools = [false, true];
-    const vistos = [null, HACE_3_MIN, HACE_25_H];
-    const healths = [null, EN_LINEA, CAIDA];
+    const seen = [null, AGO_3_MIN, AGO_25_H];
+    const healths = [null, EN_LINEA, DOWN];
     let n = 0;
     for (const aiConfigured of bools)
       for (const agentEnabled of bools)
         for (const botKeyConfigured of bools)
-          for (const lastSeenAt of vistos)
+          for (const lastSeenAt of seen)
             for (const health of healths) {
               const s = status({ aiConfigured, agentEnabled, botKeyConfigured, lastSeenAt, health });
               const answering = aiConfigured && agentEnabled;
               const active =
-                (botKeyConfigured && lastSeenAt === HACE_3_MIN) || health === EN_LINEA;
+                (botKeyConfigured && lastSeenAt === AGO_3_MIN) || health === EN_LINEA;
               expect(s.embedded.answering).toBe(answering);
               expect(s.external.active).toBe(active);
               expect(s.warning).toBe(
@@ -210,47 +210,47 @@ describe("computeBrainStatus — los casos que ve el dueño", () => {
 
 describe("textos compartidos", () => {
   it("«Nea» solo si su /health habla el contrato de Nea", () => {
-    const conNea = status({ botKeyConfigured: true, health: EN_LINEA });
-    expect(externalBrainName(conNea)).toBe("Nea");
-    expect(externalAnswerLabel(conNea)).toBe("Responde tu cerebro externo (Nea)");
-    const sinNombre = status({ botKeyConfigured: true, lastSeenAt: HACE_3_MIN });
-    expect(externalBrainName(sinNombre)).toBeNull();
-    expect(externalAnswerLabel(sinNombre)).toBe("Responde tu cerebro externo");
+    const withNea = status({ botKeyConfigured: true, health: EN_LINEA });
+    expect(externalBrainName(withNea)).toBe("Nea");
+    expect(externalAnswerLabel(withNea)).toBe("Responde tu cerebro externo (Nea)");
+    const withoutName = status({ botKeyConfigured: true, lastSeenAt: AGO_3_MIN });
+    expect(externalBrainName(withoutName)).toBeNull();
+    expect(externalAnswerLabel(withoutName)).toBe("Responde tu cerebro externo");
   });
 
   it("«responde tu cerebro externo» solo si no está caído; el aviso doble no espera a eso", () => {
-    const sano = status({ botKeyConfigured: true, lastSeenAt: HACE_3_MIN, health: EN_LINEA });
-    expect(externalAnswering(sano)).toBe(true);
-    expect(externalDown(sano)).toBe(false);
+    const healthy = status({ botKeyConfigured: true, lastSeenAt: AGO_3_MIN, health: EN_LINEA });
+    expect(externalAnswering(healthy)).toBe(true);
+    expect(externalDown(healthy)).toBe(false);
     // Llamó hace 3 min pero su /health no contesta: sigue «activo» para el
     // aviso de doble respuesta, pero no se le dice al dueño que responde.
-    const caido = status({ botKeyConfigured: true, lastSeenAt: HACE_3_MIN, health: CAIDA });
-    expect(caido.external.active).toBe(true);
-    expect(externalAnswering(caido)).toBe(false);
-    expect(externalDown(caido)).toBe(true);
+    const down = status({ botKeyConfigured: true, lastSeenAt: AGO_3_MIN, health: DOWN });
+    expect(down.external.active).toBe(true);
+    expect(externalAnswering(down)).toBe(false);
+    expect(externalDown(down)).toBe(true);
     // Sin BRAIN_HEALTH_URL manda la llamada reciente.
-    const sinHealth = status({ botKeyConfigured: true, lastSeenAt: HACE_3_MIN });
-    expect(externalAnswering(sinHealth)).toBe(true);
-    expect(externalDown(sinHealth)).toBe(false);
+    const withoutHealth = status({ botKeyConfigured: true, lastSeenAt: AGO_3_MIN });
+    expect(externalAnswering(withoutHealth)).toBe(true);
+    expect(externalDown(withoutHealth)).toBe(false);
   });
 
   it("con BRAIN_HEALTH_URL mal escrita no se le da por caído: manda la llamada reciente", () => {
     const mal: BrainHealthDto = { reachable: false, host: "", checkedAt: NOW.toISOString(), problem: "config" };
-    const llamo = status({ botKeyConfigured: true, lastSeenAt: HACE_3_MIN, health: mal });
-    expect(externalDown(llamo)).toBe(false);
-    expect(externalAnswering(llamo)).toBe(true);
-    const callado = status({ botKeyConfigured: true, lastSeenAt: null, health: mal });
-    expect(externalDown(callado)).toBe(false);
-    expect(externalAnswering(callado)).toBe(false);
+    const called = status({ botKeyConfigured: true, lastSeenAt: AGO_3_MIN, health: mal });
+    expect(externalDown(called)).toBe(false);
+    expect(externalAnswering(called)).toBe(true);
+    const silent = status({ botKeyConfigured: true, lastSeenAt: null, health: mal });
+    expect(externalDown(silent)).toBe(false);
+    expect(externalAnswering(silent)).toBe(false);
   });
 
-  it("haceCuanto", () => {
+  it("howLongAgo", () => {
     const t = NOW.getTime();
-    expect(haceCuanto(new Date(t - 20_000).toISOString(), t)).toBe("hace unos segundos");
-    expect(haceCuanto(new Date(t + 60_000).toISOString(), t)).toBe("hace unos segundos");
-    expect(haceCuanto(HACE_3_MIN.toISOString(), t)).toBe("hace 3 min");
-    expect(haceCuanto(new Date(t - 2 * 3_600_000).toISOString(), t)).toBe("hace 2 h");
-    expect(haceCuanto(HACE_25_H.toISOString(), t)).toBe("hace 1 día");
+    expect(howLongAgo(new Date(t - 20_000).toISOString(), t)).toBe("hace unos segundos");
+    expect(howLongAgo(new Date(t + 60_000).toISOString(), t)).toBe("hace unos segundos");
+    expect(howLongAgo(AGO_3_MIN.toISOString(), t)).toBe("hace 3 min");
+    expect(howLongAgo(new Date(t - 2 * 3_600_000).toISOString(), t)).toBe("hace 2 h");
+    expect(howLongAgo(AGO_25_H.toISOString(), t)).toBe("hace 1 día");
   });
 });
 
@@ -273,14 +273,14 @@ describe("la última llamada del cerebro externo (requireBotKey)", () => {
     expect(requireBotKey(req())?.status).toBe(401);
     expect(requireBotKey(req("otra-clave-igual-de-larga-pero-mala!!"))?.status).toBe(401);
     expect(botLastSeenAt()).toBeNull();
-    const antes = Date.now();
+    const before = Date.now();
     expect(requireBotKey(req(KEY))).toBeNull();
-    expect(botLastSeenAt()!.getTime()).toBeGreaterThanOrEqual(antes);
+    expect(botLastSeenAt()!.getTime()).toBeGreaterThanOrEqual(before);
   });
 
   it("vive en memoria del proceso (compartida entre rutas)", () => {
-    markBotSeen(HACE_3_MIN.getTime());
-    expect(botLastSeenAt()?.toISOString()).toBe(HACE_3_MIN.toISOString());
+    markBotSeen(AGO_3_MIN.getTime());
+    expect(botLastSeenAt()?.toISOString()).toBe(AGO_3_MIN.toISOString());
   });
 
   it("una key corta equivale a no tener llave", () => {
@@ -298,8 +298,8 @@ describe("la última llamada del cerebro externo (requireBotKey)", () => {
 
 let server: Server;
 let base = "";
-let hitsDestino = 0;
-let ultimaEco: { authorization?: string; url?: string } = {};
+let hitsDestination = 0;
+let lastEcho: { authorization?: string; url?: string } = {};
 
 const NEA = {
   ok: true,
@@ -341,7 +341,7 @@ beforeAll(async () => {
         res.writeHead(302, { location: "/destino" });
         return res.end();
       case "/destino":
-        hitsDestino++;
+        hitsDestination++;
         return json(res, 200, NEA);
       case "/cuelga":
         return; // nunca contesta
@@ -368,7 +368,7 @@ beforeAll(async () => {
           relay: { pendientes: 2.7, masViejoSegundos: 95, ultimoErrorEn: "2026-09-21T17:55:00+00:00" },
         });
       case "/eco":
-        ultimaEco = { authorization: req.headers.authorization, url: req.url };
+        lastEcho = { authorization: req.headers.authorization, url: req.url };
         return json(res, 200, NEA);
       default:
         res.writeHead(404);
@@ -437,10 +437,10 @@ describe("fetchBrainHealth", () => {
   });
 
   it("una redirección NO se sigue", async () => {
-    hitsDestino = 0;
+    hitsDestination = 0;
     const h = await fetchBrainHealth(`${base}/redirige`);
     expect(h).toMatchObject({ reachable: false, problem: "redirect", httpStatus: 302 });
-    expect(hitsDestino).toBe(0);
+    expect(hitsDestination).toBe(0);
   });
 
   it("si no contesta, se rinde a tiempo (timeout) y no lanza", async () => {
@@ -451,10 +451,10 @@ describe("fetchBrainHealth", () => {
   });
 
   it("puerto cerrado → network", async () => {
-    const libre = createServer();
-    await new Promise<void>((r) => libre.listen(0, "127.0.0.1", r));
-    const port = (libre.address() as AddressInfo).port;
-    await new Promise<void>((r) => libre.close(() => r()));
+    const free = createServer();
+    await new Promise<void>((r) => free.listen(0, "127.0.0.1", r));
+    const port = (free.address() as AddressInfo).port;
+    await new Promise<void>((r) => free.close(() => r()));
     const h = await fetchBrainHealth(`http://127.0.0.1:${port}/health`);
     expect(h).toMatchObject({ reachable: false, problem: "network", host: `127.0.0.1:${port}` });
   });
@@ -474,13 +474,13 @@ describe("fetchBrainHealth", () => {
   });
 
   it("campos con basura se descartan; los tolerables se normalizan", async () => {
-    const raro = await fetchBrainHealth(`${base}/raro`);
-    expect(raro.reachable).toBe(true);
-    expect(raro).not.toHaveProperty("version");
-    expect(raro).not.toHaveProperty("commit");
-    expect(raro).not.toHaveProperty("commitVerified");
-    expect(raro).not.toHaveProperty("mode");
-    expect(raro).not.toHaveProperty("relay");
+    const odd = await fetchBrainHealth(`${base}/raro`);
+    expect(odd.reachable).toBe(true);
+    expect(odd).not.toHaveProperty("version");
+    expect(odd).not.toHaveProperty("commit");
+    expect(odd).not.toHaveProperty("commitVerified");
+    expect(odd).not.toHaveProperty("mode");
+    expect(odd).not.toHaveProperty("relay");
 
     const tol = await fetchBrainHealth(`${base}/tolerante`);
     expect(tol).toMatchObject({
@@ -497,15 +497,15 @@ describe("fetchBrainHealth", () => {
     );
     expect(h.reachable).toBe(true);
     // Las credenciales viajan como Basic (fetch rechaza una URL que las trae)…
-    expect(ultimaEco.authorization).toBe(
+    expect(lastEcho.authorization).toBe(
       `Basic ${Buffer.from("usuario:s3cr3t-pass").toString("base64")}`
     );
-    expect(ultimaEco.url).toBe("/eco?token=tok-secreto");
+    expect(lastEcho.url).toBe("/eco?token=tok-secreto");
     // …y de la URL solo vuelve el host.
     expect(h.host).toBe(`127.0.0.1:${port}`);
     const dump = JSON.stringify(h);
-    for (const secreto of ["s3cr3t", "usuario", "tok-secreto", "token", "/eco"]) {
-      expect(dump).not.toContain(secreto);
+    for (const secret of ["s3cr3t", "usuario", "tok-secreto", "token", "/eco"]) {
+      expect(dump).not.toContain(secret);
     }
   });
 });
@@ -513,7 +513,7 @@ describe("fetchBrainHealth", () => {
 describe("getBrainHealth (caché de 15 s)", () => {
   beforeEach(() => resetBrainStatusState());
 
-  function contador() {
+  function counter() {
     let n = 0;
     const fetchImpl: typeof fetch = async () => {
       n++;
@@ -523,13 +523,13 @@ describe("getBrainHealth (caché de 15 s)", () => {
   }
 
   it("sin BRAIN_HEALTH_URL no le pregunta a nadie", async () => {
-    const c = contador();
+    const c = counter();
     expect(await getBrainHealth(undefined, { fetchImpl: c.fetchImpl })).toBeNull();
     expect(c.llamadas()).toBe(0);
   });
 
   it("reutiliza la respuesta 15 s y después vuelve a preguntar", async () => {
-    const c = contador();
+    const c = counter();
     let t = 1_000_000;
     const opts = { fetchImpl: c.fetchImpl, clock: () => t };
     await getBrainHealth("http://nea:8000/health", opts);
@@ -542,7 +542,7 @@ describe("getBrainHealth (caché de 15 s)", () => {
   });
 
   it("llamadas simultáneas comparten una sola pregunta", async () => {
-    const c = contador();
+    const c = counter();
     const opts = { fetchImpl: c.fetchImpl };
     const rs = await Promise.all([
       getBrainHealth("http://nea:8000/health", opts),

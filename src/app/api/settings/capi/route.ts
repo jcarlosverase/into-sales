@@ -1,8 +1,8 @@
 import { z } from "zod";
 import { apiError, parseBody, withAuth } from "@/lib/api";
 import {
-  atribucionDisabledResponse,
-  atribucionEnabled,
+  attributionDisabledResponse,
+  attributionEnabled,
 } from "@/server/attribution/flag";
 import {
   deleteCapiSettings,
@@ -22,7 +22,7 @@ export const dynamic = "force-dynamic";
  */
 
 export const GET = withAuth(async (session) => {
-  if (!atribucionEnabled()) return atribucionDisabledResponse();
+  if (!attributionEnabled()) return attributionDisabledResponse();
   const capi = await getCapiSettingsView(session.organizationId);
   return Response.json({ capi });
 });
@@ -40,7 +40,7 @@ const putSchema = z.object({
 });
 
 export const PUT = withAuth(async (session, req: Request) => {
-  if (!atribucionEnabled()) return atribucionDisabledResponse();
+  if (!attributionEnabled()) return attributionDisabledResponse();
 
   const body = await parseBody(req, putSchema);
   if (!body.ok) return body.response;
@@ -80,7 +80,7 @@ export const PUT = withAuth(async (session, req: Request) => {
 });
 
 export const DELETE = withAuth(async (session) => {
-  if (!atribucionEnabled()) return atribucionDisabledResponse();
+  if (!attributionEnabled()) return attributionDisabledResponse();
   await deleteCapiSettings(session.organizationId);
   return Response.json({ ok: true });
 });

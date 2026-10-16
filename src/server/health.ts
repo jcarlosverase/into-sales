@@ -3,7 +3,8 @@ import { CHANNEL_ORDER, type Channel } from "@/lib/channels";
 import { getDb } from "@/lib/db";
 import { APP_VERSION, resolveCommit } from "@/lib/version";
 import { parseAgendaFlag } from "@/server/agenda/flag";
-import { parseAtribucionFlag } from "@/server/attribution/flag";
+import { parseAttributionFlag } from "@/server/attribution/flag";
+import { readConfigCentral } from "@/server/central/flag";
 import { parseChannels } from "@/server/channels/enabled";
 import { mediaDirStatus } from "@/server/media-dir";
 
@@ -43,6 +44,8 @@ export type HealthFeatures = {
   channels: Channel[];
   /** Atribución de anuncios y CAPI (016): bandera `ATRIBUCION`. */
   atribucion: boolean;
+  /** Latido al servicio central de into (028): bandera `INTO_CENTRAL_URL` bien escrita. */
+  central: boolean;
 };
 
 export type HealthOk = {
@@ -71,7 +74,8 @@ export type FlagEnv = {
   AGENDA?: string;
   CHANNELS?: string;
   ATRIBUCION?: string;
-  [otra: string]: string | undefined;
+  INTO_CENTRAL_URL?: string;
+  [other: string]: string | undefined;
 };
 
 /**
@@ -85,7 +89,8 @@ export function healthFeatures(env: FlagEnv = process.env): HealthFeatures {
   return {
     agenda: parseAgendaFlag(env.AGENDA),
     channels: CHANNEL_ORDER.filter((c) => channels.has(c)),
-    atribucion: parseAtribucionFlag(env.ATRIBUCION),
+    atribucion: parseAttributionFlag(env.ATRIBUCION),
+    central: readConfigCentral(env).active,
   };
 }
 

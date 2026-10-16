@@ -83,8 +83,8 @@ export function isForbiddenUploadMime(mime: string | null | undefined): boolean 
  * no lo interpretes».
  */
 export function contentTypeFor(mime: string | null | undefined): string {
-  const limpio = (mime ?? "").trim();
-  return MIME_SHAPE.test(limpio) ? limpio.toLowerCase() : "application/octet-stream";
+  const clean = (mime ?? "").trim();
+  return MIME_SHAPE.test(clean) ? clean.toLowerCase() : "application/octet-stream";
 }
 
 /**
@@ -94,20 +94,20 @@ export function contentTypeFor(mime: string | null | undefined): string {
  * respaldo ASCII.
  */
 export function contentDisposition(
-  tipo: "inline" | "attachment",
+  kind: "inline" | "attachment",
   fileName: string | null | undefined
 ): string {
-  const nombre = (fileName ?? "")
+  const name = (fileName ?? "")
     .replace(/[\/\r\n\t"]/g, "_")
     .trim()
     .slice(0, 150);
-  if (!nombre) return tipo;
-  const ascii = nombre.replace(/[^\w. -]/g, "_");
-  const utf8 = encodeURIComponent(nombre).replace(
+  if (!name) return kind;
+  const ascii = name.replace(/[^\w. -]/g, "_");
+  const utf8 = encodeURIComponent(name).replace(
     /['()*]/g,
     (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`
   );
-  return `${tipo}; filename="${ascii}"; filename*=UTF-8''${utf8}`;
+  return `${kind}; filename="${ascii}"; filename*=UTF-8''${utf8}`;
 }
 
 /** Cabeceras completas con las que se sirve el binario de un adjunto. */

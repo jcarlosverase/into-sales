@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { apiError, parseBody, withAuth } from "@/lib/api";
 import {
-  desconectarCanal,
+  disconnectChannel,
   getCredentialsByOrg,
   saveCredentials,
   tokenLast4,
@@ -102,6 +102,6 @@ export const DELETE = withAuth(async (session) => {
       webhookPath: webhookPath("wa"),
     });
   }
-  await desconectarCanal(session.organizationId);
+  await disconnectChannel(session.organizationId);
   return Response.json({ ok: true });
 });

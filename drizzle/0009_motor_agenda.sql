@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS "calendar_settings" (
 	"buffer_minutes" integer DEFAULT 0 NOT NULL,
 	"min_notice_hours" integer DEFAULT 2 NOT NULL,
 	"max_days_ahead" integer DEFAULT 7 NOT NULL,
-	"timezone" text DEFAULT 'America/Mexico_City' NOT NULL,
+	"timezone" text DEFAULT 'America/Lima' NOT NULL,
 	"connector" text DEFAULT 'enlace-fijo' NOT NULL,
 	"meeting_link" text,
 	"created_at" timestamp DEFAULT now() NOT NULL,

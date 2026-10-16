@@ -7,7 +7,7 @@ import {
   formatMoneyCents,
   isCurrency,
   parseMoneyToCents,
-  sumable,
+  summable,
 } from "@/lib/money";
 
 describe("parseMoneyToCents", () => {
@@ -44,25 +44,25 @@ describe("parseMoneyToCents", () => {
   });
 });
 
-describe("sumable", () => {
+describe("summable", () => {
   it("solo suma lo que está en la moneda del negocio", () => {
-    expect(sumable({ amountCents: 1000, currency: "MXN" }, "MXN")).toBe(true);
-    expect(sumable({ amountCents: 1000, currency: "USD" }, "MXN")).toBe(false);
+    expect(summable({ amountCents: 1000, currency: "MXN" }, "MXN")).toBe(true);
+    expect(summable({ amountCents: 1000, currency: "USD" }, "MXN")).toBe(false);
   });
 
   it("un monto sin moneda se asume en la del negocio", () => {
     // Es el caso de los leads capturados antes de que existiera la columna.
-    expect(sumable({ amountCents: 1000, currency: null }, "MXN")).toBe(true);
+    expect(summable({ amountCents: 1000, currency: null }, "MXN")).toBe(true);
   });
 
   it("sin monto no suma, aunque la moneda coincida", () => {
-    expect(sumable({ amountCents: null, currency: "MXN" }, "MXN")).toBe(false);
+    expect(summable({ amountCents: null, currency: "MXN" }, "MXN")).toBe(false);
   });
 
   it("cambiar la moneda del negocio cambia lo sumable", () => {
-    const monto = { amountCents: 1000, currency: "USD" };
-    expect(sumable(monto, "MXN")).toBe(false);
-    expect(sumable(monto, "USD")).toBe(true);
+    const amount = { amountCents: 1000, currency: "USD" };
+    expect(summable(amount, "MXN")).toBe(false);
+    expect(summable(amount, "USD")).toBe(true);
   });
 });
 

@@ -98,6 +98,6 @@ AGENTS.md, README.md, .env.example, CHANGELOG.md, specs/README.md
 - Los cuatro gates en las dos configuraciones del CI; `ci.yml` añade `tiktok`
   a la configuración completa.
 - `scripts/e2e-tiktok.mjs` contra el mock de Zernio; `e2e-messenger.mjs`,
-  `e2e-despacho.mjs` y el selftest siguen en verde.
+  `e2e-dispatch.mjs` y el selftest siguen en verde.
 - Migración sobre una base en `0017`.
 - En vivo: ver el Constitution Check (IX).

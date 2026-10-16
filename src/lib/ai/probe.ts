@@ -62,7 +62,7 @@ export async function probeProvider(input: {
     () => controller.abort(),
     input.timeoutMs ?? PROBE_TIMEOUT_MS
   );
-  const inicio = Date.now();
+  const start = Date.now();
   try {
     const res = await (input.fetchImpl ?? fetch)(url, {
       method: "POST",
@@ -91,10 +91,10 @@ export async function probeProvider(input: {
             "El proveedor contestó, pero no con el formato de la API de OpenAI (sin `choices`)",
         };
       }
-      return { ok: true, latencyMs: Date.now() - inicio };
+      return { ok: true, latencyMs: Date.now() - start };
     }
     const text = await res.text().catch(() => "");
-    return clasificarFallo(res.status, text);
+    return classifyFailure(res.status, text);
   } catch {
     return controller.signal.aborted
       ? {
@@ -116,17 +116,17 @@ export async function probeProvider(input: {
 }
 
 /** Qué significa un código del proveedor, en el idioma del dueño. */
-export function clasificarFallo(
+export function classifyFailure(
   status: number,
   body: string
 ): Extract<ProbeResult, { ok: false }> {
-  const detalle = resumenDelCuerpo(body);
+  const detail = bodySummary(body);
   if (status === 401 || status === 403) {
     return {
       ok: false,
       code: "invalid_token",
       httpStatus: status,
-      message: `El proveedor rechazó la llave (${status})${detalle}`,
+      message: `El proveedor rechazó la llave (${status})${detail}`,
     };
   }
   if (status === 402) {
@@ -134,7 +134,7 @@ export function clasificarFallo(
       ok: false,
       code: "no_credit",
       httpStatus: status,
-      message: `La cuenta no tiene saldo (402)${detalle}`,
+      message: `La cuenta no tiene saldo (402)${detail}`,
     };
   }
   if (status === 404 || (status === 400 && /model/i.test(body))) {
@@ -142,7 +142,7 @@ export function clasificarFallo(
       ok: false,
       code: "model_not_found",
       httpStatus: status,
-      message: `El proveedor no reconoce ese modelo (${status})${detalle}`,
+      message: `El proveedor no reconoce ese modelo (${status})${detail}`,
     };
   }
   if (status === 429) {
@@ -150,35 +150,35 @@ export function clasificarFallo(
       ok: false,
       code: "rate_limited",
       httpStatus: status,
-      message: `El proveedor pide esperar (429): la llave sirve, vuelve a probar en un momento${detalle}`,
+      message: `El proveedor pide esperar (429): la llave sirve, vuelve a probar en un momento${detail}`,
     };
   }
   return {
     ok: false,
     code: "provider_error",
     httpStatus: status,
-    message: `El proveedor respondió ${status}${detalle}`,
+    message: `El proveedor respondió ${status}${detail}`,
   };
 }
 
 /** El `error.message` del cuerpo si lo trae, truncado; si no, nada. */
-function resumenDelCuerpo(body: string): string {
+function bodySummary(body: string): string {
   if (!body) return "";
-  let texto = body;
+  let textValue = body;
   try {
     const json = JSON.parse(body) as { error?: { message?: unknown } | string };
-    if (typeof json?.error === "string") texto = json.error;
-    else if (typeof json?.error?.message === "string") texto = json.error.message;
+    if (typeof json?.error === "string") textValue = json.error;
+    else if (typeof json?.error?.message === "string") textValue = json.error.message;
   } catch {
     // no era JSON: se usa el texto tal cual
   }
-  texto = texto.replace(/\s+/g, " ").trim();
-  if (!texto) return "";
-  return `: ${texto.length > MAX_BODY ? `${texto.slice(0, MAX_BODY)}…` : texto}`;
+  textValue = textValue.replace(/\s+/g, " ").trim();
+  if (!textValue) return "";
+  return `: ${textValue.length > MAX_BODY ? `${textValue.slice(0, MAX_BODY)}…` : textValue}`;
 }
 
 export type ModelsResult =
-  | { ok: true; modelos: { id: string; nombre: string | null }[] }
+  | { ok: true; models: { id: string; name: string | null }[] }
   | {
       ok: false;
       code: "unsupported" | "invalid_token" | "unreachable" | "timeout" | "bad_url" | "provider_error";
@@ -240,7 +240,7 @@ export async function listModels(input: {
       };
     }
     if (res.status === 404 || res.status === 405 || res.status === 501) {
-      return noSoportado(res.status);
+      return unsupported(res.status);
     }
     if (!res.ok) {
       return {
@@ -253,21 +253,21 @@ export async function listModels(input: {
     const json = (await res.json().catch(() => null)) as {
       data?: unknown;
     } | null;
-    if (!json || !Array.isArray(json.data)) return noSoportado(res.status);
-    const modelos = json.data
+    if (!json || !Array.isArray(json.data)) return unsupported(res.status);
+    const models = json.data
       .map((m) => {
         if (!m || typeof m !== "object") return null;
         const r = m as { id?: unknown; name?: unknown };
         if (typeof r.id !== "string" || !r.id.trim()) return null;
         return {
           id: r.id.trim(),
-          nombre: typeof r.name === "string" && r.name.trim() ? r.name.trim() : null,
+          name: typeof r.name === "string" && r.name.trim() ? r.name.trim() : null,
         };
       })
-      .filter((m): m is { id: string; nombre: string | null } => m !== null)
+      .filter((m): m is { id: string; name: string | null } => m !== null)
       .sort((a, b) => a.id.localeCompare(b.id))
       .slice(0, MAX_MODELS);
-    return { ok: true, modelos };
+    return { ok: true, models: models };
   } catch {
     return controller.signal.aborted
       ? {
@@ -288,7 +288,7 @@ export async function listModels(input: {
   }
 }
 
-function noSoportado(status: number): Extract<ModelsResult, { ok: false }> {
+function unsupported(status: number): Extract<ModelsResult, { ok: false }> {
   return {
     ok: false,
     code: "unsupported",

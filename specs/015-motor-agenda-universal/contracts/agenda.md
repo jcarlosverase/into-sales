@@ -36,7 +36,7 @@ producción ("10:30, de mañana" respondida a una oferta de HOY).
 { "settings": {
     "weeklyHours": { "mon": [{ "start": "09:00", "end": "18:00" }] },
     "slotMinutes": 30, "bufferMinutes": 0, "minNoticeHours": 2,
-    "maxDaysAhead": 7, "timezone": "America/Mexico_City",
+    "maxDaysAhead": 7, "timezone": "America/Lima",
     "connector": "enlace-fijo", "meetingLink": null } }
 ```
 
@@ -231,7 +231,7 @@ cita».
 ```json
 {
   "booking": {
-    "timezone": "America/Mexico_City",
+    "timezone": "America/Lima",
     "next": {
       "id": "bk_…",
       "status": "agendada",

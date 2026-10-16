@@ -12,3 +12,15 @@
 export function canConfigure(role: string | null | undefined): boolean {
   return role === "owner" || role === "admin";
 }
+
+/**
+ * 022 — Supervisors see every lead, assign them and configure lead routing.
+ * Today it is the same pair as `canConfigure`, but the question is different
+ * ("who sees the whole team's work?"), so it gets its own name.
+ */
+export function isSupervisor(role: string | null | undefined): boolean {
+  return role === "owner" || role === "admin";
+}
+
+/** 022 — The role that receives leads by rotation and only sees its own. */
+export const SALES_REP_ROLE = "member";

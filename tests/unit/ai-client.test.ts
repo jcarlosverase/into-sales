@@ -2,7 +2,7 @@ import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { AiClient } from "@/components/settings/ai-client";
-import { AvisoIaBanner } from "@/components/avisos/aviso-ia";
+import { NoticeIaBanner } from "@/components/notices/ai-notice";
 
 /**
  * #85 — Ajustes → IA y el banner, dibujados en el servidor (sin efectos):
@@ -30,13 +30,13 @@ describe("Ajustes → IA", () => {
 describe("banner del agente sin IA", () => {
   it("manda a Ajustes → IA con la acción que toca; sin aviso no dibuja nada", () => {
     const html = renderToStaticMarkup(
-      React.createElement(AvisoIaBanner, {
-        aviso: { mensaje: "Tu agente está pausado.", accion: "Revisar mi conexión" },
+      React.createElement(NoticeIaBanner, {
+        notice: { message: "Tu agente está pausado.", action: "Revisar mi conexión" },
       })
     );
     expect(html).toContain("Tu agente está pausado.");
     expect(html).toContain("Revisar mi conexión");
     expect(html).toContain('href="/settings/ai"');
-    expect(renderToStaticMarkup(React.createElement(AvisoIaBanner, { aviso: null }))).toBe("");
+    expect(renderToStaticMarkup(React.createElement(NoticeIaBanner, { notice: null }))).toBe("");
   });
 });

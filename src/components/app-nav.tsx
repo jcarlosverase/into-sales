@@ -135,7 +135,7 @@ export function AppNav({
         open ? "visible translate-x-0 shadow-pop" : "invisible -translate-x-full"
       )}
     >
-      {/* Marca: el logo de Vocero o, white-label, la inicial y el nombre */}
+      {/* Marca: el logo de IntoSales o, white-label, la inicial y el nombre */}
       <div className="mb-5 flex items-start gap-1.5 px-2 pt-0.5">
         {/* En móvil el cajón necesita su propio cierre: el velo no siempre es
             alcanzable con el pulgar. */}
@@ -211,9 +211,12 @@ export function AppNav({
           consulta para saber qué código corre. El aviso es el ícono (color de
           advertencia: basta 3:1 para un gráfico) y el texto va en `text-2`,
           que pasa AA sobre la barra en cualquier tema. */}
-      <p
-        className="mt-2 px-2.5 font-mono text-[10.5px] tracking-[0.06em] text-text-2"
+      {/* 1000 — La versión lleva a «Acerca de». */}
+      <Link
+        href="/about"
+        className="mt-2 block rounded-sm px-2.5 font-mono text-[10.5px] tracking-[0.06em] text-text-2 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         title={versionTitle(branding.name, version)}
+        aria-label={`Acerca de ${branding.name}, ${versionLabel(version.commit)}`}
       >
         {versionLabel(version.commit)}
         {version.commit && !version.verified && (
@@ -226,7 +229,7 @@ export function AppNav({
             {UNVERIFIED_COMMIT_NOTE}
           </span>
         )}
-      </p>
+      </Link>
     </aside>
   );
 }

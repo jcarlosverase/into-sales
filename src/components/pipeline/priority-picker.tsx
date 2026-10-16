@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 import type { PriorityValue } from "@/lib/types";
 import { PRIORITY_LABELS, PRIORITY_VALUES } from "@/server/leads/priority";
 
-const TONO: Record<PriorityValue, string> = {
+const TONE: Record<PriorityValue, string> = {
   alta: "border-danger-soft bg-danger-tint text-danger-text",
   media: "border-warning-soft bg-warning-tint text-warning-text",
   baja: "border-border bg-secondary text-text-2",
@@ -16,7 +16,7 @@ export function PriorityBadge({ value }: { value: PriorityValue }) {
     <span
       className={cn(
         "rounded-full border px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
-        TONO[value]
+        TONE[value]
       )}
     >
       {PRIORITY_LABELS[value]}
@@ -45,7 +45,7 @@ export function PriorityPicker({
           aria-pressed={value === p}
           className={cn(
             "rounded-full border px-2.5 py-1 text-xs transition-colors",
-            value === p ? TONO[p] : "text-text-2 hover:bg-accent"
+            value === p ? TONE[p] : "text-text-2 hover:bg-accent"
           )}
         >
           {PRIORITY_LABELS[p]}

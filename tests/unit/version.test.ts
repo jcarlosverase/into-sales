@@ -8,9 +8,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
  * ya arreglado porque la etiqueta le dijo que el build sí había llegado.
  */
 
-const RAIZ = path.resolve(import.meta.dirname, "..", "..");
+const ROOT = path.resolve(import.meta.dirname, "..", "..");
 const pkg = JSON.parse(
-  readFileSync(path.join(RAIZ, "package.json"), "utf8")
+  readFileSync(path.join(ROOT, "package.json"), "utf8")
 ) as { version: string };
 
 describe("versión de la app", () => {
@@ -19,7 +19,7 @@ describe("versión de la app", () => {
   });
 
   it("no la duplica nadie: sale de package.json vía next.config", () => {
-    const config = readFileSync(path.join(RAIZ, "next.config.ts"), "utf8");
+    const config = readFileSync(path.join(ROOT, "next.config.ts"), "utf8");
     expect(config).toContain("package.json");
     expect(config).toContain("NEXT_PUBLIC_APP_VERSION");
     // Una versión escrita a mano en el config es exactamente cómo se
@@ -32,17 +32,17 @@ describe("versión de la app", () => {
     // tooltip delata el producto de debajo justo donde el operador la mira
     // todos los días.
     const nav = readFileSync(
-      path.join(RAIZ, "src", "components", "app-nav.tsx"),
+      path.join(ROOT, "src", "components", "app-nav.tsx"),
       "utf8"
     );
     // Se busca la llamada real. Antes buscaba `versionLabel()`, que no existe
     // en el componente (se llama con el commit): el índice era -1 y la prueba
     // miraba, por casualidad, el final del archivo.
-    const llamada = nav.indexOf("versionLabel(version.commit)");
-    expect(llamada).toBeGreaterThan(0);
-    const insignia = nav.slice(llamada - 600, llamada + 300);
-    expect(insignia).toContain("branding.name");
-    expect(insignia).not.toMatch(/`Vocero \$\{/);
+    const call = nav.indexOf("versionLabel(version.commit)");
+    expect(call).toBeGreaterThan(0);
+    const badge = nav.slice(call - 600, call + 300);
+    expect(badge).toContain("branding.name");
+    expect(badge).not.toMatch(/`Vocero \$\{/);
   });
 
   it("docker compose arranca por defecto la imagen de esta misma versión", () => {
@@ -50,13 +50,13 @@ describe("versión de la app", () => {
     // publicada. Si package.json sube y el compose no, `docker compose up -d`
     // corre la versión anterior mientras el código y el CHANGELOG hablan de
     // la nueva.
-    const compose = readFileSync(path.join(RAIZ, "docker-compose.yml"), "utf8");
-    const imagen = compose.match(/image:\s*\S+:\$\{VOCERO_CRM_VERSION:-([^}\s]+)\}/);
-    expect(imagen?.[1]).toBe(pkg.version);
+    const compose = readFileSync(path.join(ROOT, "docker-compose.yml"), "utf8");
+    const image = compose.match(/image:\s*\S+:\$\{VOCERO_CRM_VERSION:-([^}\s]+)\}/);
+    expect(image?.[1]).toBe(pkg.version);
   });
 
   it("el Dockerfile acepta el commit sin exigirlo", () => {
-    const dockerfile = readFileSync(path.join(RAIZ, "Dockerfile"), "utf8");
+    const dockerfile = readFileSync(path.join(ROOT, "Dockerfile"), "utf8");
     expect(dockerfile).toContain("ARG SOURCE_COMMIT");
     // Con default vacío: quien construya sin pasarlo no debe ver un build roto.
     expect(dockerfile).toMatch(/ARG SOURCE_COMMIT=""/);
@@ -101,12 +101,12 @@ describe("versionLabel", () => {
     // propio import fresco.
     process.env.NEXT_PUBLIC_APP_VERSION = "1.4.2";
     process.env.NEXT_PUBLIC_BUILD_COMMIT = "8e62d0bdfe5a7fb";
-    const conCommit = await import(`@/lib/version?con=${Date.now()}`);
-    expect(conCommit.versionLabel()).toBe("v1.4.2 · 8e62d0b");
+    const withCommit = await import(`@/lib/version?con=${Date.now()}`);
+    expect(withCommit.versionLabel()).toBe("v1.4.2 · 8e62d0b");
 
     process.env.NEXT_PUBLIC_BUILD_COMMIT = "";
-    const sinCommit = await import(`@/lib/version?sin=${Date.now()}`);
-    expect(sinCommit.versionLabel()).toBe("v1.4.2");
+    const withoutCommit = await import(`@/lib/version?sin=${Date.now()}`);
+    expect(withoutCommit.versionLabel()).toBe("v1.4.2");
   });
 });
 
@@ -134,13 +134,13 @@ describe("un commit que no salió del build se presenta como NO verificado", () 
     process.env.NEXT_PUBLIC_BUILD_COMMIT = "";
     process.env.SOURCE_COMMIT = "52c5034aaaa";
     const m = await import("@/lib/version");
-    const titulo = m.versionTitle("Clínica Sur", m.resolveCommit());
-    expect(titulo).toContain("52c5034");
-    expect(titulo).toContain("no viene del build");
-    expect(titulo).toContain("build arg SOURCE_COMMIT");
+    const title = m.versionTitle("Clínica Sur", m.resolveCommit());
+    expect(title).toContain("52c5034");
+    expect(title).toContain("no viene del build");
+    expect(title).toContain("build arg SOURCE_COMMIT");
     // White-label también aquí: el nombre es el de la marca.
-    expect(titulo.startsWith("Clínica Sur 1.3.0")).toBe(true);
-    expect(titulo).not.toContain("Vocero");
+    expect(title.startsWith("Clínica Sur 1.3.0")).toBe(true);
+    expect(title).not.toContain("Vocero");
   });
 
   it("el verificado no lleva advertencia; sin commit, solo nombre y versión", async () => {
@@ -157,7 +157,7 @@ describe("un commit que no salió del build se presenta como NO verificado", () 
 
   it("la insignia pinta la advertencia SOLO para un commit sin verificar", () => {
     const nav = readFileSync(
-      path.join(RAIZ, "src", "components", "app-nav.tsx"),
+      path.join(ROOT, "src", "components", "app-nav.tsx"),
       "utf8"
     );
     expect(nav).toMatch(
@@ -171,9 +171,9 @@ describe("un commit que no salió del build se presenta como NO verificado", () 
     // Cada caso re-importa la ruta con `resetModules` (lee el entorno al
     // importarse): en una corrida cargada eso puede pasar de los 5 s de
     // serie, y una prueba que expira sigue corriendo detrás de la siguiente.
-    const IMPORT_FRESCO_MS = 30_000;
+    const FRESH_IMPORT_MS = 30_000;
 
-    async function salud(env: Record<string, string | undefined>) {
+    async function health(env: Record<string, string | undefined>) {
       vi.resetModules();
       for (const [k, v] of Object.entries(env)) {
         if (v === undefined) delete process.env[k];
@@ -188,34 +188,34 @@ describe("un commit que no salió del build se presenta como NO verificado", () 
 
     it("commit del build → commitVerified: true", async () => {
       expect(
-        await salud({
+        await health({
           NEXT_PUBLIC_APP_VERSION: "1.3.0",
           NEXT_PUBLIC_BUILD_COMMIT: "73e93c1bbbb",
           SOURCE_COMMIT: "52c5034aaaa",
         })
       ).toMatchObject({ ok: true, version: "1.3.0", commit: "73e93c1", commitVerified: true });
-    }, IMPORT_FRESCO_MS);
+    }, FRESH_IMPORT_MS);
 
     it("commit solo del entorno → sale, pero con commitVerified: false", async () => {
       // `commit` se conserva: hay scripts que ya lo leen y no se les rompe.
       expect(
-        await salud({
+        await health({
           NEXT_PUBLIC_APP_VERSION: "1.3.0",
           NEXT_PUBLIC_BUILD_COMMIT: "",
           SOURCE_COMMIT: "52c5034aaaa",
         })
       ).toMatchObject({ ok: true, version: "1.3.0", commit: "52c5034", commitVerified: false });
-    }, IMPORT_FRESCO_MS);
+    }, FRESH_IMPORT_MS);
 
     it("sin commit por ningún lado → solo la versión, sin afirmar nada", async () => {
-      const cuerpo = await salud({
+      const body = await health({
         NEXT_PUBLIC_APP_VERSION: "1.3.0",
         NEXT_PUBLIC_BUILD_COMMIT: "",
         SOURCE_COMMIT: undefined,
       });
-      expect(cuerpo).toMatchObject({ ok: true, version: "1.3.0" });
-      expect(cuerpo).not.toHaveProperty("commit");
-      expect(cuerpo).not.toHaveProperty("commitVerified");
-    }, IMPORT_FRESCO_MS);
+      expect(body).toMatchObject({ ok: true, version: "1.3.0" });
+      expect(body).not.toHaveProperty("commit");
+      expect(body).not.toHaveProperty("commitVerified");
+    }, FRESH_IMPORT_MS);
   });
 });

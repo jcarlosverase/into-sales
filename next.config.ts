@@ -7,7 +7,25 @@ const { version } = JSON.parse(
   readFileSync(new URL("./package.json", import.meta.url), "utf8")
 ) as { version: string };
 
+/**
+ * Public host of this instance when it is not localhost (for example a
+ * Cloudflare tunnel in local development, see docs/tunel-cloudflare.md).
+ * `next dev` only serves its dev assets to allowed origins; without this the
+ * app opened through the tunnel loads its HTML but not its scripts.
+ */
+function devPublicHost(): string[] {
+  try {
+    const host = new URL(process.env.APP_BASE_URL ?? "").hostname;
+    return host && host !== "localhost" ? [host] : [];
+  } catch {
+    return [];
+  }
+}
+
 const nextConfig: NextConfig = {
+  // En desarrollo también la red local: abrir el CRM desde el celular o desde
+  // otra máquina (http://192.168.1.94:3000). Solo afecta a `next dev`.
+  allowedDevOrigins: [...devPublicHost(), "192.168.*.*", "10.*.*.*", "172.*.*.*", "*.local"],
   // standalone es para la imagen Docker (Linux). En Windows el trazado crea
   // symlinks que requieren permisos elevados, así que ahí se omite.
   output: process.platform === "win32" ? undefined : "standalone",
@@ -22,6 +40,12 @@ const nextConfig: NextConfig = {
   env: {
     NEXT_PUBLIC_APP_VERSION: version,
     NEXT_PUBLIC_BUILD_COMMIT: process.env.SOURCE_COMMIT ?? "",
+  },
+  // El código y sus carpetas van en inglés: la ficha del lead vive en
+  // /api/bot/qualification. La URL de siempre sigue respondiendo porque es
+  // parte del contrato con los cerebros externos (README, «Trae tu propio agente»).
+  async rewrites() {
+    return [{ source: "/api/bot/ficha", destination: "/api/bot/qualification" }];
   },
 };
 

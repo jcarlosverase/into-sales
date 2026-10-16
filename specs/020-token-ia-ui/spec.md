@@ -79,13 +79,13 @@ saldo (402) el agente calla sin que nada lo diga.
   (sonda y modelos), `lib/ai/index.ts` (`chatJson` con `organizationId`; 401/402
   sobre la fila pausan y cortan los reintentos).
 - `server/ai/credentials.ts` (fila cifrada, `estadoSegunRespuesta`),
-  `server/ai/settings.ts` (Zod y vista), `server/ai/aviso.ts` (banner).
+  `server/ai/settings.ts` (Zod y vista), `server/ai/notice.ts` (banner).
 - `isAiConfigured()` del entorno pasa a `isAiConfiguredByEnv()`; los
   consumidores usan `isAiConfiguredFor(organizationId)`: brain-status, perfil
   del agente, Laboratorio, trigger y pipeline (la puerta baja hasta conocer la
   organización, antes de cualquier efecto).
 - UI: `settings/ai` + `components/settings/ai-client.tsx`, pestaña «IA» en
-  `settings-nav`, banner `components/avisos/aviso-ia.tsx` por `AppShell`;
+  `settings-nav`, banner `components/notices/ai-notice.tsx` por `AppShell`;
   Agente, Laboratorio, «quién responde» y el panel de contacto enlazan a
   Ajustes → IA en vez de mandar al `.env`.
 - Mock: `GET /api/dev/ai-mock/v1/models`; llave `-invalid` → 401,

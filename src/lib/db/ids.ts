@@ -33,8 +33,12 @@ const prefixes = {
   aiCredentials: "aicred",
   // 021 — despacho al cerebro
   dispatch: "dsp",
+  // 022 — lead routing
+  leadRoutingMember: "lrm",
   // 026 — el aviso de que una conversación se eliminó
-  olvido: "olv",
+  forget: "olv",
+  // 028 — la llave de licencia del servicio central de into
+  centralLicense: "clic",
 } as const;
 
 export type IdKind = keyof typeof prefixes;

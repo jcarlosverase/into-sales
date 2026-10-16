@@ -34,13 +34,13 @@ describe("cuerpo de una reserva creada", () => {
   });
 
   it("`linkPending` viaja SIEMPRE: es lo que decide si se promete el enlace", () => {
-    const pendiente = bookingPayload({
+    const pending = bookingPayload({
       ...(result as object),
       meetingLink: null,
       linkPending: true,
     } as never);
-    expect(pendiente.meetingLink).toBeNull();
-    expect(pendiente.linkPending).toBe(true);
+    expect(pending.meetingLink).toBeNull();
+    expect(pending.linkPending).toBe(true);
   });
 });
 

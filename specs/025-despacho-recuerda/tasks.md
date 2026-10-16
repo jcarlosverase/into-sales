@@ -8,19 +8,19 @@
 
 ## Despacho
 
-- [x] T004 `ingest.ts` → `trigger.ts` → `encolar.ts`: el id del entrante llega al outbox
+- [x] T004 `ingest.ts` → `trigger.ts` → `enqueue.ts`: el id del entrante llega al outbox
 - [x] T005 `outbox.ts`: `encolarDespacho` anota ids (fila viva, en vuelo, carrera del índice) y `mensajesAnotados`
 - [x] T006 `deliver.ts`: `rafagaDe` con debidos, `sinDespachar`, `construirEvento` sin mensajes
 - [x] T007 `worker.ts`: descartar el despacho vacío y releer lo anotado tras entregar
 
 ## Agente incluido
 
-- [x] T008 `orden-turno.ts`: `ordenarParaElTurno`, `debidosVigentes`, `atendidoPorPersona` y `quedanDebidos`
+- [x] T008 `turn-order.ts`: `ordenarParaElTurno`, `debidosVigentes`, `atendidoPorPersona` y `quedanDebidos`
 - [x] T009 `pipeline.ts`: debidos en el coalesce, `runAgentTurn` devuelve lo que leyó
 
 ## Pruebas y documentación
 
-- [x] T010 Unitarias: `sinDespachar` y las cuatro puras de `orden-turno.ts`
+- [x] T010 Unitarias: `sinDespachar` y las cuatro puras de `turn-order.ts`
 - [x] T011 Mock de IA: demora y registro de peticiones
 - [x] T012 Arnés y guion: «mientras piensa», «persona en la ventana», «agente incluido», y la espera del #116
 - [x] T013 Contrato del despacho, `AGENTS.md`, `specs/README.md`, CHANGELOG

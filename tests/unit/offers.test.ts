@@ -11,28 +11,28 @@ import {
  */
 
 const OFFERS: OfferedSlot[] = [
-  { startUtc: "2026-08-05T15:00:00.000Z", label: "mié 5 ago, 09:00" },
-  { startUtc: "2026-08-05T15:30:00.000Z", label: "mié 5 ago, 09:30" },
-  { startUtc: "2026-08-06T16:00:00.000Z", label: "jue 6 ago, 10:00" },
+  { startUtc: "2026-08-05T14:00:00.000Z", label: "mié 5 ago, 09:00" },
+  { startUtc: "2026-08-05T14:30:00.000Z", label: "mié 5 ago, 09:30" },
+  { startUtc: "2026-08-06T15:00:00.000Z", label: "jue 6 ago, 10:00" },
 ];
 
 describe("findOffered", () => {
   it("acepta un instante ofrecido", () => {
-    expect(findOffered(OFFERS, "2026-08-05T15:30:00.000Z")?.label).toBe(
+    expect(findOffered(OFFERS, "2026-08-05T14:30:00.000Z")?.label).toBe(
       "mié 5 ago, 09:30"
     );
   });
 
   it("acepta el MISMO instante escrito con otro offset", () => {
-    // 09:00 en México es el mismo instante que 15:00Z: es el mismo hueco.
-    expect(findOffered(OFFERS, "2026-08-05T09:00:00.000-06:00")).not.toBeNull();
+    // 09:00 en Lima es el mismo instante que 14:00Z: es el mismo hueco.
+    expect(findOffered(OFFERS, "2026-08-05T09:00:00.000-05:00")).not.toBeNull();
   });
 
   it("rechaza un instante que no se ofreció, aunque sea cercano", () => {
     // Un minuto de diferencia NO es el hueco ofrecido.
-    expect(findOffered(OFFERS, "2026-08-05T15:31:00.000Z")).toBeNull();
+    expect(findOffered(OFFERS, "2026-08-05T14:31:00.000Z")).toBeNull();
     // Un horario perfectamente válido pero nunca ofrecido tampoco vale.
-    expect(findOffered(OFFERS, "2026-08-05T18:00:00.000Z")).toBeNull();
+    expect(findOffered(OFFERS, "2026-08-05T17:00:00.000Z")).toBeNull();
   });
 
   it("rechaza basura sin lanzar (el modelo alucinó el formato)", () => {
@@ -41,21 +41,21 @@ describe("findOffered", () => {
   });
 
   it("sin oferta previa no hay nada reservable", () => {
-    expect(findOffered([], "2026-08-05T15:00:00.000Z")).toBeNull();
+    expect(findOffered([], "2026-08-05T14:00:00.000Z")).toBeNull();
   });
 });
 
 describe("sameInstant", () => {
   it("compara instantes, no cadenas", () => {
     expect(
-      sameInstant("2026-08-05T15:00:00.000Z", "2026-08-05T09:00:00-06:00")
+      sameInstant("2026-08-05T14:00:00.000Z", "2026-08-05T09:00:00-05:00")
     ).toBe(true);
     expect(
-      sameInstant("2026-08-05T15:00:00.000Z", "2026-08-05T15:00:01.000Z")
+      sameInstant("2026-08-05T14:00:00.000Z", "2026-08-05T14:00:01.000Z")
     ).toBe(false);
   });
 
   it("una fecha inválida nunca es igual a nada", () => {
-    expect(sameInstant("nope", "2026-08-05T15:00:00.000Z")).toBe(false);
+    expect(sameInstant("nope", "2026-08-05T14:00:00.000Z")).toBe(false);
   });
 });

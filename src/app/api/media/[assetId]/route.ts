@@ -2,6 +2,7 @@ import { eq } from "drizzle-orm";
 import { apiError, withAuth } from "@/lib/api";
 import { getDb, schema } from "@/lib/db";
 import { scoped } from "@/lib/db/tenant";
+import { canSeeMediaAsset, getLeadScope } from "@/server/leads/scope";
 import {
   ensureAssetAvailable,
   readMediaFile,
@@ -38,6 +39,10 @@ export const GET = withAuth(async (session, _req: Request, ctx: Params) => {
     .limit(1);
   let asset = rows[0];
   if (!asset) return apiError(404, "not_found", "Adjunto no encontrado");
+  // 022 — a sales rep only opens attachments of their own leads.
+  if (!(await canSeeMediaAsset(getLeadScope(session), session.organizationId, assetId))) {
+    return apiError(404, "not_found", "Adjunto no encontrado");
+  }
 
   if (asset.kind === "location" || asset.kind === "contacts") {
     // Sin binario: el payload viaja en el DTO del mensaje.

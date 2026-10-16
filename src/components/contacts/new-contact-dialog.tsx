@@ -37,7 +37,7 @@ export function NewContactDialog({
   const [stageId, setStageId] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [duplicado, setDuplicado] = useState<{ id: string; name: string } | null>(
+  const [duplicate, setDuplicate] = useState<{ id: string; name: string } | null>(
     null
   );
 
@@ -46,16 +46,16 @@ export function NewContactDialog({
       const res = await fetch("/api/pipeline/stages").catch(() => null);
       if (!res?.ok) return;
       const data = (await res.json()) as { stages: StageDto[] };
-      const abiertas = data.stages.filter((s) => s.kind === "open");
-      setStages(abiertas);
-      setStageId(abiertas[0]?.id ?? "");
+      const openOnes = data.stages.filter((s) => s.kind === "open");
+      setStages(openOnes);
+      setStageId(openOnes[0]?.id ?? "");
     })();
   }, []);
 
-  async function guardar() {
+  async function save() {
     setSaving(true);
     setError(null);
-    setDuplicado(null);
+    setDuplicate(null);
     const res = await fetch("/api/contacts", {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -79,7 +79,7 @@ export function NewContactDialog({
     } | null;
 
     if (res.status === 409 && data?.contact) {
-      setDuplicado({ id: data.contact.id, name: data.contact.name });
+      setDuplicate({ id: data.contact.id, name: data.contact.name });
       return;
     }
     if (!res.ok) {
@@ -91,7 +91,7 @@ export function NewContactDialog({
 
   // 11 dígitos = código de país + número. Ver la nota del endpoint sobre por
   // qué el código de país no puede faltar ni asumirse.
-  const listo = name.trim().length > 0 && phone.replace(/\D/g, "").length >= 11;
+  const ready = name.trim().length > 0 && phone.replace(/\D/g, "").length >= 11;
 
   return (
     <div
@@ -119,7 +119,7 @@ export function NewContactDialog({
               id="nc-name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Ferretería La Central"
+              placeholder="Rosa Quispe"
             />
           </div>
 
@@ -192,17 +192,17 @@ export function NewContactDialog({
           </div>
         </div>
 
-        {duplicado && (
+        {duplicate && (
           <div className="mt-3 rounded-md border border-warning-soft bg-warning-tint px-3 py-2.5">
             <p className="text-[13px] text-warning-text">
-              Ese teléfono ya es de <strong>{duplicado.name}</strong>. No se creó
+              Ese teléfono ya es de <strong>{duplicate.name}</strong>. No se creó
               un duplicado.
             </p>
             <Button
               size="sm"
               variant="secondary"
               className="mt-2"
-              onClick={() => onOpenExisting(duplicado.id)}
+              onClick={() => onOpenExisting(duplicate.id)}
             >
               Abrir su conversación
             </Button>
@@ -221,8 +221,8 @@ export function NewContactDialog({
             Cancelar
           </Button>
           <Button
-            disabled={!listo || saving || stages.length === 0}
-            onClick={() => void guardar()}
+            disabled={!ready || saving || stages.length === 0}
+            onClick={() => void save()}
           >
             {saving ? "Guardando…" : "Crear contacto"}
           </Button>

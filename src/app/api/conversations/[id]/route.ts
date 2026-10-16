@@ -2,10 +2,12 @@ import { z } from "zod";
 import { apiError, parseBody, withAuth } from "@/lib/api";
 import { canConfigure } from "@/lib/auth/roles";
 import { newId } from "@/lib/db/ids";
-import { construirEventoOlvido } from "@/server/brains/contract";
-import { avisarOlvido, type ResultadoOlvido } from "@/server/brains/deliver";
+import { buildEventForget } from "@/server/brains/contract";
+import { notifyForget, type ResultForget } from "@/server/brains/deliver";
+import { businessTimezone } from "@/server/analytics/period";
 import { publish } from "@/server/events/bus";
-import { eliminarConversacion } from "@/server/inbox/eliminar";
+import { canSeeConversation, getLeadScope } from "@/server/leads/scope";
+import { deleteConversation } from "@/server/inbox/delete-conversation";
 import { serializeConversation, getConversation, updateConversation } from "@/server/inbox/queries";
 
 export const dynamic = "force-dynamic";
@@ -20,6 +22,9 @@ type Params = { params: Promise<{ id: string }> };
 
 export const PATCH = withAuth(async (session, req: Request, ctx: Params) => {
   const { id } = await ctx.params;
+  if (!(await canSeeConversation(getLeadScope(session), session.organizationId, id))) {
+    return apiError(404, "not_found", "Conversación no encontrada");
+  }
   const body = await parseBody(req, patchSchema);
   if (!body.ok) return body.response;
 
@@ -33,7 +38,7 @@ export const PATCH = withAuth(async (session, req: Request, ctx: Params) => {
       row.contact,
       null,
       null,
-      row.anuncio
+      row.ad
     );
     publish(session.organizationId, {
       type: "conversation.updated",
@@ -44,7 +49,10 @@ export const PATCH = withAuth(async (session, req: Request, ctx: Params) => {
   return Response.json({ conversation: null });
 });
 
-const FECHA_DE_CITA = new Intl.DateTimeFormat("es-MX", { dateStyle: "long" });
+// En la zona del negocio (America/Lima por defecto): el servidor corre en UTC y
+// una cita de la noche saldría con la fecha del día siguiente.
+const bookingDate = (when: Date, timeZone: string) =>
+  new Intl.DateTimeFormat("es-PE", { dateStyle: "long", timeZone }).format(when);
 
 /**
  * 026 — Elimina la conversación y le pide al cerebro que la olvide.
@@ -62,16 +70,16 @@ export const DELETE = withAuth(async (session, req: Request, ctx: Params) => {
     );
   }
   const { id } = await ctx.params;
-  const alcance =
+  const scope =
     new URL(req.url).searchParams.get("contacto") === "1" ? "contacto" : "hilo";
 
-  const resultado = await eliminarConversacion(session.organizationId, id, alcance);
-  if (!resultado.ok) {
-    if (resultado.motivo === "cita_pendiente") {
+  const result = await deleteConversation(session.organizationId, id, scope);
+  if (!result.ok) {
+    if (result.reason === "cita_pendiente") {
       return apiError(
         409,
         "cita_pendiente",
-        `Tiene una cita agendada para el ${FECHA_DE_CITA.format(resultado.cuando)}. Cancélala en Citas antes de eliminar.`
+        `Tiene una cita agendada para el ${bookingDate(result.when, await businessTimezone(session.organizationId))}. Cancélala en Citas antes de eliminar.`
       );
     }
     return apiError(404, "not_found", "Conversación no encontrada");
@@ -79,35 +87,35 @@ export const DELETE = withAuth(async (session, req: Request, ctx: Params) => {
 
   // Irreversible y sin papelera: que al menos quede quién y cuándo. Solo ids.
   console.info(
-    `[bandeja] ${session.userId} eliminó ${id} (${alcance}) en ${session.organizationId}`
+    `[bandeja] ${session.userId} eliminó ${id} (${scope}) en ${session.organizationId}`
   );
 
   // El aviso va DESPUÉS del borrado y no lo condiciona: lo que se pidió ya
   // pasó, y un cerebro caído no puede dejar la conversación en la bandeja.
-  let agente: ResultadoOlvido = "no_aplica";
+  let agent: ResultForget = "no_aplica";
   const deletedAt = new Date();
-  for (const conversacion of resultado.conversaciones) {
-    const aviso = await avisarOlvido(
-      construirEventoOlvido({
-        eventId: newId("olvido"),
-        organization: resultado.organization,
-        conversation: conversacion,
-        contact: resultado.contact,
+  for (const conversation of result.conversations) {
+    const notice = await notifyForget(
+      buildEventForget({
+        eventId: newId("forget"),
+        organization: result.organization,
+        conversation: conversation,
+        contact: result.contact,
         deletedAt,
       })
     );
-    if (aviso === "sin_confirmar" || agente === "no_aplica") agente = aviso;
+    if (notice === "sin_confirmar" || agent === "no_aplica") agent = notice;
   }
 
-  for (const conversacion of resultado.conversaciones) {
+  for (const conversation of result.conversations) {
     publish(session.organizationId, {
       type: "conversation.deleted",
       data: {
-        conversationId: conversacion.id,
-        contactId: resultado.contact.id,
-        contactDeleted: alcance === "contacto",
+        conversationId: conversation.id,
+        contactId: result.contact.id,
+        contactDeleted: scope === "contacto",
       },
     });
   }
-  return Response.json({ ok: true, alcance, agente });
+  return Response.json({ ok: true, scope: scope, agent: agent });
 });

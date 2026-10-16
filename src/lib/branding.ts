@@ -45,23 +45,26 @@ export type Branding = {
 };
 
 export const DEFAULT_BRANDING: Branding = {
-  name: "Vocero",
-  // El azul eléctrico de vocerocrm.com: la instancia recién instalada se ve
-  // igual que la landing. Una agencia lo cambia en Configuración → Marca.
-  accent: "#0d5bff",
+  name: "IntoSales",
+  // El azul de la marca into: la instancia recién instalada ya se ve como
+  // IntoSales. Una agencia lo cambia en Configuración → Marca.
+  accent: "#0081c8",
   currency: DEFAULT_CURRENCY,
   favicon: null,
 };
 
 /**
- * Presets. El primero es la marca Vocero (valores exactos de la landing); los
- * demás son los tonos sobrios del handoff Atlas, que siguen disponibles para
- * quien quiera un CRM más discreto.
+ * Presets. El primero es la marca into (el azul #0081C8 del logo); los demás
+ * son los tonos sobrios del handoff Atlas, que siguen disponibles para quien
+ * quiera un CRM más discreto.
  */
 export const ACCENT_PRESETS: Record<string, { label: string; set: AccentSet }> = {
-  "#0d5bff": {
-    label: "Azul Vocero",
-    set: { accent: "#0d5bff", hover: "#0a4de6", soft: "#d3e2ff", tint: "#ebf1ff", text: "#0038d8", fg: "#ffffff" },
+  // El relleno va un paso más oscuro que el azul del logo: con texto blanco,
+  // #0081c8 se queda en 4.2:1 y no llega a AA (4.5:1); #0074b4 sí (5.05:1) y
+  // a simple vista es el mismo azul. El logo sigue usando el exacto.
+  "#0081c8": {
+    label: "Azul into",
+    set: { accent: "#0074b4", hover: "#00669e", soft: "#cce3f1", tint: "#e8f3fa", text: "#005a8c", fg: "#ffffff" },
   },
   "#3f5972": {
     label: "Azul acero",
@@ -166,7 +169,7 @@ function inkPasses(base: Rgb): boolean {
  */
 type DarkRecipe = { bg: Rgb; minContrast: number; soft: number; tint: number; text: number };
 
-// Página oscura: con 3:1 el azul Vocero conserva la tinta blanca (4.5:1); el
+// Página oscura: con 3:1 el azul into conserva la tinta blanca (4.5:1); el
 // tint más denso (0.78) hace que la fila seleccionada se vea sin leer el color
 // del texto (≥ 1.25:1 contra el fondo).
 const PAGE_DARK: DarkRecipe = { bg: DARK_BG, minContrast: 3, soft: 0.64, tint: 0.78, text: 0.34 };

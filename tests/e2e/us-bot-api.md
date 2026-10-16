@@ -95,7 +95,7 @@ los casos con citas, en [`us-agenda.md`](us-agenda.md).
 Lo que el bot va descubriendo del lead. Las claves las define el negocio: el
 CRM no impone un cuestionario.
 
-23. `PUT /api/bot/ficha {conversationId, ficha}` con la key → **200** con la
+23. `PUT /api/bot/qualification {conversationId, ficha}` (o la URL de siempre, `/api/bot/ficha`) con la key → **200** con la
     ficha COMPLETA resultante (no solo el parche), y esa misma ficha aparece en
     `contact.ficha` del contexto del siguiente turno.
 24. Un segundo PUT con otras claves las **suma**: lo que no viene se conserva.

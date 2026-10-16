@@ -105,6 +105,9 @@ export function TemplatesClient() {
   const [syncing, setSyncing] = useState(false);
   const [syncMsg, setSyncMsg] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
+  // 023 — a draft (e.g. loaded by `pnpm seed:<industry>`) opened in the form
+  // to complete its examples and send it to Meta.
+  const [draft, setDraft] = useState<TemplateDto | null>(null);
 
   const refetch = useCallback(async () => {
     const res = await fetch("/api/templates").catch(() => null);
@@ -191,9 +194,15 @@ export function TemplatesClient() {
 
         {creating && (
           <CreateForm
-            onCancel={() => setCreating(false)}
+            key={draft?.id ?? "new"}
+            initial={draft}
+            onCancel={() => {
+              setCreating(false);
+              setDraft(null);
+            }}
             onCreated={() => {
               setCreating(false);
+              setDraft(null);
               void refetch();
             }}
           />
@@ -243,6 +252,21 @@ export function TemplatesClient() {
                     ? `Motivo del rechazo: ${t.rejectionReason}. ${STATUS_BADGE.rejected.hint}`
                     : STATUS_BADGE[t.status].hint}
                 </p>
+                {t.status === "draft" && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="mt-3"
+                    onClick={() => {
+                      setDraft(t);
+                      setCreating(true);
+                      window.scrollTo({ top: 0, behavior: "smooth" });
+                    }}
+                  >
+                    <Send className="h-4 w-4" />
+                    Enviar a Meta
+                  </Button>
+                )}
               </li>
             ))}
           </ul>
@@ -341,16 +365,21 @@ function HowItWorks({ defaultOpen }: { defaultOpen: boolean }) {
 }
 
 function CreateForm({
+  initial = null,
   onCreated,
   onCancel,
 }: {
+  /** 023 — a saved draft to complete and send; null for a new template. */
+  initial?: TemplateDto | null;
   onCreated: () => void;
   onCancel: () => void;
 }) {
-  const [name, setName] = useState("");
-  const [language, setLanguage] = useState(DEFAULT_TEMPLATE_LANGUAGE);
-  const [category, setCategory] = useState<Category>("UTILITY");
-  const [body, setBody] = useState("");
+  const [name, setName] = useState(initial?.name ?? "");
+  const [language, setLanguage] = useState(initial?.language ?? DEFAULT_TEMPLATE_LANGUAGE);
+  const [category, setCategory] = useState<Category>(
+    initial?.category === "MARKETING" ? "MARKETING" : "UTILITY"
+  );
+  const [body, setBody] = useState(initial?.body ?? "");
   const [examples, setExamples] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -414,7 +443,7 @@ function CreateForm({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Nueva plantilla</CardTitle>
+        <CardTitle>{initial ? "Enviar borrador a Meta" : "Nueva plantilla"}</CardTitle>
         <CardDescription>
           Se envía a revisión de Meta al crearla. Mientras la revisan puedes
           seguir usando el CRM.

@@ -34,7 +34,7 @@ type WebhookInfo = {
 type WebhookRegistration =
   | { ok: true; appWithoutWebhook: boolean }
   | { ok: true; skipped: "waba_override"; host: string }
-  | { ok: false; message: string };
+  | { ok: false; message: string; code?: string };
 
 /**
  * El último registro, y desde dónde se pidió. Uno solo para las dos tarjetas:
@@ -83,8 +83,8 @@ export function WhatsappWizard() {
               conexión para reconectar.
             </p>
           </div>
-          <Desconectar
-            onHecho={() => {
+          <Disconnect
+            onDone={() => {
               setRegistration(null);
               void refetch();
             }}
@@ -105,8 +105,8 @@ export function WhatsappWizard() {
             </p>
           </div>
           <Badge variant="success">Conectado</Badge>
-          <Desconectar
-            onHecho={() => {
+          <Disconnect
+            onDone={() => {
               setRegistration(null);
               void refetch();
             }}
@@ -144,19 +144,19 @@ export function WhatsappWizard() {
  * instante — no es un ajuste, es apagar el canal. Lo que NO hace es borrar la
  * bandeja, y el aviso lo dice: sin eso, nadie se atreve a tocarlo.
  */
-function Desconectar({ onHecho }: { onHecho: () => void }) {
-  const [confirmando, setConfirmando] = useState(false);
-  const [yendo, setYendo] = useState(false);
+function Disconnect({ onDone: onDone }: { onDone: () => void }) {
+  const [confirming, setConfirming] = useState(false);
+  const [going, setGoing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function desconectar() {
-    setYendo(true);
+  async function disconnect() {
+    setGoing(true);
     setError(null);
     try {
       const res = await fetch("/api/settings/whatsapp", { method: "DELETE" });
       if (res.ok) {
-        setConfirmando(false);
-        onHecho();
+        setConfirming(false);
+        onDone();
       } else {
         const data = (await res.json().catch(() => null)) as {
           error?: { message?: string };
@@ -166,13 +166,13 @@ function Desconectar({ onHecho }: { onHecho: () => void }) {
     } catch {
       setError("Sin conexión con el servidor.");
     } finally {
-      setYendo(false);
+      setGoing(false);
     }
   }
 
-  if (!confirmando) {
+  if (!confirming) {
     return (
-      <Button variant="outline" size="sm" onClick={() => setConfirmando(true)}>
+      <Button variant="outline" size="sm" onClick={() => setConfirming(true)}>
         Desconectar
       </Button>
     );
@@ -185,18 +185,18 @@ function Desconectar({ onHecho }: { onHecho: () => void }) {
       <Button
         variant="outline"
         size="sm"
-        disabled={yendo}
-        onClick={() => setConfirmando(false)}
+        disabled={going}
+        onClick={() => setConfirming(false)}
       >
         Cancelar
       </Button>
       <Button
         variant="destructive"
         size="sm"
-        disabled={yendo}
-        onClick={() => void desconectar()}
+        disabled={going}
+        onClick={() => void disconnect()}
       >
-        {yendo ? "Desconectando…" : "Sí, desconectar"}
+        {going ? "Desconectando…" : "Sí, desconectar"}
       </Button>
       {error && (
         <span role="alert" className="text-xs text-destructive">
@@ -441,6 +441,15 @@ function RegistrationNotice({
             → tu app → WhatsApp → Configuración, verifica una callback URL
             (sirve la de abajo) y suscribe el campo{" "}
             <code>messages</code>. Es una sola vez por app.
+          </>
+        ) : registration.code === "app_webhook_missing" ? (
+          <>
+            {afterSave ? "La conexión se guardó. " : ""}
+            {registration.message} En developers.facebook.com → tu app →
+            WhatsApp → Configuración → Webhook, pega la URL y el verify token
+            de abajo, pulsa «Verificar y guardar» y suscribe el campo{" "}
+            <code>messages</code>. Después vuelve aquí y pulsa «Registrar en
+            Meta».
           </>
         ) : (
           <>

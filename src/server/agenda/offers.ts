@@ -118,7 +118,7 @@ export function sameInstant(a: string, b: string): boolean {
  * del self-test). Con dos copias, el día que cambie la frase el guion pasaría
  * a verde sin ejercitar nada.
  */
-export const CABECERA_HUECOS =
+export const HEADER_SLOTS =
   "Horarios vigentes de esta conversación. Para book_slot usa el startUtc " +
   "EXACTO de la columna derecha, copiado tal cual:";
 
@@ -137,10 +137,10 @@ export const CABECERA_HUECOS =
  *
  * Reportado por @Diony7004 en #50, con el diagnóstico ya hecho.
  */
-export function mapaDeHuecosParaModelo(ofertas: OfferedSlot[]): string | null {
-  if (ofertas.length === 0) return null;
+export function slotsMapForModel(offersValue: OfferedSlot[]): string | null {
+  if (offersValue.length === 0) return null;
   return [
-    CABECERA_HUECOS,
-    ...ofertas.map((o) => `- "${o.label}" → ${o.startUtc}`),
+    HEADER_SLOTS,
+    ...offersValue.map((o) => `- "${o.label}" → ${o.startUtc}`),
   ].join("\n");
 }

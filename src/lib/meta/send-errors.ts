@@ -22,7 +22,7 @@ const DESCRIPTIONS: Record<number, string> = {
   131031:
     "Tu cuenta de WhatsApp Business está bloqueada o restringida por Meta. Revísalo en el Administrador de WhatsApp.",
   131030:
-    "El número del destinatario no está en la lista de permitidos de tu app en modo de prueba.",
+    "El número del destinatario no está en la lista de permitidos del número de prueba. Agrégalo en developers.facebook.com → tu app → WhatsApp → Configuración de la API, en «Para» (con código de país). La lista desaparece cuando el negocio queda verificado.",
   130429:
     "Superaste el límite de mensajes por segundo de Meta. Reintenta en unos momentos.",
   132000:

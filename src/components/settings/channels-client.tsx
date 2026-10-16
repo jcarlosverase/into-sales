@@ -56,7 +56,7 @@ const DOT: Record<Level, string> = {
 };
 
 /** «hace 5 min», «hace 3 h», «hace 2 días». */
-function hace(iso: string, now: number): string {
+function ago(iso: string, now: number): string {
   const min = Math.max(0, Math.round((now - Date.parse(iso)) / 60_000));
   if (min < 1) return "hace un momento";
   if (min < 60) return `hace ${min} min`;
@@ -65,7 +65,7 @@ function hace(iso: string, now: number): string {
   return `hace ${Math.round(h / 24)} días`;
 }
 
-function fecha(iso: string): string {
+function date(iso: string): string {
   return new Date(iso).toLocaleString("es-MX", { dateStyle: "medium", timeStyle: "short" });
 }
 
@@ -135,12 +135,12 @@ export function ChannelsClient() {
       });
       return;
     }
-    const cuentas = data?.accounts === 1 ? "tu cuenta conectada" : `tus ${data?.accounts} cuentas conectadas`;
+    const accounts = data?.accounts === 1 ? "tu cuenta conectada" : `tus ${data?.accounts} cuentas conectadas`;
     setNotice({
       ok: true,
       text: data?.created
-        ? `Webhook dado de alta en Zernio, limitado a ${cuentas}.`
-        : `Webhook actualizado en Zernio y limitado a ${cuentas}.`,
+        ? `Webhook dado de alta en Zernio, limitado a ${accounts}.`
+        : `Webhook actualizado en Zernio y limitado a ${accounts}.`,
     });
     void refetch();
   }
@@ -153,8 +153,8 @@ export function ChannelsClient() {
     );
   }
 
-  const porZernio = rows.filter((r) => r.source === "zernio");
-  const webhookMal = porZernio.some((r) => r.health && r.health.webhook.level === "error");
+  const viaZernio = rows.filter((r) => r.source === "zernio");
+  const webhookMal = viaZernio.some((r) => r.health && r.health.webhook.level === "error");
 
   return (
     <div className="max-w-3xl space-y-6">
@@ -185,7 +185,7 @@ export function ChannelsClient() {
               <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                 <ChannelBadge channel={r.channel} className="h-6 w-6" />
                 <span className="text-[14.5px] font-bold">{CHANNEL_LABEL[r.channel]}</span>
-                <Estado row={r} />
+                <Status row={r} />
                 <Link
                   href={SETTINGS_HREF[r.channel]}
                   className="ml-auto text-xs font-semibold text-brand-text underline-offset-2 hover:underline"
@@ -211,8 +211,8 @@ export function ChannelsClient() {
                   <dd>
                     {r.lastInboundAt ? (
                       <>
-                        {hace(r.lastInboundAt, now)}
-                        <span className="text-text-2"> · {fecha(r.lastInboundAt)}</span>
+                        {ago(r.lastInboundAt, now)}
+                        <span className="text-text-2"> · {date(r.lastInboundAt)}</span>
                       </>
                     ) : (
                       <span className="text-text-2">Todavía no entra ninguno por este canal</span>
@@ -223,15 +223,15 @@ export function ChannelsClient() {
                     <>
                       <dt className="text-text-2">Cuenta en Zernio</dt>
                       <dd>
-                        <Salud health={r.health.account} />
+                        <HealthValue health={r.health.account} />
                       </dd>
                       <dt className="text-text-2">Webhook de Zernio</dt>
                       <dd>
-                        <Salud health={r.health.webhook} />
+                        <HealthValue health={r.health.webhook} />
                         {r.health.webhook.lastFiredAt && (
                           <span className="text-text-2">
                             {" "}
-                            · último aviso {hace(r.health.webhook.lastFiredAt, now)}
+                            · último aviso {ago(r.health.webhook.lastFiredAt, now)}
                           </span>
                         )}
                       </dd>
@@ -244,7 +244,7 @@ export function ChannelsClient() {
         </CardContent>
       </Card>
 
-      {porZernio.length > 0 && (
+      {viaZernio.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle>Webhook de Zernio</CardTitle>
@@ -318,18 +318,18 @@ export function ChannelsClient() {
  * El distintivo dice lo peor que le pasa al canal: «Conectado» en verde encima
  * de una cuenta que Zernio pide reconectar sería la pantalla mintiendo.
  */
-function Estado({ row }: { row: Row }) {
+function Status({ row }: { row: Row }) {
   if (!row.connected) return <Badge variant="secondary">Sin conectar</Badge>;
   if (row.status === "reconnect_required") {
     return <Badge variant="destructive">Hay que reconectar</Badge>;
   }
-  const niveles = row.health ? [row.health.account.level, row.health.webhook.level] : [];
-  if (niveles.includes("error")) return <Badge variant="destructive">Con problemas</Badge>;
-  if (niveles.includes("warn")) return <Badge variant="warning">Revisar</Badge>;
+  const levels = row.health ? [row.health.account.level, row.health.webhook.level] : [];
+  if (levels.includes("error")) return <Badge variant="destructive">Con problemas</Badge>;
+  if (levels.includes("warn")) return <Badge variant="warning">Revisar</Badge>;
   return <Badge variant="success">Conectado</Badge>;
 }
 
-function Salud({ health }: { health: Health }) {
+function HealthValue({ health }: { health: Health }) {
   return (
     <span className="inline-flex items-start gap-2">
       <span

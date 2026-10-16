@@ -33,7 +33,7 @@ type Run = {
   delta: number | null;
 };
 
-type Hallazgo = {
+type Finding = {
   tipo: "alucinacion" | "fuera_de_kb" | "debio_escalar" | "tono";
   evidencia: string;
   sugerencia?: { pregunta: string; respuesta: string };
@@ -45,11 +45,11 @@ type Case = {
   personaLabel: string;
   status: string;
   veredicto: "verde" | "amarillo" | "rojo" | null;
-  hallazgos: Hallazgo[];
+  hallazgos: Finding[];
   transcript: { role: "cliente" | "agente"; text: string }[];
 };
 
-const TIPO_LABELS: Record<Hallazgo["tipo"], string> = {
+const TYPE_LABELS: Record<Finding["tipo"], string> = {
   alucinacion: "Alucinación",
   fuera_de_kb: "Fuera del conocimiento",
   debio_escalar: "Debió escalar",
@@ -379,7 +379,7 @@ function CaseCard({ testCase, onApplied }: { testCase: Case; onApplied: () => vo
       {open && (
         <CardContent className="space-y-3">
           {c.hallazgos.map((h, i) => (
-            <HallazgoCard key={i} hallazgo={h} caseId={c.id} index={i} onApplied={onApplied} />
+            <FindingCard key={i} hallazgo={h} caseId={c.id} index={i} onApplied={onApplied} />
           ))}
           <div className="rounded-md border bg-background p-3">
             <p className="mb-2 kicker">
@@ -406,20 +406,20 @@ function CaseCard({ testCase, onApplied }: { testCase: Case; onApplied: () => vo
   );
 }
 
-function HallazgoCard({
-  hallazgo,
+function FindingCard({
+  hallazgo: finding,
   caseId,
   index,
   onApplied,
 }: {
-  hallazgo: Hallazgo;
+  hallazgo: Finding;
   caseId: string;
   index: number;
   onApplied: () => void;
 }) {
   const [editing, setEditing] = useState(false);
-  const [pregunta, setPregunta] = useState(hallazgo.sugerencia?.pregunta ?? "");
-  const [respuesta, setRespuesta] = useState(hallazgo.sugerencia?.respuesta ?? "");
+  const [question, setQuestion] = useState(finding.sugerencia?.pregunta ?? "");
+  const [response, setResponse] = useState(finding.sugerencia?.respuesta ?? "");
   const [applied, setApplied] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -428,7 +428,7 @@ function HallazgoCard({
     const res = await fetch("/api/lab/suggestions/apply", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ caseId, hallazgoIndex: index, pregunta, respuesta }),
+      body: JSON.stringify({ caseId, findingIndex: index, pregunta: question, respuesta: response }),
     }).catch(() => null);
     setSaving(false);
     if (res?.ok) {
@@ -441,8 +441,8 @@ function HallazgoCard({
   return (
     <div className="rounded-md border border-warning-soft bg-warning-tint p-3">
       <div className="flex items-center justify-between">
-        <Badge variant="warning">{TIPO_LABELS[hallazgo.tipo]}</Badge>
-        {hallazgo.sugerencia && !applied && !editing && (
+        <Badge variant="warning">{TYPE_LABELS[finding.tipo]}</Badge>
+        {finding.sugerencia && !applied && !editing && (
           <Button size="sm" variant="outline" onClick={() => setEditing(true)}>
             Agregar al conocimiento
           </Button>
@@ -453,16 +453,16 @@ function HallazgoCard({
       </div>
       <p className="mt-2 text-sm text-muted-foreground">
         <span className="font-medium text-foreground">Evidencia:</span>{" "}
-        {hallazgo.evidencia}
+        {finding.evidencia}
       </p>
-      {editing && hallazgo.sugerencia && (
+      {editing && finding.sugerencia && (
         <div className="mt-3 space-y-2 rounded-md border bg-card p-3">
           <div className="space-y-1">
             <Label htmlFor={`sug-q-${caseId}-${index}`}>Pregunta</Label>
             <Input
               id={`sug-q-${caseId}-${index}`}
-              value={pregunta}
-              onChange={(e) => setPregunta(e.target.value)}
+              value={question}
+              onChange={(e) => setQuestion(e.target.value)}
             />
           </div>
           <div className="space-y-1">
@@ -470,15 +470,15 @@ function HallazgoCard({
             <Textarea
               id={`sug-a-${caseId}-${index}`}
               rows={3}
-              value={respuesta}
-              onChange={(e) => setRespuesta(e.target.value)}
+              value={response}
+              onChange={(e) => setResponse(e.target.value)}
             />
           </div>
           <div className="flex gap-2">
             <Button
               size="sm"
               onClick={() => void apply()}
-              disabled={saving || !pregunta.trim() || !respuesta.trim()}
+              disabled={saving || !question.trim() || !response.trim()}
             >
               {saving ? "Guardando…" : "Guardar en el KB"}
             </Button>

@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PasswordInput } from "@/components/ui/password-input";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -74,9 +75,8 @@ export default function RegisterPage() {
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="password">Contraseña</Label>
-            <Input
+            <PasswordInput
               id="password"
-              type="password"
               autoComplete="new-password"
               required
               minLength={8}

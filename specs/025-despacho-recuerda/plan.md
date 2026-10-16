@@ -76,24 +76,24 @@ src/lib/db/schema.ts                     dispatch.messageIds
 drizzle/0017_dispatch_message_ids.sql    migración (+ snapshot y journal)
 src/server/inbox/ingest.ts               pasa message.id
 src/server/ai/trigger.ts                 lo lleva al despacho o al coalesce
-src/server/dispatch/encolar.ts           lo pasa al outbox
+src/server/dispatch/enqueue.ts           lo pasa al outbox
 src/server/dispatch/outbox.ts            anotar, mensajesAnotados
 src/server/brains/deliver.ts             rafagaDe con debidos, sinDespachar
 src/server/dispatch/worker.ts            descartar el vacío, releer lo anotado
-src/server/ai/orden-turno.ts             ordenarParaElTurno, debidosVigentes (puras)
+src/server/ai/turn-order.ts             ordenarParaElTurno, debidosVigentes (puras)
 src/server/ai/pipeline.ts                debidos en el coalesce; runAgentTurn devuelve vistos
 src/server/dev/ai-mock.ts                demora y registro de peticiones
 src/app/api/dev/ai-mock/**/route.ts      GET para configurarlo y leerlo
 specs/021-despacho-estandar/contracts/despacho.md   dos notas nuevas
-tests/unit/despacho-config.test.ts, orden-turno.test.ts, handoff-ack.test.ts
-tests/e2e/us-despacho.md, scripts/e2e-despacho.mjs
+tests/unit/dispatch-config.test.ts, turn-order.test.ts, handoff-ack.test.ts
+tests/e2e/us-despacho.md, scripts/e2e-dispatch.mjs
 AGENTS.md, CHANGELOG.md, specs/README.md
 ```
 
 ## Verificación
 
 - Los cuatro gates.
-- `scripts/e2e-despacho.mjs` en sus dos modos: con `BRAIN_DISPATCH_URL` (todas
+- `scripts/e2e-dispatch.mjs` en sus dos modos: con `BRAIN_DISPATCH_URL` (todas
   las secciones del 021 más «mientras piensa» y «persona en la ventana») y sin
   ella (agente incluido con un mensaje en vuelo).
 - `pnpm test:e2e` sin la variable: el agente incluido no cambió.

@@ -6,8 +6,8 @@ import {
 } from "@/server/ai/credentials";
 import {
   aiSettingsPutSchema,
-  baseUrlEfectiva,
-  vistaAjustesIa,
+  baseUrlEffective,
+  viewSettingsIa,
 } from "@/server/ai/settings";
 
 export const dynamic = "force-dynamic";
@@ -20,7 +20,7 @@ export const dynamic = "force-dynamic";
  */
 
 export const GET = withAuth(async (session) => {
-  return Response.json(await vistaAjustesIa(session.organizationId));
+  return Response.json(await viewSettingsIa(session.organizationId));
 });
 
 export const PUT = withAuth(async (session, req: Request) => {
@@ -31,7 +31,7 @@ export const PUT = withAuth(async (session, req: Request) => {
     await saveAiCredential({
       organizationId: session.organizationId,
       provider: body.data.provider,
-      baseUrl: baseUrlEfectiva(body.data.provider, body.data.baseUrl),
+      baseUrl: baseUrlEffective(body.data.provider, body.data.baseUrl),
       model: body.data.model,
       token: body.data.token,
     });
@@ -41,10 +41,10 @@ export const PUT = withAuth(async (session, req: Request) => {
     }
     throw err;
   }
-  return Response.json(await vistaAjustesIa(session.organizationId));
+  return Response.json(await viewSettingsIa(session.organizationId));
 });
 
 export const DELETE = withAuth(async (session) => {
   await deleteAiCredential(session.organizationId);
-  return Response.json(await vistaAjustesIa(session.organizationId));
+  return Response.json(await viewSettingsIa(session.organizationId));
 });

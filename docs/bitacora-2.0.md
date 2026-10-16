@@ -33,8 +33,8 @@ implementación en `c083037`; un arreglo del selftest en `b91e0dc`.
 | Qué | Resultado |
 |---|---|
 | `typecheck`, `lint`, `test`, `build` | Verdes con banderas apagadas y con `CHANNELS` + `AGENDA`. 1 017 unitarias. CI del PR: 3 de 3. |
-| `scripts/e2e-despacho.mjs` con cerebro | 89/89, tres corridas. Sin el arreglo, 84/89: las rojas son las de «mientras piensa». La de «persona en la ventana» ya pasaba en la raíz: queda como regresión. |
-| `scripts/e2e-despacho.mjs` con el agente incluido | 14/14, tres corridas. Sin el arreglo, 11/14: el orden del turno y las dos de «no contesta encima». |
+| `scripts/e2e-dispatch.mjs` con cerebro | 89/89, tres corridas. Sin el arreglo, 84/89: las rojas son las de «mientras piensa». La de «persona en la ventana» ya pasaba en la raíz: queda como regresión. |
+| `scripts/e2e-dispatch.mjs` con el agente incluido | 14/14, tres corridas. Sin el arreglo, 11/14: el orden del turno y las dos de «no contesta encima». |
 | `scripts/e2e-selftest.mjs` sin `BRAIN_DISPATCH_URL` | 213/213 en frío sobre una base nueva; `dispatch` queda vacía. |
 | Migración | Base vacía; y base en `0016` con un despacho pendiente: `0017` en dos pasadas, la fila queda con `message_ids` nulo y se entrega igual. |
 | En vivo, local | Ver abajo. |
@@ -157,7 +157,7 @@ Para repetir la prueba: `node ops/relay.mjs 3281 <url>`, túnel a `:3281`,
 |---|---|
 | `typecheck`, `lint`, `test`, `build` | Verdes en las dos configuraciones; la completa ya incluye `tiktok`. 1 040 unitarias. CI del PR: 3 de 3. |
 | `scripts/e2e-tiktok.mjs` | 52/52, dos corridas sobre el código final, contra el mock de Zernio: conexión, firma, dedup, agente, operador, el undécimo mensaje, 6,000 caracteres, 30 y 49 horas, descartes y reparto por plataforma. |
-| `scripts/e2e-despacho.mjs` | 94/94 con cerebro (sección nueva: `channel: "tiktok"`, `tt:`, `windowExpiresAt` a 48 h) y 14/14 con el agente incluido. |
+| `scripts/e2e-dispatch.mjs` | 94/94 con cerebro (sección nueva: `channel: "tiktok"`, `tt:`, `windowExpiresAt` a 48 h) y 14/14 con el agente incluido. |
 | `scripts/e2e-messenger.mjs` · selftest | 42/42 · 213/213. |
 | Migración | Base vacía; la que venía de `0016`/`0017` con su despacho pendiente; y la instancia de Coolify, que conservó sus 9 conversaciones. |
 | Interfaz | Ajustes → TikTok, distintivo, filtro y compositor con la ventana cerrada, vistos en el navegador contra la app local. |
@@ -288,7 +288,7 @@ de prueba. El canal va apagado por defecto y el CHANGELOG lo dice.
 | Qué | Resultado |
 |---|---|
 | Gates (typecheck, lint, unitarias, build) | Verde; 1,069 unitarias |
-| `scripts/e2e-canales.mjs` (nuevo) | 73/73, en una base nueva y repetido sobre la misma |
+| `scripts/e2e-channels.mjs` (nuevo) | 73/73, en una base nueva y repetido sobre la misma |
 | `e2e-messenger` · `e2e-tiktok` | 42/42 · 52/52 |
 | `e2e-despacho` | 94/94 con cerebro, 14/14 con el agente incluido |
 | `e2e-selftest` | 213/213 |
@@ -368,7 +368,7 @@ el spec:
 | Qué | Resultado |
 |---|---|
 | Gates (typecheck, lint, unitarias, build) | Verde; 1,095 unitarias |
-| `scripts/e2e-ventana-social.mjs` (nuevo) | 53/53, en base limpia y repetido |
+| `scripts/e2e-social-window.mjs` (nuevo) | 53/53, en base limpia y repetido |
 | `e2e-canales` | 73/73 en base limpia y 73/73 sobre una base ya usada |
 | `e2e-messenger` · `e2e-tiktok` | 42/42 · 52/52 |
 | `e2e-despacho` | 94/94 con cerebro, 14/14 con el agente incluido |
@@ -433,8 +433,8 @@ la cita por venir).
 | Qué | Resultado |
 |---|---|
 | Gates (typecheck, lint, unitarias, build) | Verde; 1,104 unitarias |
-| Prueba gemela del contrato (`tests/unit/olvido-contrato.test.ts`) | El cuerpo y la firma coinciden byte a byte con `nea-agent/tests/test_olvido.py` |
-| `scripts/e2e-eliminar.mjs` (nuevo) | 56/56 con cerebro y `AGENDA=on`; 40/40 sin despacho con agenda; 31/31 sin agenda |
+| Prueba gemela del contrato (`tests/unit/forget-contract.test.ts`) | El cuerpo y la firma coinciden byte a byte con `nea-agent/tests/test_olvido.py` |
+| `scripts/e2e-delete-conversation.mjs` (nuevo) | 56/56 con cerebro y `AGENDA=on`; 40/40 sin despacho con agenda; 31/31 sin agenda |
 | `e2e-despacho` | 94/94 con cerebro, 14/14 con el agente incluido |
 | `e2e-ventana-social` · `e2e-canales` · `e2e-messenger` · `e2e-tiktok` | 53/53 · 73/73 · 42/42 · 52/52 |
 | `e2e-selftest` | 213/213 |

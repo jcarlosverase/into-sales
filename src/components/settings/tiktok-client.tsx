@@ -33,12 +33,12 @@ type Connection = {
   hasWebhookSecret: boolean;
 };
 
-const PASOS = [
+const STEPS = [
   "La cuenta se vincula en el panel de Zernio (Accounts → Connect), no desde aquí.",
   "La API key se crea en Zernio → Settings → API Keys y se muestra una sola vez (empieza con sk_).",
 ];
 
-const REGLAS = [
+const RULES = [
   "La cuenta tiene que ser TikTok Business, registrada fuera de la Unión Europea, Suiza y Reino Unido, y con los mensajes directos abiertos.",
   "Tú no puedes iniciar una conversación: solo contestar a quien te escribió.",
   "Después del último mensaje del cliente puedes mandar hasta 10 mensajes, durante 48 horas. Para seguir, el cliente tiene que volver a escribir.",
@@ -108,8 +108,8 @@ export function TiktokClient() {
         </CardHeader>
         <CardContent>
           <ul className="list-disc space-y-1.5 pl-5 text-sm text-text-2">
-            {REGLAS.map((regla, i) => (
-              <li key={i}>{regla}</li>
+            {RULES.map((rule, i) => (
+              <li key={i}>{rule}</li>
             ))}
           </ul>
         </CardContent>
@@ -126,7 +126,7 @@ export function TiktokClient() {
         </CardHeader>
         <CardContent className="space-y-4">
           <ul className="list-disc space-y-1 pl-5 text-xs text-text-2">
-            {PASOS.map((item, i) => (
+            {STEPS.map((item, i) => (
               <li key={i}>{item}</li>
             ))}
           </ul>

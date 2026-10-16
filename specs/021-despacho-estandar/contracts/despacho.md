@@ -105,7 +105,7 @@ manda ninguno todavía; un cuerpo con `type` no es un despacho.
 ```
 
 El orden de las claves es el de arriba y es contrato: se firma el JSON tal como
-sale, y `tests/unit/despacho-contrato.test.ts` fija un cuerpo y su firma byte a
+sale, y `tests/unit/dispatch-contract.test.ts` fija un cuerpo y su firma byte a
 byte. La prueba gemela vive en el repo del cerebro.
 
 Notas que son contrato:
@@ -211,7 +211,7 @@ No lleva `x-vocero-dispatch-id`: no es un despacho.
   conversación ni cuenta como fallo del despacho.
 - Es el mismo evento que manda Vocero Cloud. El orden de las claves es
   contrato: una prueba gemela lo fija byte a byte en este repositorio
-  (`tests/unit/olvido-contrato.test.ts`) y en el del cerebro.
+  (`tests/unit/forget-contract.test.ts`) y en el del cerebro.
 
 ## Cómo contestar
 

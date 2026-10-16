@@ -26,7 +26,7 @@ export function plainSocialText(text: string): string {
   // Las URLs se apartan primero: sus guiones bajos no son cursivas y sus
   // asteriscos no son negritas.
   const urls: string[] = [];
-  const guardar = (url: string) => {
+  const save = (url: string) => {
     urls.push(url);
     return `\u0000${urls.length - 1}\u0000`;
   };
@@ -34,9 +34,9 @@ export function plainSocialText(text: string): string {
   let out = text
     // [texto](https://…) → texto: https://…  (si el texto ES la URL, solo la URL)
     .replace(/\[([^\]\n]+)\]\((https?:\/\/[^\s)]+)\)/g, (_m, label: string, url: string) =>
-      label.trim() === url ? guardar(url) : `${label}: ${guardar(url)}`
+      label.trim() === url ? save(url) : `${label}: ${save(url)}`
     )
-    .replace(/https?:\/\/[^\s<>]+/g, guardar)
+    .replace(/https?:\/\/[^\s<>]+/g, save)
     // Bloques entre ``` → su contenido.
     .replace(/```[a-zA-Z0-9]*\n?([\s\S]*?)```/g, (_m, code: string) => code.replace(/\n$/, ""))
     // # Título → Título

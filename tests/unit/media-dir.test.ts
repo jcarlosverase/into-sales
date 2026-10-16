@@ -45,17 +45,17 @@ describe("checkMediaDir (arranque)", () => {
 
   it("no escribible: avisa qué pasa y qué hacer, sin lanzar", async () => {
     // Un archivo donde debería ir un directorio: mkdir falla en todo SO.
-    const archivo = path.join(tmp, "no-soy-directorio");
-    await writeFile(archivo, "x");
-    getEnv.mockReturnValue({ MEDIA_DIR: path.join(archivo, "media") });
+    const file = path.join(tmp, "no-soy-directorio");
+    await writeFile(file, "x");
+    getEnv.mockReturnValue({ MEDIA_DIR: path.join(file, "media") });
 
     await expect(checkMediaDir()).resolves.toBeUndefined();
 
     expect(error).toHaveBeenCalledTimes(1);
-    const mensaje = String(error.mock.calls[0]?.[0]);
-    expect(mensaje).toMatch(/^\[boot\] MEDIA_DIR=.+ no es escribible/);
-    expect(mensaje).toMatch(/adjuntos/);
-    expect(mensaje).toMatch(/volumen persistente en \/data/);
+    const message = String(error.mock.calls[0]?.[0]);
+    expect(message).toMatch(/^\[boot\] MEDIA_DIR=.+ no es escribible/);
+    expect(message).toMatch(/adjuntos/);
+    expect(message).toMatch(/volumen persistente en \/data/);
   });
 
   it("entorno inválido: no es su problema, no lanza ni duplica el error", async () => {

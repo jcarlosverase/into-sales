@@ -18,17 +18,17 @@ import {
  * días cerrados. Sin luxon: si `Intl` fallara, estos tests lo gritan.
  */
 
-const MX = "America/Mexico_City";
+const LIMA = "America/Lima";
 const NY = "America/New_York";
 const MADRID = "Europe/Madrid";
 
 describe("zonedWallClockToUtc — hora de pared → instante", () => {
-  it("México no tiene DST desde 2022: 09:00 son las 15:00Z todo el año", () => {
-    expect(zonedWallClockToUtc("2026-08-05", "09:00", MX)?.toISOString()).toBe(
-      "2026-08-05T15:00:00.000Z"
+  it("Lima no tiene horario de verano: 09:00 son las 14:00Z todo el año", () => {
+    expect(zonedWallClockToUtc("2026-08-05", "09:00", LIMA)?.toISOString()).toBe(
+      "2026-08-05T14:00:00.000Z"
     );
-    expect(zonedWallClockToUtc("2026-01-14", "09:00", MX)?.toISOString()).toBe(
-      "2026-01-14T15:00:00.000Z"
+    expect(zonedWallClockToUtc("2026-01-14", "09:00", LIMA)?.toISOString()).toBe(
+      "2026-01-14T14:00:00.000Z"
     );
   });
 
@@ -59,22 +59,22 @@ describe("zonedWallClockToUtc — hora de pared → instante", () => {
   });
 
   it("rechaza formatos inválidos en vez de inventar una fecha", () => {
-    expect(zonedWallClockToUtc("2026-8-5", "09:00", MX)).toBeNull();
-    expect(zonedWallClockToUtc("2026-08-05", "9:00", MX)).toBeNull();
-    expect(zonedWallClockToUtc("2026-08-05", "25:00", MX)).toBeNull();
+    expect(zonedWallClockToUtc("2026-8-5", "09:00", LIMA)).toBeNull();
+    expect(zonedWallClockToUtc("2026-08-05", "9:00", LIMA)).toBeNull();
+    expect(zonedWallClockToUtc("2026-08-05", "25:00", LIMA)).toBeNull();
   });
 });
 
 describe("weekdayKeyOf / todayInTz", () => {
   it("da el día de la semana en la zona del negocio", () => {
-    expect(weekdayKeyOf("2026-08-05", MX)).toBe("wed");
+    expect(weekdayKeyOf("2026-08-05", LIMA)).toBe("wed");
     expect(weekdayKeyOf("2026-03-29", MADRID)).toBe("sun");
   });
 
   it("el día 'de hoy' depende de la zona, no del servidor", () => {
-    // 03:00Z del 6 de agosto sigue siendo 5 de agosto en México (UTC-6).
+    // 03:00Z del 6 de agosto sigue siendo 5 de agosto en Lima (UTC-5).
     const instant = new Date("2026-08-06T03:00:00.000Z");
-    expect(todayInTz(instant, MX)).toBe("2026-08-05");
+    expect(todayInTz(instant, LIMA)).toBe("2026-08-05");
     expect(todayInTz(instant, MADRID)).toBe("2026-08-06");
   });
 });
@@ -84,29 +84,29 @@ describe("expandWorkingDayToUtc", () => {
     const slots = expandWorkingDayToUtc(
       "2026-08-05",
       [{ start: "09:00", end: "11:00" }],
-      MX,
+      LIMA,
       30,
       0
     );
     expect(slots).toHaveLength(4);
-    expect(slots[0]!.startUtc).toBe("2026-08-05T15:00:00.000Z");
-    expect(slots[0]!.endUtc).toBe("2026-08-05T15:30:00.000Z");
-    expect(slots[3]!.startUtc).toBe("2026-08-05T16:30:00.000Z");
+    expect(slots[0]!.startUtc).toBe("2026-08-05T14:00:00.000Z");
+    expect(slots[0]!.endUtc).toBe("2026-08-05T14:30:00.000Z");
+    expect(slots[3]!.startUtc).toBe("2026-08-05T15:30:00.000Z");
   });
 
   it("el respiro separa los slots sin desbordar la franja", () => {
     const slots = expandWorkingDayToUtc(
       "2026-08-05",
       [{ start: "09:00", end: "11:00" }],
-      MX,
+      LIMA,
       30,
       15
     );
     // 09:00, 09:45, 10:30 (10:30+30 = 11:00, cabe justo)
     expect(slots.map((s) => s.startUtc)).toEqual([
-      "2026-08-05T15:00:00.000Z",
-      "2026-08-05T15:45:00.000Z",
-      "2026-08-05T16:30:00.000Z",
+      "2026-08-05T14:00:00.000Z",
+      "2026-08-05T14:45:00.000Z",
+      "2026-08-05T15:30:00.000Z",
     ]);
   });
 
@@ -117,30 +117,30 @@ describe("expandWorkingDayToUtc", () => {
         { start: "09:00", end: "13:00" },
         { start: "16:00", end: "18:00" },
       ],
-      MX,
+      LIMA,
       60,
       0
     );
-    const horas = slots.map((s) => s.startUtc.slice(11, 16));
-    expect(horas).toEqual([
+    const hours = slots.map((s) => s.startUtc.slice(11, 16));
+    expect(hours).toEqual([
+      "14:00",
       "15:00",
       "16:00",
       "17:00",
-      "18:00",
+      "21:00",
       "22:00",
-      "23:00",
     ]);
   });
 
   it("un día sin franjas (cerrado) no genera slots", () => {
-    expect(expandWorkingDayToUtc("2026-08-09", [], MX, 30, 0)).toEqual([]);
+    expect(expandWorkingDayToUtc("2026-08-09", [], LIMA, 30, 0)).toEqual([]);
   });
 
   it("no emite un slot que no cabe completo en la franja", () => {
     const slots = expandWorkingDayToUtc(
       "2026-08-05",
       [{ start: "09:00", end: "09:45" }],
-      MX,
+      LIMA,
       30,
       0
     );
@@ -191,29 +191,29 @@ describe("overlaps", () => {
 
 describe("etiquetas para el cliente", () => {
   it("labelInTz muestra la hora local del negocio", () => {
-    const label = labelInTz("2026-08-05T15:00:00.000Z", MX);
+    const label = labelInTz("2026-08-05T14:00:00.000Z", LIMA);
     expect(label).toContain("09:00");
     expect(label).toContain("5");
     // Mismo instante, otra zona ⇒ otra hora.
-    expect(labelInTz("2026-08-05T15:00:00.000Z", MADRID)).toContain("17:00");
+    expect(labelInTz("2026-08-05T14:00:00.000Z", MADRID)).toContain("16:00");
   });
 
   it("partsInTz separa fecha, hora y día", () => {
-    const parts = partsInTz("2026-08-05T15:00:00.000Z", MX);
+    const parts = partsInTz("2026-08-05T14:00:00.000Z", LIMA);
     expect(parts.time).toBe("09:00");
     expect(parts.date).toContain("2026");
     expect(parts.weekday.length).toBeGreaterThan(0);
   });
 
   it("timeInTz da solo la hora local", () => {
-    expect(timeInTz("2026-08-05T15:00:00.000Z", MX)).toBe("09:00");
+    expect(timeInTz("2026-08-05T14:00:00.000Z", LIMA)).toBe("09:00");
   });
 
   it("un instante inválido degrada a vacío en vez de lanzar", () => {
-    expect(labelInTz("no-es-fecha", MX)).toBe("");
-    expect(timeInTz("no-es-fecha", MX)).toBe("");
-    expect(dayLabelInTz("no-es-fecha", MX)).toBe("");
-    expect(partsInTz("no-es-fecha", MX).time).toBe("");
+    expect(labelInTz("no-es-fecha", LIMA)).toBe("");
+    expect(timeInTz("no-es-fecha", LIMA)).toBe("");
+    expect(dayLabelInTz("no-es-fecha", LIMA)).toBe("");
+    expect(partsInTz("no-es-fecha", LIMA).time).toBe("");
   });
 });
 
@@ -222,10 +222,10 @@ describe("etiquetas para el cliente", () => {
  * "10:30, de mañana" a una oferta de HOY y se agendó el día equivocado.
  */
 describe("dayLabelInTz — el día EN PALABRAS", () => {
-  const now = new Date("2026-08-05T15:00:00.000Z"); // miércoles 5, 09:00 en MX
+  const now = new Date("2026-08-05T14:00:00.000Z"); // miércoles 5, 09:00 en LIMA
 
   it("marca 'hoy' cuando el slot cae en el día en curso del negocio", () => {
-    const label = dayLabelInTz("2026-08-05T20:00:00.000Z", MX, now);
+    const label = dayLabelInTz("2026-08-05T19:00:00.000Z", LIMA, now);
     expect(label).toMatch(/^hoy /);
     expect(label).toContain("miércoles");
     expect(label).toContain("5");
@@ -233,29 +233,29 @@ describe("dayLabelInTz — el día EN PALABRAS", () => {
   });
 
   it("marca 'mañana' en el día siguiente", () => {
-    const label = dayLabelInTz("2026-08-06T16:00:00.000Z", MX, now);
+    const label = dayLabelInTz("2026-08-06T15:00:00.000Z", LIMA, now);
     expect(label).toMatch(/^mañana /);
     expect(label).toContain("jueves");
   });
 
   it("un día más lejano va sin prefijo, pero SIEMPRE con el día nombrado", () => {
-    const label = dayLabelInTz("2026-08-10T16:00:00.000Z", MX, now);
+    const label = dayLabelInTz("2026-08-10T15:00:00.000Z", LIMA, now);
     expect(label).not.toMatch(/^(hoy|mañana) /);
     expect(label).toContain("lunes");
     expect(label).toContain("10");
   });
 
   it("'hoy' se decide en la zona del negocio, no en la del servidor", () => {
-    // 03:00Z del 6 sigue siendo 5 de agosto en México.
+    // 03:00Z del 6 sigue siendo 5 de agosto en Lima.
     const instant = "2026-08-06T03:00:00.000Z";
-    expect(dayLabelInTz(instant, MX, now)).toMatch(/^hoy /);
+    expect(dayLabelInTz(instant, LIMA, now)).toMatch(/^hoy /);
     expect(dayLabelInTz(instant, MADRID, now)).toMatch(/^mañana /);
   });
 });
 
 describe("isValidTimeZone", () => {
   it("acepta zonas IANA reales y rechaza inventadas", () => {
-    expect(isValidTimeZone(MX)).toBe(true);
+    expect(isValidTimeZone(LIMA)).toBe(true);
     expect(isValidTimeZone("Europe/Madrid")).toBe(true);
     expect(isValidTimeZone("Marte/Olympus")).toBe(false);
   });

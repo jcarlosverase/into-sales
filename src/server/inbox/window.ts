@@ -38,14 +38,14 @@ export function replyWindow(
   lastInboundAt: Date | null,
   now: Date = new Date()
 ): ReplyWindow {
-  const cerrada: ReplyWindow = {
+  const closed: ReplyWindow = {
     standardOpen: false,
     operatorOpen: false,
     humanAgentTag: false,
     operatorRemainingMs: 0,
   };
   const elapsed = lastInboundAt ? now.getTime() - lastInboundAt.getTime() : NaN;
-  if (!Number.isFinite(elapsed) || elapsed < 0) return cerrada;
+  if (!Number.isFinite(elapsed) || elapsed < 0) return closed;
 
   const standardMs = windowMsFor(channel);
   const standardOpen = elapsed < standardMs;

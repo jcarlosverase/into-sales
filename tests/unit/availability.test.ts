@@ -12,36 +12,37 @@ import { daysWithAgenda, spreadByDay } from "@/server/agenda/spread";
 
 /** 015 — El motor: horario − ocupado, con aviso mínimo. Sin BD ni reloj real. */
 
-const MX = "America/Mexico_City";
+const PE = "America/Lima";
 
 function settings(over: Partial<CalendarSettings> = {}): CalendarSettings {
-  return { ...DEFAULT_CALENDAR_SETTINGS, ...over };
+  // Estas pruebas razonan en hora de Perú: la zona va explícita, no por defecto.
+  return { ...DEFAULT_CALENDAR_SETTINGS, timezone: PE, ...over };
 }
 
 describe("buildCandidateSlots", () => {
   it("solo genera slots en los días con horario (L-V por defecto)", () => {
     // 2026-08-08 es sábado; 2026-08-10 lunes.
     const slots = buildCandidateSlots(settings(), "2026-08-08", "2026-08-10");
-    const días = new Set(slots.map((s) => s.startUtc.slice(0, 10)));
-    expect(días.has("2026-08-08")).toBe(false); // sábado cerrado
-    expect(días.has("2026-08-09")).toBe(false); // domingo cerrado
-    expect(días.size).toBeGreaterThan(0); // el lunes sí
+    const days = new Set(slots.map((s) => s.startUtc.slice(0, 10)));
+    expect(days.has("2026-08-08")).toBe(false); // sábado cerrado
+    expect(days.has("2026-08-09")).toBe(false); // domingo cerrado
+    expect(days.size).toBeGreaterThan(0); // el lunes sí
   });
 
   it("respeta la duración configurada", () => {
-    const cortos = buildCandidateSlots(
+    const short = buildCandidateSlots(
       settings({ slotMinutes: 30 }),
       "2026-08-05",
       "2026-08-05"
     );
-    const largos = buildCandidateSlots(
+    const longOnes = buildCandidateSlots(
       settings({ slotMinutes: 60 }),
       "2026-08-05",
       "2026-08-05"
     );
     // 09:00-18:00 ⇒ 18 slots de 30 min, 9 de 60.
-    expect(cortos).toHaveLength(18);
-    expect(largos).toHaveLength(9);
+    expect(short).toHaveLength(18);
+    expect(longOnes).toHaveLength(9);
   });
 
   it("un horario vacío no genera nada (negocio sin configurar días)", () => {
@@ -56,7 +57,7 @@ describe("buildCandidateSlots", () => {
 });
 
 describe("filterFreeSlots", () => {
-  const tz = MX;
+  const tz = PE;
   const candidates = buildCandidateSlots(
     settings(),
     "2026-08-05",
@@ -87,59 +88,59 @@ describe("filterFreeSlots", () => {
 
   it("una cita ocupada retira su hueco y solo ese", () => {
     const now = new Date("2026-08-05T00:00:00.000Z");
-    const ocupado = [
+    const busy = [
       {
         startUtc: "2026-08-05T16:00:00.000Z",
         endUtc: "2026-08-05T16:30:00.000Z",
       },
     ];
-    const libres = filterFreeSlots(candidates, ocupado, {
+    const freeValue = filterFreeSlots(candidates, busy, {
       now,
       minNoticeHours: 0,
       timezone: tz,
     });
-    const inicios = libres.map((s) => s.startUtc);
-    expect(inicios).not.toContain("2026-08-05T16:00:00.000Z");
-    expect(inicios).toContain("2026-08-05T16:30:00.000Z");
-    expect(inicios).toContain("2026-08-05T15:30:00.000Z");
+    const starts = freeValue.map((s) => s.startUtc);
+    expect(starts).not.toContain("2026-08-05T16:00:00.000Z");
+    expect(starts).toContain("2026-08-05T16:30:00.000Z");
+    expect(starts).toContain("2026-08-05T15:30:00.000Z");
   });
 
   it("un bloqueo largo retira todos los huecos que toca", () => {
     const now = new Date("2026-08-05T00:00:00.000Z");
-    const bloqueo = [
+    const block = [
       {
         startUtc: "2026-08-05T15:00:00.000Z",
         endUtc: "2026-08-05T17:00:00.000Z", // 2 h ⇒ 4 slots de 30
       },
     ];
-    const libres = filterFreeSlots(candidates, bloqueo, {
+    const freeValue = filterFreeSlots(candidates, block, {
       now,
       minNoticeHours: 0,
       timezone: tz,
     });
-    expect(libres).toHaveLength(candidates.length - 4);
+    expect(freeValue).toHaveLength(candidates.length - 4);
   });
 
   it("devuelve los huecos ordenados y etiquetados", () => {
     const now = new Date("2026-08-05T00:00:00.000Z");
-    const libres = filterFreeSlots([...candidates].reverse(), [], {
+    const freeValue = filterFreeSlots([...candidates].reverse(), [], {
       now,
       minNoticeHours: 0,
       timezone: tz,
     });
-    const tiempos = libres.map((s) => Date.parse(s.startUtc));
-    expect([...tiempos].sort((a, b) => a - b)).toEqual(tiempos);
-    expect(libres[0]!.label).toContain("09:00");
+    const times = freeValue.map((s) => Date.parse(s.startUtc));
+    expect([...times].sort((a, b) => a - b)).toEqual(times);
+    expect(freeValue[0]!.label).toContain("09:00");
   });
 
   it("agenda llena ⇒ lista vacía, no error", () => {
     const now = new Date("2026-08-05T00:00:00.000Z");
-    const todo = candidates.map((c) => ({
+    const everything = candidates.map((c) => ({
       startUtc: c.startUtc,
       endUtc: c.endUtc,
     }));
     expect(
-      filterFreeSlots(candidates, todo, {
+      filterFreeSlots(candidates, everything, {
         now,
         minNoticeHours: 0,
         timezone: tz,
@@ -158,15 +159,15 @@ describe("spreadByDay", () => {
   // el día en la zona del negocio, no en la del servidor.)
   const now = new Date("2026-08-05T14:00:00.000Z");
   // Mié 5 a vie 7 de agosto, 09:00-18:00, citas de 30 ⇒ 18 huecos por día.
-  const libres = filterFreeSlots(
+  const freeValue = filterFreeSlots(
     buildCandidateSlots(settings(), "2026-08-05", "2026-08-07"),
     [],
-    { now, minNoticeHours: 0, timezone: MX }
+    { now, minNoticeHours: 0, timezone: PE }
   );
 
   it("toma como mucho `perDay` de cada día, en vez de los N más próximos", () => {
-    const spread = spreadByDay(libres, {
-      timezone: MX,
+    const spread = spreadByDay(freeValue, {
+      timezone: PE,
       limit: 12,
       perDay: 3,
       now,
@@ -180,8 +181,8 @@ describe("spreadByDay", () => {
   });
 
   it("el límite corta el total sin romper el reparto", () => {
-    const spread = spreadByDay(libres, {
-      timezone: MX,
+    const spread = spreadByDay(freeValue, {
+      timezone: PE,
       limit: 4,
       perDay: 3,
       now,
@@ -192,8 +193,8 @@ describe("spreadByDay", () => {
   });
 
   it("cada hueco viaja con su día EN PALABRAS y su hora", () => {
-    const spread = spreadByDay(libres, {
-      timezone: MX,
+    const spread = spreadByDay(freeValue, {
+      timezone: PE,
       limit: 3,
       perDay: 1,
       now,
@@ -205,7 +206,7 @@ describe("spreadByDay", () => {
 
   it("sin huecos no inventa días", () => {
     expect(
-      spreadByDay([], { timezone: MX, limit: 12, perDay: 3, now })
+      spreadByDay([], { timezone: PE, limit: 12, perDay: 3, now })
     ).toEqual([]);
   });
 });

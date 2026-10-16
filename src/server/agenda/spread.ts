@@ -79,18 +79,18 @@ export function spreadByDay(
  * - `full`: abre, pero no queda nada libre (o ya no da el aviso mínimo).
  * - `past` / `beyond_horizon`: fuera de lo que se puede agendar.
  */
-export type EstadoDelDia =
+export type DayStatus =
   | "available"
   | "closed"
   | "full"
   | "past"
   | "beyond_horizon";
 
-export type ConsultaDeHuecos = {
+export type SlotsQuery = {
   /** El día pedido, o null si es el reparto de siempre. */
   date: string | null;
   /** Solo con `date`. */
-  status: EstadoDelDia | null;
+  status: DayStatus | null;
   /**
    * Último día REVISADO. Un día posterior que no aparece no se consultó — no
    * es que no tenga agenda. Con `date`, es ese mismo día.
@@ -103,7 +103,7 @@ export type ConsultaDeHuecos = {
 };
 
 /** Cuántas horas de UN día se entregan, como mucho, al preguntar por ese día. */
-export const HUECOS_POR_FECHA = 24;
+export const SLOTS_BY_DATE = 24;
 
 /**
  * PURA: si un día trae más huecos que el tope, elige `tope` repartidos a lo
@@ -111,13 +111,13 @@ export const HUECOS_POR_FECHA = 24;
  * primeros. Cortar por el principio era justo el bug: todo caía en la mañana.
  * Por debajo del tope devuelve la lista tal cual.
  */
-export function aLoLargoDelDia<T>(slots: T[], tope: number): T[] {
-  if (tope <= 0) return [];
-  if (slots.length <= tope) return slots;
-  if (tope === 1) return slots.slice(0, 1);
+export function throughoutTheDay<T>(slots: T[], cap: number): T[] {
+  if (cap <= 0) return [];
+  if (slots.length <= cap) return slots;
+  if (cap === 1) return slots.slice(0, 1);
   // paso > 1 porque slots.length > tope: los índices redondeados no se repiten.
-  const paso = (slots.length - 1) / (tope - 1);
-  return Array.from({ length: tope }, (_, i) => slots[Math.round(i * paso)]!);
+  const step = (slots.length - 1) / (cap - 1);
+  return Array.from({ length: cap }, (_, i) => slots[Math.round(i * step)]!);
 }
 
 /**
@@ -127,9 +127,9 @@ export function aLoLargoDelDia<T>(slots: T[], tope: number): T[] {
  * cuántos turnos tiene ese día en el horario semanal, para distinguir cerrado
  * de lleno. Con `date`, `limit`/`perDay`/`days` no aplican: se devuelve el día
  * completo (hasta `HUECOS_POR_FECHA`, repartidos a lo largo del día). Sin BD
- * ni reloj: tests/unit/agenda-huecos-por-fecha.test.ts.
+ * ni reloj: tests/unit/agenda-slots-by-date.test.ts.
  */
-export function armarHuecos(input: {
+export function buildSlots(input: {
   todos: AvailableSlot[];
   timezone: string;
   now: Date;
@@ -140,16 +140,16 @@ export function armarHuecos(input: {
   days?: number;
   date?: string | null;
   candidatosDelDia?: number;
-}): { slots: SpreadSlot[]; query: ConsultaDeHuecos } {
+}): { slots: SpreadSlot[]; query: SlotsQuery } {
   const { timezone, now } = input;
-  const hoy = dayIsoInTz(now, timezone);
-  const horizonEnd = addDaysISO(hoy, input.maxDaysAhead);
-  const diaDe = (s: AvailableSlot) => dayIsoInTz(new Date(s.startUtc), timezone);
+  const today = dayIsoInTz(now, timezone);
+  const horizonEnd = addDaysISO(today, input.maxDaysAhead);
+  const dayOf = (s: AvailableSlot) => dayIsoInTz(new Date(s.startUtc), timezone);
 
   if (input.date) {
     const date = input.date;
     const base = { date, horizonEnd, perDay: null };
-    if (date < hoy) {
+    if (date < today) {
       return { slots: [], query: { ...base, status: "past", coveredUntil: null } };
     }
     if (date > horizonEnd) {
@@ -158,17 +158,17 @@ export function armarHuecos(input: {
         query: { ...base, status: "beyond_horizon", coveredUntil: null },
       };
     }
-    const delDia = aLoLargoDelDia(
-      input.todos.filter((s) => diaDe(s) === date),
-      HUECOS_POR_FECHA
+    const ofTheDay = throughoutTheDay(
+      input.todos.filter((s) => dayOf(s) === date),
+      SLOTS_BY_DATE
     );
-    const slots = spreadByDay(delDia, {
+    const slots = spreadByDay(ofTheDay, {
       timezone,
-      limit: HUECOS_POR_FECHA,
-      perDay: HUECOS_POR_FECHA,
+      limit: SLOTS_BY_DATE,
+      perDay: SLOTS_BY_DATE,
       now,
     });
-    const status: EstadoDelDia =
+    const status: DayStatus =
       slots.length > 0
         ? "available"
         : (input.candidatosDelDia ?? 0) === 0
@@ -179,26 +179,26 @@ export function armarHuecos(input: {
 
   // La ventana se aplica ANTES del reparto: da los mismos huecos que repartir
   // y luego recortar (los días van en orden), y así se sabe qué se revisó.
-  const finDeVentana =
-    input.days === undefined ? horizonEnd : addDaysISO(hoy, input.days - 1);
-  const ventanaHasta = finDeVentana < horizonEnd ? finDeVentana : horizonEnd;
+  const windowEnd =
+    input.days === undefined ? horizonEnd : addDaysISO(today, input.days - 1);
+  const windowUntil = windowEnd < horizonEnd ? windowEnd : horizonEnd;
   const slots = spreadByDay(
     input.todos.filter((s) => {
-      const dia = diaDe(s);
-      return dia >= hoy && dia <= ventanaHasta;
+      const day = dayOf(s);
+      return day >= today && day <= windowUntil;
     }),
     { timezone, limit: input.limit, perDay: input.perDay, now }
   );
   // Si el reparto se llenó, lo que viene después del último día incluido no
   // se revisó. Si no se llenó, se recorrió toda la ventana.
-  const lleno = slots.length >= input.limit;
-  const ultimo = slots[slots.length - 1]?.dayIso;
+  const full = slots.length >= input.limit;
+  const last = slots[slots.length - 1]?.dayIso;
   return {
     slots,
     query: {
       date: null,
       status: null,
-      coveredUntil: lleno && ultimo ? ultimo : ventanaHasta,
+      coveredUntil: full && last ? last : windowUntil,
       horizonEnd,
       perDay: input.perDay,
     },

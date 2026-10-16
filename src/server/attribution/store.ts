@@ -2,13 +2,13 @@ import { and, asc, eq } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db";
 import { newId } from "@/lib/db/ids";
 import { scoped } from "@/lib/db/tenant";
-import type { AnuncioDto } from "@/lib/types";
-import { descargaEnCurso, guardarCreativo } from "@/server/attribution/creativo";
-import { atribucionEnabled } from "@/server/attribution/flag";
+import type { AdDto } from "@/lib/types";
+import { downloadInProgress, saveCreative } from "@/server/attribution/creative";
+import { attributionEnabled } from "@/server/attribution/flag";
 import {
-  anuncioDeWhatsapp,
-  sinIdentificadorDeClic,
-  type AnuncioDeOrigen,
+  whatsappAd,
+  withoutClickIdentifier,
+  type OriginAd,
 } from "@/server/attribution/referral";
 
 /**
@@ -25,11 +25,11 @@ import {
  * Lo que de verdad se guarda de un anuncio. Sin la bandera, sin identificador
  * de clic (018, D2). Aparte y puro para poder probar las dos posiciones.
  */
-export function anuncioParaGuardar(
-  anuncio: AnuncioDeOrigen,
-  atribuye: boolean = atribucionEnabled()
-): AnuncioDeOrigen {
-  return atribuye ? anuncio : sinIdentificadorDeClic(anuncio);
+export function adToSave(
+  ad: OriginAd,
+  attributes: boolean = attributionEnabled()
+): OriginAd {
+  return attributes ? ad : withoutClickIdentifier(ad);
 }
 
 /**
@@ -38,15 +38,15 @@ export function anuncioParaGuardar(
  * reintenta el webhook y dos entregas simultáneas ganarían la carrera las dos
  * (Constitución IV).
  */
-export async function registrarAnuncioDeOrigen(input: {
+export async function registerOriginAd(input: {
   organizationId: string;
   contactId: string;
   conversationId: string;
-  anuncio: AnuncioDeOrigen;
+  ad: OriginAd;
 }): Promise<void> {
   const db = getDb();
-  const a = anuncioParaGuardar(input.anuncio);
-  const creadas = await db
+  const a = adToSave(input.ad);
+  const created = await db
     .insert(schema.adAttribution)
     .values({
       id: newId("adAttribution"),
@@ -71,11 +71,11 @@ export async function registrarAnuncioDeOrigen(input: {
     .returning({ id: schema.adAttribution.id });
 
   // Solo la fila nueva baja imagen: una reentrega no dispara otra descarga.
-  if (creadas[0] && a.sourceId && a.imageUrl) {
+  if (created[0] && a.sourceId && a.imageUrl) {
     const { organizationId, conversationId } = input;
     const sourceId = a.sourceId;
     const imageUrl = a.imageUrl;
-    void guardarCreativo({ organizationId, conversationId, sourceId, imageUrl }).catch(
+    void saveCreative({ organizationId, conversationId, sourceId, imageUrl }).catch(
       (err) =>
         console.warn(
           `[atribucion] imagen del anuncio ${sourceId} no guardada:`,
@@ -105,9 +105,9 @@ export async function getAttributionForConversation(
 }
 
 /** La fila del anuncio de origen de un contacto: el primero que lo trajo. */
-async function primeraFilaDelContacto(organizationId: string, contactId: string) {
+async function firstContactRow(organizationId: string, contactId: string) {
   const db = getDb();
-  const filas = await db
+  const rowsValue = await db
     .select()
     .from(schema.adAttribution)
     .where(
@@ -119,46 +119,46 @@ async function primeraFilaDelContacto(organizationId: string, contactId: string)
     )
     .orderBy(asc(schema.adAttribution.createdAt), asc(schema.adAttribution.id))
     .limit(1);
-  return filas[0] ?? null;
+  return rowsValue[0] ?? null;
 }
 
-export async function anuncioDelContacto(
+export async function contactAd(
   organizationId: string,
   contactId: string
-): Promise<AnuncioDto | null> {
-  const fila = await primeraFilaDelContacto(organizationId, contactId);
-  return fila ? serializarAnuncio(fila) : null;
+): Promise<AdDto | null> {
+  const row = await firstContactRow(organizationId, contactId);
+  return row ? serializeAd(row) : null;
 }
 
 /** Como mucho un intento de reparación por anuncio en esta ventana. */
-export const REPARAR_CADA_MS = 10 * 60_000;
+export const REPAIR_EACH_MS = 10 * 60_000;
 
 /**
  * El freno de la reparación, aparte para poder probarlo sin base: ¿toca
  * intentar esta clave ahora? Si sí, deja anotado el intento. Las claves viejas
  * se purgan para que el mapa no crezca sin fin.
  */
-export function crearFreno(ventanaMs = REPARAR_CADA_MS, maxClaves = 5_000) {
+export function createBrake(windowMs = REPAIR_EACH_MS, maxKeys = 5_000) {
   const ultimos = new Map<string, number>();
   return {
-    intentar(clave: string, ahora = Date.now()): boolean {
-      const anterior = ultimos.get(clave);
-      if (anterior !== undefined && ahora - anterior < ventanaMs) return false;
-      ultimos.set(clave, ahora);
-      if (ultimos.size > maxClaves) {
+    tryKey(key: string, now = Date.now()): boolean {
+      const previous = ultimos.get(key);
+      if (previous !== undefined && now - previous < windowMs) return false;
+      ultimos.set(key, now);
+      if (ultimos.size > maxKeys) {
         for (const [k, t] of ultimos) {
-          if (ahora - t >= ventanaMs) ultimos.delete(k);
+          if (now - t >= windowMs) ultimos.delete(k);
         }
       }
       return true;
     },
-    get claves() {
+    get keys() {
       return ultimos.size;
     },
   };
 }
 
-const frenoDeReparacion = crearFreno();
+const repairBrake = createBrake();
 
 /**
  * Si la imagen no se pudo copiar al llegar (la red tropezó más de una vez, o
@@ -170,23 +170,23 @@ const frenoDeReparacion = crearFreno();
  * evento de la bandeja, y sin él una URL que ya no sirve se pediría a Meta una
  * y otra vez.
  */
-export function repararImagenSiFalta(organizationId: string, contactId: string): void {
+export function repairImageIfMissing(organizationId: string, contactId: string): void {
   void (async () => {
-    const fila = await primeraFilaDelContacto(organizationId, contactId);
-    if (!fila || fila.imageAssetId || !fila.sourceId) return;
+    const row = await firstContactRow(organizationId, contactId);
+    if (!row || row.imageAssetId || !row.sourceId) return;
     // La copia de la llegada sigue en marcha: no es un fallo, y gastar aquí el
     // intento de la ventana dejaría sin reparar lo que de verdad falle.
-    if (descargaEnCurso(organizationId, fila.sourceId)) return;
-    if (!frenoDeReparacion.intentar(`${organizationId}:${fila.sourceId}`)) return;
+    if (downloadInProgress(organizationId, row.sourceId)) return;
+    if (!repairBrake.tryKey(`${organizationId}:${row.sourceId}`)) return;
 
     // El `raw` conserva las claves de imagen (también el de las filas de 016).
-    const anuncio = anuncioDeWhatsapp(fila.raw);
-    if (!anuncio?.imageUrl) return;
-    await guardarCreativo({
+    const ad = whatsappAd(row.raw);
+    if (!ad?.imageUrl) return;
+    await saveCreative({
       organizationId,
-      conversationId: fila.conversationId,
-      sourceId: fila.sourceId,
-      imageUrl: anuncio.imageUrl,
+      conversationId: row.conversationId,
+      sourceId: row.sourceId,
+      imageUrl: ad.imageUrl,
     });
   })().catch((err) =>
     console.warn(
@@ -202,20 +202,20 @@ export function repararImagenSiFalta(organizationId: string, contactId: string):
  * ni eso sin la bandera: «Meta identificó el clic» solo tiene sentido en una
  * instancia que atribuye (018, D2), aunque la fila sea de cuando lo hacía.
  */
-export function serializarAnuncio(
-  fila: typeof schema.adAttribution.$inferSelect,
-  atribuye: boolean = atribucionEnabled()
-): AnuncioDto {
+export function serializeAd(
+  row: typeof schema.adAttribution.$inferSelect,
+  attributes: boolean = attributionEnabled()
+): AdDto {
   return {
-    sourceId: fila.sourceId,
-    sourceType: fila.sourceType,
+    sourceId: row.sourceId,
+    sourceType: row.sourceType,
     // El enlace va a un `href`: solo https, aunque la ingesta ya filtró.
-    sourceUrl: fila.sourceUrl?.startsWith("https://") ? fila.sourceUrl : null,
-    headline: fila.headline,
-    body: fila.body,
-    mediaType: fila.mediaType,
-    imageAssetId: fila.imageAssetId,
-    hasCtwaClid: atribuye && fila.ctwaClid !== null,
-    capturedAt: fila.createdAt.toISOString(),
+    sourceUrl: row.sourceUrl?.startsWith("https://") ? row.sourceUrl : null,
+    headline: row.headline,
+    body: row.body,
+    mediaType: row.mediaType,
+    imageAssetId: row.imageAssetId,
+    hasCtwaClid: attributes && row.ctwaClid !== null,
+    capturedAt: row.createdAt.toISOString(),
   };
 }

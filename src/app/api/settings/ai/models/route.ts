@@ -2,8 +2,8 @@ import { apiError, parseBody, withAuth } from "@/lib/api";
 import { listModels } from "@/lib/ai/probe";
 import {
   aiModelsSchema,
-  baseUrlEfectiva,
-  llaveParaProbar,
+  baseUrlEffective,
+  keyForTest,
 } from "@/server/ai/settings";
 
 export const dynamic = "force-dynamic";
@@ -17,8 +17,8 @@ export const POST = withAuth(async (session, req: Request) => {
   const body = await parseBody(req, aiModelsSchema);
   if (!body.ok) return body.response;
 
-  const llave = await llaveParaProbar(session.organizationId, body.data.token);
-  if (!llave) {
+  const key = await keyForTest(session.organizationId, body.data.token);
+  if (!key) {
     return apiError(
       422,
       "sin_token",
@@ -26,16 +26,16 @@ export const POST = withAuth(async (session, req: Request) => {
     );
   }
 
-  const baseUrl = baseUrlEfectiva(body.data.provider, body.data.baseUrl);
-  const result = await listModels({ baseUrl, token: llave.token });
+  const baseUrl = baseUrlEffective(body.data.provider, body.data.baseUrl);
+  const result = await listModels({ baseUrl, token: key.token });
   if (result.ok) {
-    return Response.json({ soportado: true, modelos: result.modelos });
+    return Response.json({ supported: true, models: result.models });
   }
   if (result.code === "unsupported") {
     return Response.json({
-      soportado: false,
-      modelos: [],
-      mensaje: result.message,
+      supported: false,
+      models: [],
+      message: result.message,
     });
   }
   const status =

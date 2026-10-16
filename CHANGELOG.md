@@ -5,7 +5,30 @@ sigue el SemVer del [README](README.md#versiones): una menor trae funciones
 nuevas y actualizar es redesplegar. Desde 1.4.0, cada tag `vX.Y.Z` publica la
 imagen `ghcr.io/kevinrivm/vocero-crm:X.Y.Z`.
 
-## Sin publicar — camino a 1.6.0
+## Sin publicar — IntoSales
+
+- **Datos de ejemplo por rubro** (spec 023): `pnpm seed:academy`,
+  `pnpm seed:realestate` y `pnpm seed:fashion` cargan contactos con
+  conversación y lead, plantillas de WhatsApp en borrador y la configuración
+  del agente de una academia, una inmobiliaria o una tienda de moda en línea.
+  Se pueden repetir y nunca tocan contactos reales; `--reset` quita los
+  ejemplos de ese rubro. En Configuración → Plantillas, un borrador ahora
+  tiene el botón «Enviar a Meta».
+- **Adiós a la ferretería de demostración**: `pnpm seed:demo` y el botón de
+  la Bandeja cargan la academia de ejemplo, y los comandos por rubro quitan
+  lo que la demo vieja dejó en la base (contactos, conocimiento, perfil del
+  agente y su corrida del Laboratorio). Las personas del Laboratorio ya no
+  preguntan por herramientas.
+
+- **Reparto de leads por vendedor** (spec 022): cada lead tiene un vendedor.
+  Los leads nuevos se reparten por turno entre las cuentas de equipo; cada
+  vendedor solo ve sus leads y sus conversaciones en la Bandeja, el Pipeline y
+  Contactos, y el propietario ve todo y reasigna desde el cajón del trato. El
+  reparto se enciende, se apaga y se ajusta por vendedor en Ajustes → Equipo.
+- **Migración `0019_lead_assignment`**: añade el vendedor al lead y dos tablas
+  del reparto. Aditiva; los leads que ya existían quedan sin asignar.
+
+## Sin publicar — camino a 2.0.0
 
 Lo que ya está en `main` de la 1.6.0 (multicanal). Nada de esto cambia una
 instalación que no toque sus variables.
@@ -293,7 +316,7 @@ reconectar. Respalda la base antes, como en cualquier actualización.
   Todo sale de la base propia: sin gasto publicitario ni conectores, y el
   Laboratorio no cuenta. Las citas del agente, solo con `AGENDA`. Los días se
   cortan en la zona de la agenda; si no hay agenda configurada, en
-  `America/Mexico_City`. ([#70])
+  `America/Lima`. ([#70])
 - **De qué anuncio llegó cada conversación**, sin bandera: marca «Anuncio ·
   titular» y filtro «Anuncios» en la bandeja; tarjeta con el creativo, el
   texto y el enlace en el panel del contacto y en el cajón del trato. La

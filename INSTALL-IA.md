@@ -10,10 +10,10 @@
 > ningún otro archivo**: Coolify descarga la imagen publicada y los secretos
 > viven como variables de la plataforma.
 
-**Imagen**: `ghcr.io/kevinrivm/vocero-crm:1.5.1` (GitHub Container Registry,
+**Imagen**: `ghcr.io/jcarlosverase/into-sales:1.5.0` (GitHub Container Registry,
 una etiqueta por versión, `linux/amd64`, escucha en el puerto `3000`).
 
-**Repositorio**: `https://github.com/kevinrivm/vocero-crm` (público, rama `main`,
+**Repositorio**: `https://github.com/jcarlosverase/into-sales` (público, rama `main`,
 `Dockerfile` en la raíz). Hace falta para la Ruta B y para construir desde el
 código.
 
@@ -76,12 +76,12 @@ cada uno está en `.env.example`): `META_APP_SECRET`, `BOT_API_KEY` y
    (`database` tipo `postgresql`), con la contraseña generada y base `vocero`.
    Anota su host interno (algo como `<uuid>:5432`).
 2. **Aplicación**: en el mismo proyecto, crea una app de tipo **Docker Image**
-   con la imagen `ghcr.io/kevinrivm/vocero-crm`, la etiqueta `1.5.1`, puerto
+   con la imagen `ghcr.io/jcarlosverase/into-sales`, la etiqueta `1.5.0`, puerto
    expuesto `3000` y el dominio del usuario con HTTPS (MCP: `application`
    con `action: create_dockerimage`, el `project_uuid`, el
    `server_uuid` y el `environment_name` del proyecto,
-   `docker_registry_image_name: ghcr.io/kevinrivm/vocero-crm`,
-   `docker_registry_image_tag: 1.5.1`, `ports_exposes: "3000"`,
+   `docker_registry_image_name: ghcr.io/jcarlosverase/into-sales`,
+   `docker_registry_image_tag: 1.5.0`, `ports_exposes: "3000"`,
    `domains: https://<dominio>` e `instant_deploy: false`). Coolify descarga
    la imagen: no hay repositorio, GitHub App ni deploy keys que configurar, ni
    build en el VPS. No la despliegues todavía: primero el volumen y las
@@ -111,7 +111,7 @@ cada uno está en `.env.example`): `META_APP_SECRET`, `BOT_API_KEY` y
 Para un VPS ARM (p. ej. Ampere o Graviton: la imagen es `linux/amd64` y ahí no
 corre) o para un fork con cambios propios. En el paso 2, en vez de la imagen,
 crea una app tipo **repositorio público** apuntando a
-`https://github.com/kevinrivm/vocero-crm` o al fork (rama `main`, build pack
+`https://github.com/jcarlosverase/into-sales` o al fork (rama `main`, build pack
 `dockerfile`, puerto expuesto `3000`, el dominio del usuario con HTTPS; MCP:
 `application` con `action: create_public`) — no requiere GitHub App ni deploy
 keys. Los pasos 3 a 7 son iguales. El build corre en el VPS y tarda varios
@@ -127,7 +127,7 @@ migraciones corren solas al arrancar.
 ## Ruta B — docker compose (VPS con Docker)
 
 ```bash
-git clone https://github.com/kevinrivm/vocero-crm.git vocero && cd vocero
+git clone https://github.com/jcarlosverase/into-sales.git vocero && cd vocero
 pnpm install && pnpm init-env --domain <dominio>   # .env con los secretos generados (Node 22 + pnpm)
 pnpm doctor                                         # cada ✗ dice cómo arreglarla; sale con 1 si algo falla
 docker compose up -d

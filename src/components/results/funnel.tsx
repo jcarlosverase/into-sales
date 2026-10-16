@@ -23,7 +23,7 @@ export function Funnel({ steps }: { steps: FunnelStepDto[] }) {
   return (
     <ol className="space-y-2.5">
       {steps.map((step, i) => {
-        const siguiente = steps[i + 1];
+        const next = steps[i + 1];
         return (
           <li key={step.stageId ?? step.name}>
             <div className="flex items-baseline justify-between gap-3 text-sm">
@@ -46,9 +46,9 @@ export function Funnel({ steps }: { steps: FunnelStepDto[] }) {
                 />
               )}
             </div>
-            {siguiente && step.advanceRate && step.reached > 0 && (
+            {next && step.advanceRate && step.reached > 0 && (
               <p className="mt-1 text-[11px] text-text-3">
-                pasan a {siguiente.name}:{" "}
+                pasan a {next.name}:{" "}
                 <Rate rate={step.advanceRate} unit="prospectos" className="text-[11px]" />
               </p>
             )}

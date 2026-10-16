@@ -57,9 +57,9 @@ describe("orden de trabajo", () => {
       { priority: "baja" as const },
       { priority: "alta" as const },
     ];
-    const copia = [...leads];
+    const copy = [...leads];
     byPriority(leads);
-    expect(leads).toEqual(copia);
+    expect(leads).toEqual(copy);
   });
 
   it("a igualdad de prioridad conserva el orden que traía", () => {

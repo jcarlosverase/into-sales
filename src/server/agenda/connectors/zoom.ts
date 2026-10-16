@@ -46,14 +46,14 @@ export const ZOOM_SCOPES = [
  * Se arregla junto con la otra a propósito: dejar una de las dos copias de un
  * mismo error es cómo vuelve.
  */
-function claveDeToken(creds: ZoomCreds): string {
+function tokenKey(creds: ZoomCreds): string {
   return createHash("sha256")
     .update(JSON.stringify([creds.accountId, creds.clientId, creds.clientSecret]))
     .digest("hex");
 }
 
 async function getAccessToken(creds: ZoomCreds): Promise<string> {
-  const key = claveDeToken(creds);
+  const key = tokenKey(creds);
   const cached = getCachedZoomToken(key);
   if (cached) return cached;
 

@@ -1,6 +1,6 @@
 # E2E — Eliminar una conversación (026)
 
-Arnés: `scripts/e2e-eliminar.mjs`. Spec:
+Arnés: `scripts/e2e-delete-conversation.mjs`. Spec:
 [`specs/026-eliminar-conversacion/spec.md`](../../specs/026-eliminar-conversacion/spec.md).
 
 Precondición: app corriendo (`next dev`) sobre una base migrada, con
@@ -16,7 +16,7 @@ Dos modos, según cómo arrancó la app; el gate completo son las dos corridas:
 Con `AGENDA=on` corre además la cita por venir.
 
 ```bash
-node --env-file=.env scripts/e2e-eliminar.mjs
+node --env-file=.env scripts/e2e-delete-conversation.mjs
 ```
 
 ## Quién puede (AC5)

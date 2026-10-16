@@ -128,7 +128,7 @@ export async function saveAiCredential(input: {
   }
 
   const enc = encryptSecret(input.token);
-  const valores = {
+  const values = {
     provider: input.provider,
     baseUrl: input.baseUrl,
     model: input.model,
@@ -146,11 +146,11 @@ export async function saveAiCredential(input: {
     .values({
       id: newId("aiCredentials"),
       organizationId: input.organizationId,
-      ...valores,
+      ...values,
     })
     .onConflictDoUpdate({
       target: [schema.aiCredentials.organizationId],
-      set: valores,
+      set: values,
     })
     .returning();
   const row = rows[0];
@@ -179,26 +179,26 @@ export async function deleteAiCredential(organizationId: string): Promise<void> 
  * - Cualquier otro error (500 del proveedor, timeout, red) → tampoco pausa.
  *   Un hipo del proveedor no es un problema de la credencial.
  */
-export function estadoSegunRespuesta(httpStatus: number): AiStatus | null {
+export function statusFromResponse(httpStatus: number): AiStatus | null {
   if (httpStatus === 401) return "paused_invalid_token";
   if (httpStatus === 402) return "paused_no_credit";
   return null;
 }
 
 /** Aplica la pausa que dicte el proveedor. Devuelve true si pausó. */
-export async function marcarEstadoPorRespuesta(
+export async function markStatusFromResponse(
   organizationId: string,
   httpStatus: number,
-  detalle?: string
+  detail?: string
 ): Promise<boolean> {
-  const nuevo = estadoSegunRespuesta(httpStatus);
-  if (!nuevo) return false;
+  const newOne = statusFromResponse(httpStatus);
+  if (!newOne) return false;
   const db = getDb();
   await db
     .update(schema.aiCredentials)
     .set({
-      status: nuevo,
-      statusReason: detalle?.slice(0, 200) ?? null,
+      status: newOne,
+      statusReason: detail?.slice(0, 200) ?? null,
       statusChangedAt: new Date(),
       updatedAt: new Date(),
     })
@@ -211,7 +211,7 @@ export async function marcarEstadoPorRespuesta(
  * pausada, vuelve a `active`. Es el camino de «recargué saldo y quiero que
  * vuelva a contestar» sin tener que pegar la misma llave otra vez.
  */
-export async function marcarActiva(organizationId: string): Promise<void> {
+export async function markActive(organizationId: string): Promise<void> {
   const db = getDb();
   await db
     .update(schema.aiCredentials)

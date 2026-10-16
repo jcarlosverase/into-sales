@@ -10,8 +10,7 @@ import {
   Search,
   Send,
   UserPlus,
-  Users,
-} from "lucide-react";
+  Users, FileUp } from "lucide-react";
 import type { ContactDto } from "@/lib/types";
 import { formatPhone } from "@/lib/utils";
 import { ContactAvatar } from "@/components/avatar";
@@ -24,6 +23,7 @@ import { SOURCE_LABELS } from "@/server/contact-source";
 import { priorityRank } from "@/server/leads/priority";
 import { PriorityBadge } from "@/components/pipeline/priority-picker";
 import { NewContactDialog } from "./new-contact-dialog";
+import { ImportDialog } from "./import-dialog";
 import { StartConversation } from "./start-conversation";
 
 export function ContactsClient() {
@@ -34,8 +34,9 @@ export function ContactsClient() {
   const [stages, setStages] = useState<string[]>([]);
   const [showArchived, setShowArchived] = useState(false);
   const [editing, setEditing] = useState<ContactDto | null>(null);
-  const [creando, setCreando] = useState(false);
-  const [escribiendo, setEscribiendo] = useState<ContactDto | null>(null);
+  const [creating, setCreating] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [typing, setTyping] = useState<ContactDto | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Mismo rescate que en la Bandeja: lo tecleado antes de que hidrate el JS
@@ -91,9 +92,13 @@ export function ContactsClient() {
       <header className="flex flex-wrap items-center justify-between gap-3 border-b px-4 py-3 sm:gap-4 sm:px-6 sm:py-4">
         <div className="flex flex-wrap items-center gap-2">
           <h2 className="text-[17px] font-bold tracking-tight">Contactos</h2>
-          <Button size="sm" onClick={() => setCreando(true)}>
+          <Button size="sm" onClick={() => setCreating(true)}>
             <UserPlus className="mr-1.5 h-4 w-4" strokeWidth={1.8} />
             Nuevo contacto
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => setImporting(true)}>
+            <FileUp className="mr-1.5 h-4 w-4" strokeWidth={1.8} />
+            Importar
           </Button>
         </div>
         <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:gap-3">
@@ -210,7 +215,7 @@ export function ContactsClient() {
                     size="icon"
                     aria-label="Escribir primero"
                     title="Escribir primero (con plantilla)"
-                    onClick={() => setEscribiendo(c)}
+                    onClick={() => setTyping(c)}
                   >
                     <Send className="h-4 w-4" />
                   </Button>
@@ -249,7 +254,7 @@ export function ContactsClient() {
         />
       )}
 
-      {escribiendo && (
+      {typing && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-overlay p-4"
           role="dialog"
@@ -259,17 +264,17 @@ export function ContactsClient() {
           <div className="w-full max-w-md rounded-lg border bg-popover p-4 shadow-pop">
             <div className="mb-3 flex items-baseline justify-between gap-2">
               <h3 className="font-semibold">
-                Escribir a {escribiendo.name}
+                Escribir a {typing.name}
               </h3>
-              <Button variant="ghost" size="sm" onClick={() => setEscribiendo(null)}>
+              <Button variant="ghost" size="sm" onClick={() => setTyping(null)}>
                 Cerrar
               </Button>
             </div>
             <StartConversation
-              contactId={escribiendo.id}
+              contactId={typing.id}
               onStarted={() => {
-                const contactId = escribiendo.id;
-                setEscribiendo(null);
+                const contactId = typing.id;
+                setTyping(null);
                 // La Bandeja resuelve por CONTACTO (`?contact=`), no por
                 // conversación: con `?conversation=` no seleccionaría nada.
                 router.push(`/inbox?contact=${contactId}`);
@@ -279,15 +284,16 @@ export function ContactsClient() {
         </div>
       )}
 
-      {creando && (
+      {importing && <ImportDialog onClose={() => setImporting(false)} onImported={() => void refetch()} />}
+      {creating && (
         <NewContactDialog
-          onClose={() => setCreando(false)}
+          onClose={() => setCreating(false)}
           onCreated={() => {
-            setCreando(false);
+            setCreating(false);
             void refetch();
           }}
           onOpenExisting={(contactId) => {
-            setCreando(false);
+            setCreating(false);
             router.push(`/inbox?contact=${contactId}`);
           }}
         />

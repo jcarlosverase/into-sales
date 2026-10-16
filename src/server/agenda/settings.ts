@@ -21,7 +21,7 @@ import {
 
 export type WeeklyHours = Partial<Record<WeekdayKey, Interval[]>>;
 
-export const DEFAULT_TIMEZONE = "America/Mexico_City";
+export const DEFAULT_TIMEZONE = "America/Lima";
 
 /** L-V 09:00-18:00 — se ajusta en Ajustes → Agenda. */
 export const DEFAULT_WEEKLY_HOURS: WeeklyHours = {

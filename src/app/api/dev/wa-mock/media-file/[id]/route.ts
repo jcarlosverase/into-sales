@@ -1,5 +1,5 @@
 import { mockGuard } from "@/lib/dev-guard";
-import { pngDePrueba } from "@/server/dev/png-de-prueba";
+import { testPng } from "@/server/dev/test-png";
 
 /**
  * Binario de prueba del wa-mock (media proxy del bot). La metadata del mock de
@@ -12,7 +12,7 @@ import { pngDePrueba } from "@/server/dev/png-de-prueba";
 export const dynamic = "force-dynamic";
 
 /** Veces que se ha pedido cada creativo, para simular fallos que se curan. */
-const pedidos = new Map<string, number>();
+const requests = new Map<string, number>();
 
 export async function GET(
   req: Request,
@@ -40,26 +40,26 @@ export async function GET(
       // SÍ devolvería un PNG: este mismo servidor por otro nombre (localhost ↔
       // 127.0.0.1). Así la prueba demuestra que el salto se revalida, y no que
       // el destino falló; y no sale de la máquina.
-      const aqui = new URL(req.url);
-      const otro = aqui.hostname === "127.0.0.1" ? "localhost" : "127.0.0.1";
+      const here = new URL(req.url);
+      const other = here.hostname === "127.0.0.1" ? "localhost" : "127.0.0.1";
       return new Response(null, {
         status: 302,
         headers: {
-          location: `${aqui.protocol}//${otro}:${aqui.port}/api/dev/wa-mock/media-file/creativo-destino-del-salto`,
+          location: `${here.protocol}//${other}:${here.port}/api/dev/wa-mock/media-file/creativo-destino-del-salto`,
         },
       });
     }
-    const vez = (pedidos.get(id) ?? 0) + 1;
-    pedidos.set(id, vez);
-    if (id.startsWith("creativo-lento") && vez === 1) {
+    const time = (requests.get(id) ?? 0) + 1;
+    requests.set(id, time);
+    if (id.startsWith("creativo-lento") && time === 1) {
       // La primera vez tarda más que el tiempo de espera de la copia.
       await new Promise((r) => setTimeout(r, 6_500));
     }
-    if (id.startsWith("creativo-falla") && vez <= 2) {
+    if (id.startsWith("creativo-falla") && time <= 2) {
       // Falla la copia y su reintento; a la tercera, ya responde.
       return new Response(null, { status: 503 });
     }
-    return new Response(new Uint8Array(pngDePrueba(id)), {
+    return new Response(new Uint8Array(testPng(id)), {
       headers: { "content-type": "image/png" },
     });
   }

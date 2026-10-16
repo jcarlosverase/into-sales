@@ -7,7 +7,7 @@ import {
   type MeetingResult,
   type TestConnectionResult,
 } from "@/server/agenda/connectors/types";
-import { enlaceFijoConnector } from "@/server/agenda/connectors/enlace-fijo";
+import { fixedLinkConnector } from "@/server/agenda/connectors/fixed-link";
 import { zoomConnector } from "@/server/agenda/connectors/zoom";
 import {
   getZoomCredentials,
@@ -73,7 +73,7 @@ export async function bindConnector(
 ): Promise<BoundConnector> {
   switch (connectorId) {
     case "enlace-fijo":
-      return bind(enlaceFijoConnector, { meetingLink: settings.meetingLink });
+      return bind(fixedLinkConnector, { meetingLink: settings.meetingLink });
 
     case "zoom": {
       const creds = await getZoomCredentials(organizationId);

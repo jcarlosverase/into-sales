@@ -173,14 +173,14 @@ export function ZernioConnect({
                 : "El webhook de tu Zernio quedó actualizado y limitado a tus cuentas conectadas."}
             </p>
           )}
-          {saved.health && saved.health.level !== "ok" && <Aviso>{saved.health.message}</Aviso>}
+          {saved.health && saved.health.level !== "ok" && <Notice>{saved.health.message}</Notice>}
           {saved.webhook && !saved.webhook.ok && (
-            <Aviso>
+            <Notice>
               {saved.webhook.message ?? "No se pudo dar de alta el webhook en Zernio."}{" "}
               <Link href="/settings/channels" className="font-semibold underline">
                 Ver el estado de los canales
               </Link>
-            </Aviso>
+            </Notice>
           )}
         </div>
       )}
@@ -188,7 +188,7 @@ export function ZernioConnect({
   );
 }
 
-function Aviso({ children }: { children: React.ReactNode }) {
+function Notice({ children }: { children: React.ReactNode }) {
   return (
     <p className="flex items-start gap-2 rounded-md border border-warning-soft bg-warning-tint p-3 text-warning-text">
       <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />

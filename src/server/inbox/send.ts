@@ -2,7 +2,8 @@ import { eq } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db";
 import { newId } from "@/lib/db/ids";
 import { graphRequest, MetaApiError, normalizeRecipient } from "@/lib/meta/client";
-import { destinatarioMeta, type Destinatario } from "@/lib/meta/destinatario";
+import { describeSendError } from "@/lib/meta/send-errors";
+import { recipientMeta, type Recipient } from "@/lib/meta/recipient";
 import { publish } from "@/server/events/bus";
 import {
   getCredentialsByOrg,
@@ -33,8 +34,8 @@ import {
 } from "@/server/tiktok/credentials";
 import { sendTiktokText } from "@/server/tiktok/send";
 import {
-  cabeOtroMensaje,
-  salientesDesdeElUltimoEntrante,
+  anotherMessageFits,
+  outboundSinceLastInbound,
 } from "@/server/inbox/outbound-cap";
 import {
   capabilitiesFor,
@@ -84,7 +85,7 @@ type SendTarget = {
   /** null cuando el destino no es WhatsApp (014). */
   credentials: Credentials | null;
   /** El destinatario en la forma que Meta espera: `to` o `recipient`. */
-  destinatario: Destinatario;
+  metaRecipient: Recipient;
   /** El identificador a secas, para lo que no arma un payload de Graph. */
   recipient: string;
   /** 014: presente solo en conversaciones de Instagram. */
@@ -196,7 +197,7 @@ async function prepareSend(
       credentials: null,
       // Instagram no pasa por la Graph API de WhatsApp; el campo existe para
       // cumplir el tipo y su camino de envío no lo mira.
-      destinatario: { to: igRecipient },
+      metaRecipient: { to: igRecipient },
       recipient: igRecipient,
       instagram: igCreds,
     };
@@ -233,7 +234,7 @@ async function prepareSend(
       conversation: row.conversation,
       credentials: null,
       // Messenger tampoco pasa por la Graph API de WhatsApp.
-      destinatario: { to: fbRecipient },
+      metaRecipient: { to: fbRecipient },
       recipient: fbRecipient,
       messenger: fbCreds,
     };
@@ -270,11 +271,11 @@ async function prepareSend(
     ) {
       throw new SendError("window_closed", windowClosedMessage("tiktok"));
     }
-    const enviados = await salientesDesdeElUltimoEntrante(
+    const sent = await outboundSinceLastInbound(
       organizationId,
       conversationId
     );
-    if (!cabeOtroMensaje("tiktok", enviados)) {
+    if (!anotherMessageFits("tiktok", sent)) {
       throw new SendError("message_limit", outboundLimitMessage("tiktok"));
     }
     const ttRecipient = row.contact.waIdentity.startsWith(TT_PREFIX)
@@ -284,7 +285,7 @@ async function prepareSend(
       conversation: row.conversation,
       credentials: null,
       // TikTok tampoco pasa por la Graph API de WhatsApp.
-      destinatario: { to: ttRecipient },
+      metaRecipient: { to: ttRecipient },
       recipient: ttRecipient,
       tiktok: ttCreds,
     };
@@ -324,23 +325,23 @@ async function prepareSend(
    * respondía 131026, que en la bandeja se lee como si el número del cliente
    * no existiera.
    */
-  const destinatario = destinatarioMeta(
+  const recipientValue = recipientMeta(
     row.contact.phone ? normalizeRecipient(row.contact.phone) : null,
     row.contact.waUserId
   );
-  const recipient = destinatario
-    ? "to" in destinatario
-      ? destinatario.to
-      : destinatario.recipient
+  const recipient = recipientValue
+    ? "to" in recipientValue
+      ? recipientValue.to
+      : recipientValue.recipient
     : null;
-  if (!destinatario || !recipient) {
+  if (!recipientValue || !recipient) {
     throw new SendError(
       "meta_error",
       "El contacto no tiene teléfono ni identidad de WhatsApp utilizable"
     );
   }
 
-  return { conversation: row.conversation, credentials, destinatario, recipient };
+  return { conversation: row.conversation, credentials, metaRecipient: recipientValue, recipient };
 }
 
 async function persistOutbound(input: {
@@ -412,22 +413,22 @@ export async function sendText(input: {
     input.aiGenerated ?? false
   );
   const { credentials } = target;
-  const canal = target.conversation.channel;
+  const channel = target.conversation.channel;
 
   // 024: la IA escribe con formato de WhatsApp (y a veces Markdown). En un
   // canal que no lo dibuja se le quitan las marcas ANTES de medir, enviar y
   // guardar: lo que queda en el hilo es lo que el cliente leyó. Lo que escribe
   // una persona no se toca.
   const text =
-    input.aiGenerated && capabilitiesFor(canal).textFormat === "plain"
+    input.aiGenerated && capabilitiesFor(channel).textFormat === "plain"
       ? plainSocialText(input.text)
       : input.text;
 
   // 022: el límite de longitud es del canal. WhatsApp y TikTok lo declaran en
   // caracteres y se comprueba aquí, antes de llamar a nadie; Instagram y
   // Messenger (en bytes) lo siguen comprobando en su propio camino.
-  if (capabilitiesFor(canal).maxTextChars !== null && !textFits(canal, text)) {
-    throw new SendError("text_too_long", textLimitMessage(canal));
+  if (capabilitiesFor(channel).maxTextChars !== null && !textFits(channel, text)) {
+    throw new SendError("text_too_long", textLimitMessage(channel));
   }
 
   const waMessageId = target.instagram
@@ -438,7 +439,7 @@ export async function sendText(input: {
         ? await callTiktokSend(target, text)
         : await callGraphSend(credentials!, {
           messaging_product: "whatsapp",
-          ...target.destinatario,
+          ...target.metaRecipient,
           type: "text",
           text: { body: text },
         });
@@ -524,7 +525,7 @@ export async function sendMediaMessage(input: {
     }
     const waMessageId = await callGraphSend(credentials!, {
       messaging_product: "whatsapp",
-      ...target.destinatario,
+      ...target.metaRecipient,
       type: kind,
       [kind]: mediaPayload,
     });
@@ -620,7 +621,7 @@ export async function sendStructured(
 
   const waMessageId = await callGraphSend(target.credentials, {
     messaging_product: "whatsapp",
-    ...target.destinatario,
+    ...target.metaRecipient,
     ...payload,
   });
 
@@ -676,10 +677,26 @@ export async function callGraphSend(
       if (err.status === 0 || err.status >= 500) {
         throw new SendError("meta_unavailable", "Meta no está disponible ahora");
       }
-      throw new SendError("meta_error", err.message);
+      throw new SendError("meta_error", describeWhatsAppSendError(err, payload));
     }
     throw err;
   }
+}
+
+/**
+ * Meta's error in words the operator can act on, plus the case that most
+ * often confuses #131030: WhatsApp shared only an anonymous id (BSUID) for
+ * this customer, not their phone, so the test-number allow list (which holds
+ * phones) cannot match it even when the operator added their number.
+ */
+function describeWhatsAppSendError(err: MetaApiError, payload: unknown): string {
+  const base = describeSendError(err.code, err.message);
+  const toBsuid =
+    typeof payload === "object" && payload !== null && "recipient" in payload;
+  if (err.code === 131030 && toBsuid) {
+    return `${base} Además, WhatsApp no compartió el teléfono de este cliente, solo un identificador anónimo, así que Meta no puede compararlo con tu lista de prueba. Si este cliente eres tú, revisa tu número en esa lista y vuelve a escribir al número de prueba.`;
+  }
+  return base;
 }
 
 

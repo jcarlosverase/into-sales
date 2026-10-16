@@ -1,0 +1,1 @@
+ALTER TABLE "calendar_settings" ALTER COLUMN "timezone" SET DEFAULT 'America/Lima';

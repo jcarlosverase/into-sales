@@ -48,15 +48,15 @@ const json = (path, opts = {}) =>
  * El HTML que pinta el servidor. La marca viaja en SSR (sin parpadeo), así
  * que lo que dibujan la barra lateral y el login ya está en la respuesta.
  */
-const paginaDe = async (path, { sesion = true } = {}) =>
-  (sesion ? await api(path) : await fetch(`${BASE}${path}`)).text();
+const pageOf = async (path, { session: session = true } = {}) =>
+  (session ? await api(path) : await fetch(`${BASE}${path}`)).text();
 
 /**
  * El mosaico de la marca dibujando un archivo: `<img src=…>`. La pestaña usa
  * la misma URL pero en `<link href=…>`, así que no cuenta aquí.
  */
-const LOGO_EN_MOSAICO = /<img[^>]*src="\/api\/branding\/favicon\?v=([^"&]+)"/;
-const versionEnMosaico = (html) => LOGO_EN_MOSAICO.exec(html)?.[1] ?? null;
+const LOGO_IN_TILE = /<img[^>]*src="\/api\/branding\/favicon\?v=([^"&]+)"/;
+const versionInTile = (html) => LOGO_IN_TILE.exec(html)?.[1] ?? null;
 
 /** PNG de 1×1 real: sirve para probar el camino feliz de la carga. */
 const PNG_1X1 = Buffer.from(
@@ -87,14 +87,14 @@ await json("/api/settings/branding", {
 
 console.log("\n== Sin configurar nada, ya hay icono ==");
 let res = await api("/api/branding/favicon");
-let cuerpo = await res.text();
+let body = await res.text();
 ok("la ruta pública responde 200", res.status === 200);
 ok(
   "es un SVG dibujado con la marca",
   res.headers.get("content-type")?.includes("svg") &&
-    cuerpo.includes(">A<") &&
-    cuerpo.includes("#3f6b66"),
-  cuerpo.slice(0, 80)
+    body.includes(">A<") &&
+    body.includes("#3f6b66"),
+  body.slice(0, 80)
 );
 ok(
   "y se sirve sin permitir que ejecute nada",
@@ -103,23 +103,23 @@ ok(
 );
 
 // Sin sesión: el login también tiene pestaña.
-const sinSesion = await fetch(`${BASE}/api/branding/favicon`);
-ok("se sirve sin sesión", sinSesion.status === 200);
+const withoutSession = await fetch(`${BASE}/api/branding/favicon`);
+ok("se sirve sin sesión", withoutSession.status === 200);
 
 console.log("\n== El dueño sube su logo ==");
-const subida = await api("/api/settings/branding/favicon", {
+const upload = await api("/api/settings/branding/favicon", {
   method: "PUT",
   headers: { "content-type": "image/png" },
   body: PNG_1X1,
 });
-const subidaJson = await subida.json().catch(() => null);
-ok("PUT con un PNG real → 200", subida.ok, JSON.stringify(subidaJson));
+const uploadJson = await upload.json().catch(() => null);
+ok("PUT con un PNG real → 200", upload.ok, JSON.stringify(uploadJson));
 ok(
   "queda registrado con su tipo y una versión",
-  subidaJson?.favicon?.mime === "image/png" &&
-    Number.isFinite(subidaJson?.favicon?.version) &&
-    subidaJson.favicon.version > 0,
-  JSON.stringify(subidaJson)
+  uploadJson?.favicon?.mime === "image/png" &&
+    Number.isFinite(uploadJson?.favicon?.version) &&
+    uploadJson.favicon.version > 0,
+  JSON.stringify(uploadJson)
 );
 
 res = await api("/api/branding/favicon");
@@ -133,49 +133,49 @@ ok(
 console.log("\n== El logo subido se ve también donde se ve la marca ==");
 // Antes solo cambiaba la pestaña: la barra lateral y el login seguían con la
 // inicial, y quien subía su logo no lo veía por ningún lado.
-const v1 = `u${subidaJson?.favicon?.version}`;
-let pagina = await paginaDe("/inbox");
+const v1 = `u${uploadJson?.favicon?.version}`;
+let page = await pageOf("/inbox");
 ok(
   "la barra lateral lo dibuja, con la MISMA URL versionada que la pestaña",
-  versionEnMosaico(pagina) === v1,
-  `mosaico con ${versionEnMosaico(pagina) ?? "la inicial"}, esperado ${v1}`
+  versionInTile(page) === v1,
+  `mosaico con ${versionInTile(page) ?? "la inicial"}, esperado ${v1}`
 );
-pagina = await paginaDe("/login", { sesion: false });
+page = await pageOf("/login", { session: false });
 ok(
   "el login también, sin sesión",
-  versionEnMosaico(pagina) === v1,
-  `mosaico con ${versionEnMosaico(pagina) ?? "la inicial"}, esperado ${v1}`
+  versionInTile(page) === v1,
+  `mosaico con ${versionInTile(page) ?? "la inicial"}, esperado ${v1}`
 );
 
 console.log("\n== No se cuela un documento disfrazado de imagen ==");
-const htmlComoPng = await api("/api/settings/branding/favicon", {
+const htmlAsPng = await api("/api/settings/branding/favicon", {
   method: "PUT",
   headers: { "content-type": "image/png" }, // MIENTE
   body: Buffer.from("<html><script>alert(1)</script></html>", "utf8"),
 });
 ok(
   "declarar image/png y mandar HTML → 422",
-  htmlComoPng.status === 422,
-  String(htmlComoPng.status)
+  htmlAsPng.status === 422,
+  String(htmlAsPng.status)
 );
 
 res = await api("/api/branding/favicon");
-const trasIntento = Buffer.from(await res.arrayBuffer());
-ok("y el icono bueno sigue intacto", trasIntento.equals(PNG_1X1));
+const afterAttempt = Buffer.from(await res.arrayBuffer());
+ok("y el icono bueno sigue intacto", afterAttempt.equals(PNG_1X1));
 
-const gigante = await api("/api/settings/branding/favicon", {
+const huge = await api("/api/settings/branding/favicon", {
   method: "PUT",
   headers: { "content-type": "image/png" },
   body: Buffer.alloc(300 * 1024, 1),
 });
-ok("un archivo de 300 KB → 413", gigante.status === 413, String(gigante.status));
+ok("un archivo de 300 KB → 413", huge.status === 413, String(huge.status));
 
-const vacio = await api("/api/settings/branding/favicon", {
+const empty = await api("/api/settings/branding/favicon", {
   method: "PUT",
   headers: { "content-type": "image/png" },
   body: Buffer.alloc(0),
 });
-ok("un cuerpo vacío → 422", vacio.status === 422, String(vacio.status));
+ok("un cuerpo vacío → 422", empty.status === 422, String(empty.status));
 
 console.log("\n== Guardar la marca NO borra el logo ==");
 await json("/api/settings/branding", {
@@ -189,51 +189,51 @@ ok(
 );
 
 console.log("\n== Se puede volver al generado ==");
-const quitado = await api("/api/settings/branding/favicon", { method: "DELETE" });
-ok("DELETE → 200", quitado.ok);
+const removed = await api("/api/settings/branding/favicon", { method: "DELETE" });
+ok("DELETE → 200", removed.ok);
 res = await api("/api/branding/favicon");
-cuerpo = await res.text();
+body = await res.text();
 ok(
   "vuelve el generado, ahora con la inicial nueva",
-  res.headers.get("content-type")?.includes("svg") && cuerpo.includes(">A<"),
-  cuerpo.slice(0, 60)
+  res.headers.get("content-type")?.includes("svg") && body.includes(">A<"),
+  body.slice(0, 60)
 );
-pagina = await paginaDe("/inbox");
+page = await pageOf("/inbox");
 ok(
   "y la barra lateral vuelve a la inicial, sin imagen rota",
-  versionEnMosaico(pagina) === null &&
-    /class="brand-tile[^"]*"[^>]*><span[^>]*>A<\/span>/.test(pagina),
-  versionEnMosaico(pagina) ?? "sin la inicial en el mosaico"
+  versionInTile(page) === null &&
+    /class="brand-tile[^"]*"[^>]*><span[^>]*>A<\/span>/.test(page),
+  versionInTile(page) ?? "sin la inicial en el mosaico"
 );
 
 console.log("\n== Quitar y volver a subir NO repite la URL ==");
 // El caso que importa: si la versión reiniciara, `?v=u1` sería la misma URL
 // que la del logo anterior y el navegador seguiría enseñando el viejo.
 await new Promise((r) => setTimeout(r, 5));
-const otra = await api("/api/settings/branding/favicon", {
+const other = await api("/api/settings/branding/favicon", {
   method: "PUT",
   headers: { "content-type": "image/png" },
   body: PNG_1X1,
 });
-const otraJson = await otra.json();
+const otherJson = await other.json();
 ok(
   "la versión avanza en vez de reiniciar",
-  otraJson?.favicon?.version > subidaJson?.favicon?.version,
-  `${subidaJson?.favicon?.version} → ${otraJson?.favicon?.version}`
+  otherJson?.favicon?.version > uploadJson?.favicon?.version,
+  `${uploadJson?.favicon?.version} → ${otherJson?.favicon?.version}`
 );
 
 // Y la marca que sirve el layout cambia de verdad.
-const marca = await (await json("/api/settings/branding")).json();
+const brand = await (await json("/api/settings/branding")).json();
 ok(
   "la marca expone el icono nuevo",
-  marca?.branding?.favicon?.version === otraJson.favicon.version,
-  JSON.stringify(marca?.branding?.favicon)
+  brand?.branding?.favicon?.version === otherJson.favicon.version,
+  JSON.stringify(brand?.branding?.favicon)
 );
-pagina = await paginaDe("/inbox");
+page = await pageOf("/inbox");
 ok(
   "y la barra lateral pide el logo nuevo, no el que el navegador ya guardó",
-  versionEnMosaico(pagina) === `u${otraJson?.favicon?.version}`,
-  `mosaico con ${versionEnMosaico(pagina) ?? "la inicial"}`
+  versionInTile(page) === `u${otherJson?.favicon?.version}`,
+  `mosaico con ${versionInTile(page) ?? "la inicial"}`
 );
 
 console.log(

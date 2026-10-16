@@ -1,29 +1,30 @@
-# Vocero CRM
+# IntoSales
 
-[![CI](https://github.com/kevinrivm/vocero-crm/actions/workflows/ci.yml/badge.svg)](https://github.com/kevinrivm/vocero-crm/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
+> IntoSales es el CRM con IA de **into**. Está basado
+> en [Vocero CRM](https://github.com/kevinrivm/vocero-crm) de Kevin Belier,
+> publicado con licencia MIT; el aviso de copyright original se conserva en
+> [LICENSE](LICENSE).
 
 **El CRM de WhatsApp open source con un agente de IA que se pone a prueba solo.**
 
-Vocero es un CRM self-hosted y gratuito para negocios que venden por WhatsApp:
+IntoSales es un CRM self-hosted y gratuito para negocios que venden por WhatsApp:
 bandeja en tiempo real, pipeline de ventas, un agente de IA con el conocimiento
 de tu negocio y un **Laboratorio** donde clientes simulados lo evalúan antes de
 que hable con clientes reales. Una instancia = un negocio, en tu propio
 servidor, con tus datos.
 
-¿Ya tienes tu propio agente? Puedes apagar el de Vocero y conectar el tuyo por
+¿Ya tienes tu propio agente? Puedes apagar el de IntoSales y conectar el tuyo por
 la [API de servicio `/api/bot/*`](#-trae-tu-propio-agente): el token de WhatsApp
 nunca sale del CRM.
 
-![Bandeja de Vocero CRM](docs/screenshots/bandeja.png)
+![Bandeja de IntoSales](docs/screenshots/bandeja.png)
 
 <p align="center">
   <img src="docs/screenshots/laboratorio.png" width="49%" alt="Laboratorio: reporte con score y hallazgos" />
   <img src="docs/screenshots/pipeline.png" width="49%" alt="Pipeline kanban" />
 </p>
-
-> 🎬 **Video-instalador oficial**: próximamente en
-> [el canal de Kevin Belier](https://www.youtube.com/@KevinBelier)
 
 ## ¿Para quién es?
 
@@ -89,7 +90,7 @@ de los datos del propio CRM: no pide conectar nada, y el Laboratorio no cuenta.
 No trae gasto publicitario ni retorno por anuncio, a propósito: ese dato no
 vive en el CRM. Con la agenda encendida suma las citas (realizadas, no
 llegaron, canceladas). Los días se cortan en la zona horaria de la agenda; si
-no hay agenda configurada, en la de Ciudad de México.
+no hay agenda configurada, en la de Lima (`America/Lima`, UTC-5).
 
 ### 🤖 Agente de IA con TU conocimiento
 
@@ -102,7 +103,7 @@ Proveedor LLM por adaptador OpenRouter-compatible: usa el modelo que quieras.
 ### 🔌 Trae tu propio agente
 
 Si prefieres conducir la conversación con tu propio cerebro —un microservicio
-tuyo, en tu mismo servidor— apaga el agente de Vocero y habilita la API de
+tuyo, en tu mismo servidor— apaga el agente de IntoSales y habilita la API de
 servicio con una `BOT_API_KEY`. Tu bot conversa a través del CRM, así que **el
 token de WhatsApp nunca sale de aquí** y todo queda en la bandeja como
 cualquier otra conversación.
@@ -112,7 +113,7 @@ cualquier otra conversación.
 | `GET /api/bot/context` | Quién es la persona, su etapa, si un humano tomó la conversación y si la ventana de 24 h sigue abierta. Con la agenda encendida, también sus citas (`booking`): la próxima, la que ya pasó sin cerrarse y la última que se cerró (cancelada, no asistió o realizada) |
 | `POST /api/bot/messages` | Responder. Sale por el mismo camino que el composer y queda marcado como IA |
 | `GET /api/bot/profile` | El perfil del agente y el knowledge base que editaste en la app |
-| `PUT /api/bot/ficha` | Guardar lo que tu bot descubre del lead (claves libres: cada negocio califica distinto) |
+| `PUT /api/bot/qualification` | Guardar lo que tu bot descubre del lead (claves libres: cada negocio califica distinto). La URL anterior, `/api/bot/ficha`, sigue respondiendo |
 | `POST /api/bot/handoff` | Devolver la conversación a un humano |
 | `POST /api/bot/typing` | Marcar leído y mostrar "escribiendo…" |
 | `GET /api/bot/media/{id}` | Descargar un adjunto entrante sin tocar Meta |
@@ -147,7 +148,7 @@ y su guion en [`tests/e2e/us-despacho.md`](tests/e2e/us-despacho.md).
 
 Si tu bot recibe los webhooks de Meta por un **override de callback de la
 WABA**, guardar la conexión en Configuración → WhatsApp (o rotar el token) lo
-respeta: Vocero ve el override en `GET /{WABA}/subscribed_apps`, no re-suscribe
+respeta: IntoSales ve el override en `GET /{WABA}/subscribed_apps`, no re-suscribe
 la app —que es justo lo que lo borraría— y tampoco registra su propio webhook
 en el número, porque ese tendría prioridad y dejaría sordo a tu bot. La
 pantalla te dice a qué host se está respetando.
@@ -251,7 +252,7 @@ Meta y tu proveedor LLM opcional.
 ## Instalación (~15 minutos)
 
 Cada versión se publica como imagen de Docker:
-`ghcr.io/kevinrivm/vocero-crm:<versión>` (p. ej. `1.5.1`). Instalar desde
+`ghcr.io/jcarlosverase/into-sales:<versión>` (p. ej. `1.5.0`). Instalar desde
 la imagen es el camino recomendado: tu servidor la descarga en vez de
 construirla. Construir desde el código sigue funcionando, y es lo que
 necesitas en un VPS ARM o si tu fork cambia el código.
@@ -273,7 +274,7 @@ variante que construye desde el repositorio.
 ### Ruta B — docker compose
 
 ```bash
-git clone https://github.com/kevinrivm/vocero-crm.git vocero && cd vocero
+git clone https://github.com/jcarlosverase/into-sales.git vocero && cd vocero
 pnpm install && pnpm init-env --domain crm.tudominio.com   # crea .env con los secretos ya generados
 pnpm doctor                                                 # revisa el .env antes de arrancar
 docker compose up -d
@@ -305,6 +306,21 @@ código si no la encuentra ni en el registro ni en tu máquina. Así que:
 Caddy emite el certificado HTTPS solo. Verifica con
 `https://crm.tudominio.com/api/health` → `{"ok":true,"version":"1.5.1",…}`.
 
+### Ruta C — un comando en un VPS
+
+En un Ubuntu o Debian recién creado, con el dominio ya apuntando al servidor:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/jcarlosverase/into-sales/main/deploy/install.sh | sudo bash -s -- --dominio crm.tudominio.com
+```
+
+Instala Docker si falta, genera los secretos, construye la imagen desde el
+código y deja el CRM con HTTPS. Para actualizar, se vuelve a correr el mismo
+comando, que nunca pisa los secretos. En el mismo VPS caben varios CRMs
+(`--nombre`) y el servicio central de into, detrás de un solo Caddy
+compartido. La guía completa está en
+[docs/instalador-vps.md](docs/instalador-vps.md).
+
 ### Otras plataformas: Render, Fly y Railway
 
 Hay un manifest por plataforma en la raíz del repo. Los tres corren la misma
@@ -326,7 +342,7 @@ webhook), el token de OpenRouter y, con dominio propio, `APP_BASE_URL`. El
 disco exige plan de pago (`starter` + `basic-256mb`; la base `free` caduca a
 los 30 días).
 
-[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/kevinrivm/vocero-crm)
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/jcarlosverase/into-sales)
 
 **Fly.io** — [`fly.toml`](fly.toml) declara imagen, volumen `/data`, puerto
 3000, healthcheck, tamaño de máquina y las variables no secretas; Fly no deja
@@ -345,7 +361,7 @@ el dominio y las variables se crean con la CLI, con los comandos exactos
 escritos en el propio archivo (`railway add --database postgres`,
 `railway volume add --mount-path /data`, `railway domain --port 3000`,
 `railway variable set …`, `railway up`). Para la imagen publicada sin build:
-`railway add --image ghcr.io/kevinrivm/vocero-crm:1.5.1`, y entonces el
+`railway add --image ghcr.io/jcarlosverase/into-sales:1.5.0`, y entonces el
 healthcheck se fija en el panel. Railway declaró obsoleto este formato a
 favor de su Infrastructure as Code (`.railway/railway.ts`); lo sigue leyendo
 hasta el 2026-12-01.
@@ -380,15 +396,16 @@ solas al arrancar.
    y el agente encendido entras directo a la Bandeja. La guía no encierra a
    nadie: desde el menú vas a cualquier pantalla en cualquier momento.
 4. Opcional: en la Bandeja, pulsa **"Cargar datos de demostración"** para
-   explorar con la **Ferretería El Martillo** (contactos, conversaciones,
-   pipeline, un knowledge base con huecos a propósito y una corrida de
-   Laboratorio de ejemplo — corre el Laboratorio y mira cómo los encuentra).
+   explorar con la **Academia Horizonte** (contactos, conversaciones,
+   pipeline, plantillas en borrador y el conocimiento del agente). Para otro
+   rubro: `pnpm seed:realestate` (inmobiliaria) o `pnpm seed:fashion`
+   (moda en línea).
    La demo deja configurado el agente (paso 1 listo); la llave de IA y el
    número siguen siendo tuyos.
 
 ## Conexión del número de WhatsApp
 
-Vocero **consume** un token de la WhatsApp Cloud API — no implementa el
+IntoSales **consume** un token de la WhatsApp Cloud API — no implementa el
 Embedded Signup. Hay dos formas de obtenerlo:
 
 ### Modo directo (el negocio tiene su propia app de Meta)
@@ -398,16 +415,16 @@ Embedded Signup. Hay dos formas de obtenerlo:
 2. Crea un **usuario del sistema** (Business Settings → System users) con
    acceso a la WABA y genera un token permanente con permisos
    `whatsapp_business_messaging` y `whatsapp_business_management`.
-3. En Vocero: **Configuración → WhatsApp** → pega WABA ID + Phone Number ID +
-   token → **Probar conexión** → Guardar. Al guardar, Vocero **registra el
+3. En IntoSales: **Configuración → WhatsApp** → pega WABA ID + Phone Number ID +
+   token → **Probar conexión** → Guardar. Al guardar, IntoSales **registra el
    webhook en Meta por ti** (override a nivel del número, con el handshake
    incluido) y te lo confirma en pantalla. Si Meta lo rechaza, la conexión
    queda guardada igual, el aviso dice por qué (casi siempre el token no tiene
    `whatsapp_business_management`) y el botón **«Registrar en Meta»** de la
    tarjeta del webhook reintenta sin volver a pegar el token.
-4. Solo si tu app aún no tiene ningún webhook configurado (Vocero te lo
+4. Solo si tu app aún no tiene ningún webhook configurado (IntoSales te lo
    avisa): en el panel de Meta (WhatsApp → Configuration → Webhook) pega la
-   **URL del webhook** y el **verify token** que Vocero te muestra, y suscribe
+   **URL del webhook** y el **verify token** que IntoSales te muestra, y suscribe
    el campo `messages` (y `message_template_status_update` si usarás
    plantillas). Es una sola vez por app.
 5. Recomendado: agrega `META_APP_SECRET` (App Secret de tu app) a las
@@ -416,7 +433,7 @@ Embedded Signup. Hay dos formas de obtenerlo:
 ### Modo agencia (Tech Provider) — para agencias
 
 Tu plataforma de agencia ya hace el Embedded Signup y guarda los tokens de tus
-clientes; la instancia de Vocero del cliente solo recibe su token. El webhook
+clientes; la instancia de IntoSales del cliente solo recibe su token. El webhook
 del cliente se conecta con el **override de callback por WABA**:
 
 ```text
@@ -424,7 +441,7 @@ del cliente se conecta con el **override de callback por WABA**:
         │  webhooks (override_callback_uri)
         ▼
    ┌────────────────────────────┐      ┌─────────────────────────────┐
-   │  Instancia Vocero          │      │  Backend de TU agencia      │
+   │  Instancia IntoSales          │      │  Backend de TU agencia      │
    │  (VPS del cliente)         │      │  (Embedded Signup + tokens) │
    │  /api/webhooks/wa/<token>  │      └──────────────┬──────────────┘
    └────────────▲───────────────┘                     │
@@ -439,10 +456,10 @@ del cliente se conecta con el **override de callback por WABA**:
 2. **Embedded Signup en TU plataforma**: el cliente conecta su número en tu
    onboarding y tu backend guarda su token (intercambio de código → token).
 3. **Pega las credenciales en el wizard** de la instancia (WABA ID, Phone
-   Number ID, token) → **Probar conexión** → **GUARDAR**. Al guardar, Vocero
+   Number ID, token) → **Probar conexión** → **GUARDAR**. Al guardar, IntoSales
    **registra el override del callback a nivel del número** hacia la propia
    instancia (y el webhook enruta cada mensaje por el Phone Number ID
-   guardado). Si tu backend ya enruta esa WABA a otro sitio, Vocero lo respeta
+   guardado). Si tu backend ya enruta esa WABA a otro sitio, IntoSales lo respeta
    y no registra el del número.
 4. **Solo si prefieres enrutar desde tu backend** (o el registro automático
    falló), configura el override del callback a nivel WABA hacia la instancia:
@@ -461,7 +478,7 @@ del cliente se conecta con el **override de callback por WABA**:
    La URL y el verify token exactos están en **Configuración → WhatsApp** de la
    instancia. Meta hace el handshake en ese momento (la URI debe responder, si
    no devuelve 422). Volver a guardar la conexión después (p. ej. al rotar el
-   token) respeta este override: Vocero no re-suscribe una WABA que ya lo tiene.
+   token) respeta este override: IntoSales no re-suscribe una WABA que ya lo tiene.
 5. **Registra el número** en la Cloud API si aún no lo está
    (`POST /{PHONE_NUMBER_ID}/register`) y manda un mensaje de prueba al número:
    debe aparecer en la bandeja en uno o dos segundos. Los mensajes del cliente
@@ -474,13 +491,13 @@ del cliente se conecta con el **override de callback por WABA**:
 >
 > ℹ️ **Limitación conocida de Meta**: los eventos de estado de PLANTILLAS
 > (`message_template_status_update`) no siguen el override de callback — van a
-> la app dueña. Por eso Vocero también **sincroniza plantillas por la API de
+> la app dueña. Por eso IntoSales también **sincroniza plantillas por la API de
 > Graph** (botón "Sincronizar" en Configuración → Plantillas), así el modo
 > agencia ve las aprobaciones igual.
 
 ## Canales opcionales: Instagram, Messenger y TikTok
 
-WhatsApp es el canal por el que existe Vocero y siempre está encendido. Los
+WhatsApp es el canal por el que existe IntoSales y siempre está encendido. Los
 demás viajan en el mismo código, **apagados por defecto** ([ADR-001](docs/adr-001-canales-opcionales.md)):
 una instancia que no los usa no ve pantallas, webhooks ni variables suyas.
 Se encienden con una variable de despliegue:
@@ -533,15 +550,25 @@ abrir **Estado** verás si le falta algo.
 
 Dos formas de traer los mensajes; se elige en **Configuración → Messenger**.
 
-**Con Zernio**: sigue [Conectar por Zernio](#conectar-por-zernio-instagram-messenger-o-tiktok)
-desde **Configuración → Messenger**. La página y su nombre salen de Zernio.
+**Con Zernio** (API unificada, la misma que puede servir Instagram):
+
+1. Vincula la página de Facebook en el panel de [Zernio](https://zernio.com) y
+   copia el `accountId` de esa cuenta. Crea una API key (Settings → API Keys;
+   se muestra una sola vez).
+2. En IntoSales, **Configuración → Messenger**: elige *Zernio*, pega el
+   `accountId`, la API key y —recomendado— un secreto de webhook. Pulsa
+   *Probar y guardar*: la llave se valida contra Zernio antes de guardarse
+   cifrada, y la pantalla te enseña la URL de callback.
+3. En Zernio, da de alta ese endpoint con el evento `message.received` y el
+   mismo secreto. El webhook de Zernio entrega todas tus plataformas por la
+   misma URL; IntoSales solo ingiere aquí lo de Facebook.
 
 **Con una app propia de Meta**:
 
 1. En [developers.facebook.com](https://developers.facebook.com) crea (o usa)
    una app con el producto **Messenger** y genera el **token de acceso de la
    página** con el permiso `pages_messaging`. Anota el **ID de la página**.
-2. En Vocero, **Configuración → Messenger**: elige *App propia de Meta*, pega
+2. En IntoSales, **Configuración → Messenger**: elige *App propia de Meta*, pega
    el ID y el token y pulsa *Probar y guardar*.
 3. En la app de Meta, **Messenger → Webhooks**: objeto `page`, campo
    `messages`, esa URL de callback y el token de verificación que enseña la
@@ -646,13 +673,13 @@ clientes reales.
 ## Cumplimiento con las políticas de Meta
 
 1. **Opt-in**: escribe solo a personas que iniciaron la conversación o
-   aceptaron recibir mensajes; Vocero respeta la ventana de 24 h y bloquea el
+   aceptaron recibir mensajes; IntoSales respeta la ventana de 24 h y bloquea el
    texto libre fuera de ella.
 2. **Plantillas aprobadas** para reabrir conversaciones: nada de trucos para
    saltarse la aprobación de Meta.
 3. **El Laboratorio es 100 % interno**: los clientes simulados jamás tocan la
    API de WhatsApp (bloqueado por diseño y verificado con tests).
-4. **Sin spam ni broadcast**: Vocero no incluye envíos masivos; úsalo para
+4. **Sin spam ni broadcast**: IntoSales no incluye envíos masivos; úsalo para
    conversaciones reales de venta y soporte.
 5. **Datos del cliente en su servidor**: cada negocio aloja su instancia; el
    token va cifrado en reposo y los webhooks se validan por URL secreta y
@@ -677,7 +704,7 @@ Configuración → WhatsApp. Si dice "reconectar", el token expiró: pega uno
 nuevo. En modo directo usa un token de usuario del sistema (no expira).
 
 **Error 131030 al enviar** — El número destino no está en la lista de
-permitidos (números de prueba de Meta) o el formato es inválido. Vocero ya
+permitidos (números de prueba de Meta) o el formato es inválido. IntoSales ya
 normaliza los números de México (521 → 52).
 
 **El agente no responde** — ¿Token de IA configurado? ¿Toggle global
@@ -701,7 +728,7 @@ arranque lo dice (`[boot] MEDIA_DIR … no es escribible`). Monta un volumen en
 `MEDIA_DIR` en la plataforma: el contenedor le da el volumen al usuario de la
 app al arrancar.
 
-**Olvidé mi contraseña y no puedo entrar** — Vocero no manda correos (sería una
+**Olvidé mi contraseña y no puedo entrar** — IntoSales no manda correos (sería una
 dependencia externa) y el registro público se cierra con la primera
 organización, así que no hay flujo de "olvidé mi contraseña". La salida es
 reescribir el hash en la base:
@@ -775,7 +802,7 @@ junto con el default de `VOCERO_CRM_VERSION` en `docker-compose.yml` y la
 etiqueta de la imagen en `render.yaml`, `fly.toml` y `railway.toml` (dos
 pruebas exigen que coincidan) y su entrada en [`CHANGELOG.md`](CHANGELOG.md),
 que dice qué trae cada versión y qué hacer para actualizar. Al crear el tag
-`vX.Y.Z`, el CI publica la imagen `ghcr.io/kevinrivm/vocero-crm:X.Y.Z`.
+`vX.Y.Z`, el CI publica la imagen `ghcr.io/jcarlosverase/into-sales:X.Y.Z`.
 
 ## Roadmap
 
@@ -827,12 +854,14 @@ modifique con un asistente de IA: specs y decisiones de diseño en
 
 ## Licencia
 
-[MIT](LICENSE) — úsalo, véndelo instalado, modifícalo. Si te sirve, una ⭐ al
-repo ayuda a que más gente lo encuentre.
+[MIT](LICENSE). IntoSales parte del código de Vocero CRM, Copyright (c) 2026
+Kevin Belier, publicado con licencia MIT. Ese aviso y el texto de la licencia
+se conservan sin cambios en [LICENSE](LICENSE), como exige la licencia. El
+nombre y la marca "Vocero" no forman parte de IntoSales.
 
 ## Créditos
 
-Creado por [Kevin Belier](https://www.youtube.com/@KevinBelier). ¿Quieres
+IntoSales es un producto de into. El código base, Vocero CRM, fue creado por [Kevin Belier](https://www.youtube.com/@KevinBelier). ¿Quieres
 aprender a convertirte en Meta Tech Provider y monetizar con tu agencia de IA?
 Únete a la [VIBE Community](https://www.skool.com/vibe-community-vip). Los patrones
 de producción (webhook firmado, ingesta idempotente, cifrado de tokens) vienen

@@ -2,13 +2,13 @@
 
 import type { ReactNode } from "react";
 import type { AdRowDto, AdsBlockDto, RateDto } from "@/lib/analytics";
-import { etiquetaDeOrigen, titularDeOrigen } from "@/lib/anuncios";
+import { originLabel, originHeadline } from "@/lib/ad-origin";
 import { cn } from "@/lib/utils";
-import { MiniaturaDeAnuncio } from "@/components/anuncio-origen";
+import { AdThumbnail } from "@/components/ad-origin";
 import { Section, Subhead } from "./section";
 import { RateCard, StatCard } from "./stat-card";
 
-type Conteos = { conversations: number; leads: number; won: number; winRate: RateDto };
+type Counts = { conversations: number; leads: number; won: number; winRate: RateDto };
 
 /**
  * 019 — De dónde llegan: por origen y por anuncio, en conteos.
@@ -58,12 +58,12 @@ export function AdsSection({
 
           <div>
             <Subhead>Por origen</Subhead>
-            <Filas
-              primera="Origen"
-              filas={data.sources.map((s) => ({
+            <Rows
+              first="Origen"
+              rows={data.sources.map((s) => ({
                 key: s.value,
-                titulo: <span className="font-medium">{s.label}</span>,
-                conteos: s,
+                title: <span className="font-medium">{s.label}</span>,
+                counts: s,
               }))}
             />
           </div>
@@ -75,12 +75,12 @@ export function AdsSection({
                 Ninguna conversación de este periodo llegó por un anuncio de Click a WhatsApp.
               </p>
             ) : (
-              <Filas
-                primera="Anuncio"
-                filas={data.ads.map((a) => ({
+              <Rows
+                first="Anuncio"
+                rows={data.ads.map((a) => ({
                   key: a.key,
-                  titulo: <Anuncio anuncio={a} />,
-                  conteos: a,
+                  title: <Ad ad={a} />,
+                  counts: a,
                   sourceId: a.sourceId,
                 }))}
               />
@@ -104,27 +104,27 @@ export function AdsSection({
   );
 }
 
-type Fila = { key: string; titulo: ReactNode; conteos: Conteos; sourceId?: string | null };
+type Row = { key: string; title: ReactNode; counts: Counts; sourceId?: string | null };
 
 /** La misma lista como tabla (desde `sm`) o como tarjetas (teléfono). */
-function Filas({ primera, filas }: { primera: string; filas: Fila[] }) {
+function Rows({ first: first, rows: rows }: { first: string; rows: Row[] }) {
   return (
     <>
       <ul className="divide-y border-y text-sm sm:hidden">
-        {filas.map((f) => (
+        {rows.map((f) => (
           <li key={f.key} className="py-2.5" data-anuncio={f.sourceId ?? undefined}>
-            {f.titulo}
+            {f.title}
             <dl className="mt-2 grid grid-cols-4 gap-2 text-center">
-              <Dato etiqueta="conversaciones" valor={f.conteos.conversations} />
-              <Dato etiqueta="prospectos" valor={f.conteos.leads} />
-              <Dato etiqueta="ventas" valor={f.conteos.won} />
+              <Datum label="conversaciones" value={f.counts.conversations} />
+              <Datum label="prospectos" value={f.counts.leads} />
+              <Datum label="ventas" value={f.counts.won} />
               <div className="min-w-0">
                 <dt className="sr-only">Cierre</dt>
                 <dd className="text-sm font-semibold">
-                  <TasaCorta rate={f.conteos.winRate} conDenominador={false} />
+                  <ShortRate rate={f.counts.winRate} withDenominator={false} />
                 </dd>
                 <dd className="truncate text-[11px] text-text-3">
-                  {f.conteos.winRate.value === null ? "cierre" : `cierre de ${f.conteos.winRate.sample}`}
+                  {f.counts.winRate.value === null ? "cierre" : `cierre de ${f.counts.winRate.sample}`}
                 </dd>
               </div>
             </dl>
@@ -137,7 +137,7 @@ function Filas({ primera, filas }: { primera: string; filas: Fila[] }) {
           <thead>
             <tr className="border-b text-xs text-text-3">
               <th scope="col" className="py-1.5 pr-2 text-left font-medium">
-                {primera}
+                {first}
               </th>
               <Num>Conversaciones</Num>
               <Num>Prospectos</Num>
@@ -146,14 +146,14 @@ function Filas({ primera, filas }: { primera: string; filas: Fila[] }) {
             </tr>
           </thead>
           <tbody>
-            {filas.map((f) => (
+            {rows.map((f) => (
               <tr key={f.key} className="border-b last:border-0" data-anuncio={f.sourceId ?? undefined}>
-                <td className="py-2 pr-3">{f.titulo}</td>
-                <Cell>{f.conteos.conversations}</Cell>
-                <Cell>{f.conteos.leads}</Cell>
-                <Cell>{f.conteos.won}</Cell>
+                <td className="py-2 pr-3">{f.title}</td>
+                <Cell>{f.counts.conversations}</Cell>
+                <Cell>{f.counts.leads}</Cell>
+                <Cell>{f.counts.won}</Cell>
                 <Cell>
-                  <TasaCorta rate={f.conteos.winRate} />
+                  <ShortRate rate={f.counts.winRate} />
                 </Cell>
               </tr>
             ))}
@@ -164,17 +164,17 @@ function Filas({ primera, filas }: { primera: string; filas: Fila[] }) {
   );
 }
 
-function Anuncio({ anuncio: a }: { anuncio: AdRowDto }) {
-  const titular = titularDeOrigen(a.headline, a.sourceType);
+function Ad({ ad: a }: { ad: AdRowDto }) {
+  const headline = originHeadline(a.headline, a.sourceType);
   return (
     <div className="flex min-w-0 items-center gap-2.5">
-      <MiniaturaDeAnuncio imageAssetId={a.imageAssetId} alt={`Creativo: ${titular}`} />
+      <AdThumbnail imageAssetId={a.imageAssetId} alt={`Creativo: ${headline}`} />
       <div className="min-w-0">
-        <p className="truncate font-medium sm:max-w-[20rem]" title={titular}>
-          {titular}
+        <p className="truncate font-medium sm:max-w-[20rem]" title={headline}>
+          {headline}
         </p>
         <p className="truncate text-[11px] text-text-3 sm:max-w-[20rem]">
-          {etiquetaDeOrigen(a.sourceType)}
+          {originLabel(a.sourceType)}
           {a.sourceId && <span className="font-mono"> · {a.sourceId}</span>}
         </p>
       </div>
@@ -182,13 +182,13 @@ function Anuncio({ anuncio: a }: { anuncio: AdRowDto }) {
   );
 }
 
-function Dato({ etiqueta, valor }: { etiqueta: string; valor: number }) {
+function Datum({ label: label, value: value }: { label: string; value: number }) {
   return (
     <div className="min-w-0">
-      <dt className="sr-only">{etiqueta}</dt>
-      <dd className="text-sm font-semibold tabular-nums">{valor}</dd>
+      <dt className="sr-only">{label}</dt>
+      <dd className="text-sm font-semibold tabular-nums">{value}</dd>
       <dd className="truncate text-[11px] text-text-3" aria-hidden>
-        {etiqueta}
+        {label}
       </dd>
     </div>
   );
@@ -210,7 +210,7 @@ function Cell({ children }: { children: ReactNode }) {
  * La tasa de una fila: el porcentaje con su denominador, atenuada con muestra
  * chica (la nota al pie lo explica) para no ensanchar la columna.
  */
-function TasaCorta({ rate, conDenominador = true }: { rate: RateDto; conDenominador?: boolean }) {
+function ShortRate({ rate, withDenominator: withDenominator = true }: { rate: RateDto; withDenominator?: boolean }) {
   if (rate.value === null) return <span className="text-text-3">—</span>;
   return (
     <span
@@ -218,7 +218,7 @@ function TasaCorta({ rate, conDenominador = true }: { rate: RateDto; conDenomina
       title={`${rate.value}% de ${rate.sample} prospectos${rate.reliable ? "" : " · muestra chica"}`}
     >
       {rate.value}%
-      {conDenominador && <span className="ml-1 text-[11px] text-text-3">de {rate.sample}</span>}
+      {withDenominator && <span className="ml-1 text-[11px] text-text-3">de {rate.sample}</span>}
     </span>
   );
 }

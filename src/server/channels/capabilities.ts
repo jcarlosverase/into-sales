@@ -152,7 +152,7 @@ export function windowClosedMessage(channel: Channel): string {
     case "human_agent_tag":
       // 024: dentro de la extensión el envío sale etiquetado solo y no se le
       // pide nada al operador; este mensaje es para cuando también venció.
-      return `La ventana de atención de ${caps.label} está cerrada: solo se puede contestar hasta ${dias(caps.humanAgentWindowMs)} después del último mensaje del cliente. Hay que esperar a que vuelva a escribir`;
+      return `La ventana de atención de ${caps.label} está cerrada: solo se puede contestar hasta ${days(caps.humanAgentWindowMs)} después del último mensaje del cliente. Hay que esperar a que vuelva a escribir`;
     case "none":
       return `La ventana de ${caps.label} está cerrada y este canal no permite reabrirla: hay que esperar a que el cliente vuelva a escribir`;
   }
@@ -164,11 +164,11 @@ export function windowClosedMessage(channel: Channel): string {
  */
 export function aiWindowClosedMessage(channel: Channel): string {
   const caps = capabilitiesFor(channel);
-  return `La ventana de respuestas automáticas de ${caps.label} está cerrada: pasadas ${horas(caps.windowMs)} del último mensaje del cliente solo puede contestar una persona`;
+  return `La ventana de respuestas automáticas de ${caps.label} está cerrada: pasadas ${hours(caps.windowMs)} del último mensaje del cliente solo puede contestar una persona`;
 }
 
-const horas = (ms: number | null) => `${Math.round((ms ?? 0) / (60 * 60 * 1000))} horas`;
-const dias = (ms: number | null) => `${Math.round((ms ?? 0) / DAY_MS)} días`;
+const hours = (ms: number | null) => `${Math.round((ms ?? 0) / (60 * 60 * 1000))} horas`;
+const days = (ms: number | null) => `${Math.round((ms ?? 0) / DAY_MS)} días`;
 
 /**
  * El texto más largo que acepta la API del CRM, sea cual sea el canal: el
@@ -200,11 +200,11 @@ export function textFits(channel: Channel, text: string): boolean {
 /** El límite de texto del canal, dicho para el operador. */
 export function textLimitMessage(channel: Channel): string {
   const caps = capabilitiesFor(channel);
-  const limite =
+  const limit =
     caps.maxTextChars !== null
       ? `${caps.maxTextChars.toLocaleString("es-MX")} caracteres`
       : `${caps.maxTextBytes} bytes`;
-  return `${caps.label} no acepta mensajes de más de ${limite}: acorta el texto`;
+  return `${caps.label} no acepta mensajes de más de ${limit}: acorta el texto`;
 }
 
 /** Mensaje para el operador cuando el canal ya no admite más mensajes. */

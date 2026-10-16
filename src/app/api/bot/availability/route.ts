@@ -10,7 +10,7 @@ import {
   computeAvailability,
 } from "@/server/agenda/availability";
 import { getSettings } from "@/server/agenda/settings";
-import { armarHuecos, daysWithAgenda } from "@/server/agenda/spread";
+import { buildSlots, daysWithAgenda } from "@/server/agenda/spread";
 import { replaceOffers } from "@/server/agenda/offers";
 
 export const dynamic = "force-dynamic";
@@ -71,7 +71,7 @@ export async function GET(req: Request) {
   // `date` es opcional; vacío cuenta como ausente. Mal formada o inexistente
   // en el calendario (2026-02-31) → 422, nunca un 500 ni el reparto callado.
   const date = url.searchParams.get("date")?.trim() || null;
-  if (date !== null && !fechaValida(date)) {
+  if (date !== null && !validDate(date)) {
     return apiError(
       422,
       "invalid_body",
@@ -99,19 +99,19 @@ export async function GET(req: Request) {
 
   const settings = await getSettings(organizationId);
   const now = new Date();
-  const hoy = todayInTz(now, settings.timezone);
+  const today = todayInTz(now, settings.timezone);
   // Un día fuera de lo agendable ni se calcula: no hay nada que buscar.
-  const dentro =
-    !date || (date >= hoy && date <= addDaysISO(hoy, settings.maxDaysAhead));
-  const todos = dentro
+  const inside =
+    !date || (date >= today && date <= addDaysISO(today, settings.maxDaysAhead));
+  const everyone = inside
     ? await computeAvailability(organizationId, {
         settings,
         now,
         ...(date ? { fromISO: date, toISO: date } : {}),
       })
     : [];
-  const { slots, query } = armarHuecos({
-    todos,
+  const { slots, query } = buildSlots({
+    todos: everyone,
     timezone: settings.timezone,
     now,
     maxDaysAhead: settings.maxDaysAhead,
@@ -120,7 +120,7 @@ export async function GET(req: Request) {
     days,
     date,
     candidatosDelDia:
-      date && dentro ? buildCandidateSlots(settings, date, date).length : 0,
+      date && inside ? buildCandidateSlots(settings, date, date).length : 0,
   });
 
   // Reemplazo completo: la oferta vigente es siempre la última. Pero una
@@ -153,7 +153,7 @@ export async function GET(req: Request) {
 }
 
 /** YYYY-MM-DD que además existe en el calendario (nada de 2026-02-31). */
-function fechaValida(value: string): boolean {
+function validDate(value: string): boolean {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
   const d = new Date(`${value}T00:00:00Z`);
   return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === value;

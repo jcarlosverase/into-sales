@@ -7,7 +7,7 @@ import { Section, Subhead } from "./section";
 import { RateCard, StatCard } from "./stat-card";
 import { TimeBars } from "./time-bars";
 
-const plural = (n: number, uno: string, varios: string) => `${n} ${n === 1 ? uno : varios}`;
+const plural = (n: number, one: string, several: string) => `${n} ${n === 1 ? one : several}`;
 
 /** 019 — Ventas: los indicadores, la serie, el embudo y las pérdidas. */
 export function SalesSection({

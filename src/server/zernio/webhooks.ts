@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { zernioFetch } from "@/server/zernio";
-import type { Health } from "@/server/zernio/cuentas";
+import type { Health } from "@/server/zernio/accounts";
 
 /**
  * 023 — Los webhooks de Zernio que entregan a esta instancia.
@@ -78,8 +78,8 @@ export async function cachedZernioWebhooks(
 ): Promise<{ ok: boolean; webhooks: ZernioWebhook[] }> {
   const key = keyOf(token);
   const hit = cache().get(key);
-  const vida = hit?.ok ? Math.min(WEBHOOKS_OK_MS, maxAgeMs) : WEBHOOKS_FAIL_MS;
-  if (hit && Date.now() - hit.at < vida) {
+  const life = hit?.ok ? Math.min(WEBHOOKS_OK_MS, maxAgeMs) : WEBHOOKS_FAIL_MS;
+  if (hit && Date.now() - hit.at < life) {
     return { ok: hit.ok, webhooks: hit.webhooks };
   }
   try {
@@ -138,38 +138,38 @@ export function webhookHealth(
   segment: string,
   accountId: string
 ): WebhookHealth {
-  const aqui = webhooks.filter((w) => pointsHere(w, segment));
-  const nada = { lastFiredAt: null, failureCount: 0 };
-  if (aqui.length === 0) {
+  const here = webhooks.filter((w) => pointsHere(w, segment));
+  const nothing = { lastFiredAt: null, failureCount: 0 };
+  if (here.length === 0) {
     return {
       level: "error",
       message: "Zernio no tiene un webhook hacia esta instancia: los mensajes no llegan.",
-      ...nada,
+      ...nothing,
     };
   }
-  const activos = aqui.filter((w) => w.isActive !== false);
-  if (activos.length === 0) {
+  const activeOnes = here.filter((w) => w.isActive !== false);
+  if (activeOnes.length === 0) {
     return {
       level: "error",
       message: "El webhook hacia esta instancia está desactivado en Zernio.",
-      ...nada,
+      ...nothing,
     };
   }
-  const cubre = activos.find((w) => coversAccount(w, accountId));
-  if (!cubre) {
-    const sinEvento = activos.some(
+  const covers = activeOnes.find((w) => coversAccount(w, accountId));
+  if (!covers) {
+    const withoutEvent = activeOnes.some(
       (w) => (w.events ?? []).length > 0 && !(w.events ?? []).includes(ZERNIO_MESSAGE_EVENT)
     );
     return {
       level: "error",
-      message: sinEvento
+      message: withoutEvent
         ? `El webhook no está suscrito a «${ZERNIO_MESSAGE_EVENT}».`
         : "El webhook no incluye esta cuenta: sus mensajes no llegan.",
-      ...nada,
+      ...nothing,
     };
   }
-  const failureCount = cubre.failureCount ?? 0;
-  const lastFiredAt = cubre.lastFiredAt ?? null;
+  const failureCount = covers.failureCount ?? 0;
+  const lastFiredAt = covers.lastFiredAt ?? null;
   if (failureCount > 0) {
     return {
       level: "warn",
@@ -201,16 +201,16 @@ export async function ensureZernioWebhook(input: {
   accountIds: readonly string[];
   secret: string;
 }): Promise<{ created: boolean; id: string }> {
-  const existentes = await fetchZernioWebhooks(input.token);
-  const previo =
-    existentes.find((w) => pointsHere(w, input.segment) && w.isActive !== false) ??
-    existentes.find((w) => pointsHere(w, input.segment)) ??
-    existentes.find((w) => w.name === input.name);
+  const existing = await fetchZernioWebhooks(input.token);
+  const previous =
+    existing.find((w) => pointsHere(w, input.segment) && w.isActive !== false) ??
+    existing.find((w) => pointsHere(w, input.segment)) ??
+    existing.find((w) => w.name === input.name);
 
   const url =
-    previo?.url && input.acceptableUrls.includes(previo.url) ? previo.url : input.url;
+    previous?.url && input.acceptableUrls.includes(previous.url) ? previous.url : input.url;
   const body = {
-    name: previo?.name || input.name,
+    name: previous?.name || input.name,
     url,
     events: [ZERNIO_MESSAGE_EVENT],
     secret: input.secret,
@@ -219,14 +219,14 @@ export async function ensureZernioWebhook(input: {
   };
 
   const json = (await zernioFetch("/webhooks/settings", {
-    method: previo ? "PUT" : "POST",
+    method: previous ? "PUT" : "POST",
     token: input.token,
-    body: previo ? { webhookId: previo._id, ...body } : body,
+    body: previous ? { webhookId: previous._id, ...body } : body,
     timeoutMs: 10_000,
   })) as { webhook?: { _id?: string } } | null;
   forgetZernioWebhooks(input.token);
 
-  const id = json?.webhook?._id ?? previo?._id;
+  const id = json?.webhook?._id ?? previous?._id;
   if (!id) throw new Error("Zernio respondió sin el webhook");
-  return { created: !previo, id };
+  return { created: !previous, id };
 }

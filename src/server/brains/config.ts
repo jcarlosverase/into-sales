@@ -16,20 +16,20 @@
 
 const MIN_KEY_LENGTH = 16;
 
-export type ProblemaDespacho =
+export type ProblemDispatch =
   /** `BRAIN_DISPATCH_URL` no es una URL http(s), o lleva usuario y clave. */
   | "url"
   /** Falta `BOT_API_KEY` (o mide menos de 16): no hay con qué firmar. */
   | "sin_llave";
 
-export type ConfigDespacho =
+export type ConfigDispatch =
   | { active: true; url: string; host: string; secret: string }
-  | { active: false; host: string | null; problem: ProblemaDespacho | null };
+  | { active: false; host: string | null; problem: ProblemDispatch | null };
 
-type Entorno = Record<string, string | undefined>;
+type Environment = Record<string, string | undefined>;
 
 /** Pura sobre el entorno que recibe: la usan el worker, la tarjeta y `pnpm doctor`. */
-export function leerConfigDespacho(env: Entorno = process.env): ConfigDespacho {
+export function readConfigDispatch(env: Environment = process.env): ConfigDispatch {
   const raw = env.BRAIN_DISPATCH_URL?.trim();
   if (!raw) return { active: false, host: null, problem: null };
 
@@ -56,6 +56,6 @@ export function leerConfigDespacho(env: Entorno = process.env): ConfigDespacho {
 }
 
 /** El CRM está empujando turnos a un cerebro. */
-export function despachoActivo(): boolean {
-  return leerConfigDespacho().active;
+export function activeDispatch(): boolean {
+  return readConfigDispatch().active;
 }

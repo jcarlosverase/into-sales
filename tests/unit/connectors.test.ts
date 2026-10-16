@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { CONNECTOR_META, CONNECTOR_ORDER } from "@/lib/agenda-connectors";
-import { enlaceFijoConnector } from "@/server/agenda/connectors/enlace-fijo";
+import { fixedLinkConnector } from "@/server/agenda/connectors/fixed-link";
 import { zoomConnector, ZOOM_SCOPES } from "@/server/agenda/connectors/zoom";
 import { googleConnector } from "@/server/agenda/connectors/google";
 import { ConnectorError } from "@/server/agenda/connectors/types";
@@ -29,7 +29,7 @@ const REQ = {
   topic: "Cita — Ana",
   startUtc: "2026-08-05T15:00:00.000Z",
   durationMinutes: 30,
-  timezone: "America/Mexico_City",
+  timezone: "America/Lima",
 };
 
 describe("el catálogo", () => {
@@ -49,13 +49,13 @@ describe("el catálogo", () => {
 
   it("el default no habla con nadie", () => {
     expect(CONNECTOR_META["enlace-fijo"].external).toBe(false);
-    expect(enlaceFijoConnector.requiresCredentials).toBe(false);
+    expect(fixedLinkConnector.requiresCredentials).toBe(false);
   });
 });
 
 describe("enlace-fijo", () => {
   it("entrega la sala configurada, sin id externo", async () => {
-    const out = await enlaceFijoConnector.createMeeting(
+    const out = await fixedLinkConnector.createMeeting(
       { meetingLink: "https://meet.ejemplo.com/sala" },
       REQ
     );
@@ -67,22 +67,22 @@ describe("enlace-fijo", () => {
 
   it("sin sala configurada entrega null en vez de fallar", async () => {
     // La cita se crea igual: nadie promete un enlace que no existe.
-    const out = await enlaceFijoConnector.createMeeting({ meetingLink: null }, REQ);
+    const out = await fixedLinkConnector.createMeeting({ meetingLink: null }, REQ);
     expect(out.joinUrl).toBeNull();
   });
 
   it("mover y borrar no hacen nada, y no lanzan", async () => {
     await expect(
-      enlaceFijoConnector.updateMeeting({ meetingLink: null }, "x", REQ)
+      fixedLinkConnector.updateMeeting({ meetingLink: null }, "x", REQ)
     ).resolves.toBeUndefined();
     await expect(
-      enlaceFijoConnector.deleteMeeting({ meetingLink: null }, "x")
+      fixedLinkConnector.deleteMeeting({ meetingLink: null }, "x")
     ).resolves.toBeUndefined();
   });
 
   it("siempre está conectado: no hay nada que conectar", async () => {
     await expect(
-      enlaceFijoConnector.testConnection({ meetingLink: null })
+      fixedLinkConnector.testConnection({ meetingLink: null })
     ).resolves.toMatchObject({ ok: true });
   });
 });
@@ -140,7 +140,7 @@ describe("zoom", () => {
     const body = create?.body as Record<string, unknown>;
     expect(body.type).toBe(2);
     expect(body.topic).toBe("Cita — Ana");
-    expect(body.timezone).toBe("America/Mexico_City");
+    expect(body.timezone).toBe("America/Lima");
     // Zoom rechaza los milisegundos.
     expect(body.start_time).toBe("2026-08-05T15:00:00Z");
   });
@@ -156,7 +156,7 @@ describe("zoom", () => {
     await zoomConnector.updateMeeting(creds, "91234", {
       startUtc: "2026-08-06T16:00:00.000Z",
       durationMinutes: 45,
-      timezone: "America/Mexico_City",
+      timezone: "America/Lima",
     });
     const patch = calls.find((c) => c.method === "PATCH");
     expect(patch?.url).toContain("/meetings/91234");

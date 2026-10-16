@@ -32,29 +32,29 @@ export async function botBlock(
 ): Promise<BotBlockDto> {
   const { start, end } = period;
 
-  const [conteos, primera, handoffs, sesiones, ficha] = await Promise.all([
-    conteosDeLaCohorte(organizationId, start, end),
-    medianaPrimeraRespuesta(organizationId, start, end),
-    escalamientos(organizationId, start, end),
+  const [counts, first, handoffs, sessions, qualification] = await Promise.all([
+    cohortCounts(organizationId, start, end),
+    medianFirstResponse(organizationId, start, end),
+    escalations(organizationId, start, end),
     // Sin la bandera no hay agenda, y sin agenda no hay citas que contar: ni
     // siquiera se consulta (spec 019, D4).
-    agenda ? sesionesDelPeriodo(organizationId, start, end) : Promise.resolve(null),
-    coberturaDeFicha(organizationId, start, end),
+    agenda ? periodSessions(organizationId, start, end) : Promise.resolve(null),
+    qualificationCoverage(organizationId, start, end),
   ]);
 
   const escalados = handoffs.reduce((a, h) => a + h.count, 0);
 
   return {
     period: period.dto,
-    conversations: conteos.total,
-    aiReplyRate: rate(conteos.contestoElAgente, conteos.conEntrante),
-    firstResponseSeconds: primera.median,
-    firstResponseSample: primera.sample,
+    conversations: counts.total,
+    aiReplyRate: rate(counts.agentAnswered, counts.withInbound),
+    firstResponseSeconds: first.median,
+    firstResponseSample: first.sample,
     handoffs,
-    handoffRate: rate(escalados, conteos.total),
-    sessions: sesiones,
-    fichaCoverage: ficha,
-    empty: conteos.total === 0 && (sesiones?.booked ?? 0) === 0,
+    handoffRate: rate(escalados, counts.total),
+    sessions: sessions,
+    qualificationCoverage: qualification,
+    empty: counts.total === 0 && (sessions?.booked ?? 0) === 0,
   };
 }
 
@@ -65,10 +65,10 @@ export async function botBlock(
  * como `"id"`, y dentro de `from "message" m` eso es `m.id` — la subconsulta se
  * compararía consigo misma y la primera respuesta saldría siempre vacía.
  */
-const conversacionId = sql.raw(`"conversation"."id"`);
+const conversationId = sql.raw(`"conversation"."id"`);
 
 /** Las conversaciones reales que empezaron en el rango. */
-function cohorte(organizationId: string, start: Date, end: Date) {
+function cohort(organizationId: string, start: Date, end: Date) {
   return scoped(
     schema.conversation.organizationId,
     organizationId,
@@ -83,21 +83,21 @@ function cohorte(organizationId: string, start: Date, end: Date) {
  * agente. «El agente» es todo saliente con origen IA: el in-process y un
  * cerebro externo por `/api/bot/messages` escriben igual.
  */
-async function conteosDeLaCohorte(organizationId: string, start: Date, end: Date) {
-  const entrante = sql`exists (select 1 from "message" mi where mi."conversation_id" = ${conversacionId} and mi."direction" = 'in')`;
-  const delAgente = sql`exists (select 1 from "message" mo where mo."conversation_id" = ${conversacionId} and mo."direction" = 'out' and mo."origin" = 'ai')`;
+async function cohortCounts(organizationId: string, start: Date, end: Date) {
+  const inbound = sql`exists (select 1 from "message" mi where mi."conversation_id" = ${conversationId} and mi."direction" = 'in')`;
+  const fromAgent = sql`exists (select 1 from "message" mo where mo."conversation_id" = ${conversationId} and mo."direction" = 'out' and mo."origin" = 'ai')`;
   const rows = await getDb()
     .select({
       total: sql<number>`count(*)::int`,
-      conEntrante: sql<number>`count(*) filter (where ${entrante})::int`,
-      contestoElAgente: sql<number>`count(*) filter (where ${entrante} and ${delAgente})::int`,
+      withInbound: sql<number>`count(*) filter (where ${inbound})::int`,
+      agentAnswered: sql<number>`count(*) filter (where ${inbound} and ${fromAgent})::int`,
     })
     .from(schema.conversation)
-    .where(cohorte(organizationId, start, end));
+    .where(cohort(organizationId, start, end));
   return {
     total: rows[0]?.total ?? 0,
-    conEntrante: rows[0]?.conEntrante ?? 0,
-    contestoElAgente: rows[0]?.contestoElAgente ?? 0,
+    withInbound: rows[0]?.withInbound ?? 0,
+    agentAnswered: rows[0]?.agentAnswered ?? 0,
   };
 }
 
@@ -107,35 +107,35 @@ async function conteosDeLaCohorte(organizationId: string, start: Date, end: Date
  * Una conversación que se quedó colgada ocho horas arrastraría el promedio y
  * haría ver lento a un agente que contesta en segundos.
  */
-async function medianaPrimeraRespuesta(
+async function medianFirstResponse(
   organizationId: string,
   start: Date,
   end: Date
 ): Promise<{ median: number | null; sample: number }> {
-  const primerEntrante = sql`(select min(m1."created_at") from "message" m1
-    where m1."conversation_id" = ${conversacionId} and m1."direction" = 'in')`;
+  const firstInbound = sql`(select min(m1."created_at") from "message" m1
+    where m1."conversation_id" = ${conversationId} and m1."direction" = 'in')`;
   const rows = await getDb()
     .select({
-      segundos: sql<number | null>`extract(epoch from (
+      seconds: sql<number | null>`extract(epoch from (
         (select min(m2."created_at") from "message" m2
-          where m2."conversation_id" = ${conversacionId}
+          where m2."conversation_id" = ${conversationId}
             and m2."direction" = 'out' and m2."origin" = 'ai'
-            and m2."created_at" > ${primerEntrante})
-        - ${primerEntrante}
+            and m2."created_at" > ${firstInbound})
+        - ${firstInbound}
       ))`,
     })
     .from(schema.conversation)
-    .where(cohorte(organizationId, start, end));
+    .where(cohort(organizationId, start, end));
 
-  const valores = rows
-    .map((r) => (r.segundos === null ? null : Number(r.segundos)))
+  const values = rows
+    .map((r) => (r.seconds === null ? null : Number(r.seconds)))
     .filter((v): v is number => v !== null && v >= 0);
 
-  return { median: median(valores), sample: valores.length };
+  return { median: median(values), sample: values.length };
 }
 
 /** De la cohorte, las que hoy están en manos de un humano, por motivo. */
-async function escalamientos(
+async function escalations(
   organizationId: string,
   start: Date,
   end: Date
@@ -171,7 +171,7 @@ async function escalamientos(
 }
 
 /** Citas del periodo por desenlace. Las de prueba no son citas. */
-async function sesionesDelPeriodo(
+async function periodSessions(
   organizationId: string,
   start: Date,
   end: Date
@@ -214,14 +214,14 @@ async function sesionesDelPeriodo(
  * aplica. Enseñar 0 % ahí sería acusarlo de no hacer algo que nunca se le
  * pidió.
  */
-async function coberturaDeFicha(organizationId: string, start: Date, end: Date) {
+async function qualificationCoverage(organizationId: string, start: Date, end: Date) {
   const db = getDb();
-  const conFicha = sql`${schema.contact.ficha} is not null and ${schema.contact.ficha}::text <> '{}'`;
-  const [cohorteContactos, alguna] = await Promise.all([
+  const withQualification = sql`${schema.contact.ficha} is not null and ${schema.contact.ficha}::text <> '{}'`;
+  const [cohortContacts, anyOne] = await Promise.all([
     db
       .select({
         total: sql<number>`count(*)::int`,
-        conFicha: sql<number>`count(*) filter (where ${conFicha})::int`,
+        withQualification: sql<number>`count(*) filter (where ${withQualification})::int`,
       })
       .from(schema.contact)
       .where(
@@ -240,12 +240,12 @@ async function coberturaDeFicha(organizationId: string, start: Date, end: Date) 
         scoped(
           schema.contact.organizationId,
           organizationId,
-          conFicha,
+          withQualification,
           notLabContact(schema.contact.id)
         )
       ),
   ]);
 
-  if ((alguna[0]?.n ?? 0) === 0) return null;
-  return rate(cohorteContactos[0]?.conFicha ?? 0, cohorteContactos[0]?.total ?? 0);
+  if ((anyOne[0]?.n ?? 0) === 0) return null;
+  return rate(cohortContacts[0]?.withQualification ?? 0, cohortContacts[0]?.total ?? 0);
 }

@@ -118,7 +118,7 @@ export async function saveCredentials(input: {
  * No toca conversaciones, contactos ni leads — son de la organización, no de
  * la conexión. Idempotente: sin fila, no hay nada que borrar.
  */
-export async function desconectarCanal(organizationId: string): Promise<void> {
+export async function disconnectChannel(organizationId: string): Promise<void> {
   const db = getDb();
   await db
     .delete(schema.metaCredentials)

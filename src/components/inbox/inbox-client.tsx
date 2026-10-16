@@ -115,7 +115,7 @@ export function InboxClient({
   );
 
   /** 026 — Saca una conversación eliminada de todo lo que esta pestaña recuerda. */
-  const quitarConversacion = useCallback((id: string) => {
+  const removeConversation = useCallback((id: string) => {
     setConversations((prev) => prev?.filter((c) => c.id !== id) ?? prev);
     setPending((prev) => prev.filter((p) => p.conversationId !== id));
     if (selectedIdRef.current === id) {
@@ -173,7 +173,7 @@ export function InboxClient({
       // 026: la eliminó alguien del equipo (o esta misma pestaña). Se quita
       // ya, sin esperar al refetch, para que nadie le escriba a un hilo que
       // no existe.
-      quitarConversacion(conversationId);
+      removeConversation(conversationId);
       void refetchConversations();
     },
     onReconnect: () => {
@@ -193,18 +193,18 @@ export function InboxClient({
    * mandar "hola" dos veces seguidas no debe borrar la segunda burbuja).
    */
   const thread = useMemo(() => {
-    const propios = pending.filter((p) => p.conversationId === selectedId);
-    if (propios.length === 0) return messages;
-    const emparejados = new Set<string>();
-    const visibles = propios.filter((p) => {
+    const own = pending.filter((p) => p.conversationId === selectedId);
+    if (own.length === 0) return messages;
+    const paired = new Set<string>();
+    const visibles = own.filter((p) => {
       const real = messages.find(
         (m) =>
-          !emparejados.has(m.id) &&
+          !paired.has(m.id) &&
           m.direction === "out" &&
           m.text === p.text &&
           Date.parse(m.createdAt) >= Date.parse(p.createdAt) - 60_000
       );
-      if (real) emparejados.add(real.id);
+      if (real) paired.add(real.id);
       return !real;
     });
     if (visibles.length === 0) return messages;
@@ -311,11 +311,11 @@ export function InboxClient({
         } | null;
         return data?.error?.message ?? "No se pudo eliminar la conversación";
       }
-      quitarConversacion(id);
+      removeConversation(id);
       void refetchConversations();
       return null;
     },
-    [quitarConversacion, refetchConversations]
+    [removeConversation, refetchConversations]
   );
 
   return (

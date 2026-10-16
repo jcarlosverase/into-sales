@@ -1,9 +1,10 @@
 import { and, asc, desc, eq, gt, isNotNull, isNull, lt, sql } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db";
 import { scoped } from "@/lib/db/tenant";
-import { sumable } from "@/lib/money";
+import { summable } from "@/lib/money";
 import type { HygieneBlockDto } from "@/lib/analytics";
 import { notLabContact } from "@/server/analytics/shared";
+import { ownLeadCondition, visibleContactCondition, type LeadScope } from "@/server/leads/scope";
 
 /**
  * 019 — Bloque de higiene.
@@ -14,29 +15,31 @@ import { notLabContact } from "@/server/analytics/shared";
  */
 
 /** Días sin que hable el cliente a partir de los cuales el lead está frío. */
-export const SILENCIO_DIAS = 7;
+export const SILENCE_DAYS = 7;
 /** Cuántos leads en silencio se listan; el total viaja aparte. */
-export const MAX_SILENCIOSOS = 50;
+export const MAX_SILENT = 50;
 
 export async function hygieneBlock(
   organizationId: string,
   businessCurrency: string,
-  now: Date = new Date()
+  now: Date = new Date(),
+  // 022, D12: a sales rep only sees names of their own contacts.
+  scope: LeadScope = { kind: "all" }
 ): Promise<HygieneBlockDto> {
-  const [silencio, failedMessages, closingWindows] = await Promise.all([
-    leadsEnSilencio(organizationId, businessCurrency, now),
-    mensajesFallidos(organizationId, now),
-    ventanasPorVencer(organizationId, now),
+  const [silence, failedMessages, closingWindows] = await Promise.all([
+    leadsInSilence(organizationId, businessCurrency, now, scope),
+    failedMessagesValue(organizationId, now),
+    windowsAboutToExpire(organizationId, now, scope),
   ]);
 
   return {
-    silent: silencio.lista,
-    silentCount: silencio.total,
-    silentAmountCents: silencio.totalCents,
+    silent: silence.list,
+    silentCount: silence.total,
+    silentAmountCents: silence.totalCents,
     failedMessages,
     closingWindows,
     clean:
-      silencio.total === 0 &&
+      silence.total === 0 &&
       failedMessages.length === 0 &&
       closingWindows.length === 0,
   };
@@ -53,12 +56,11 @@ export async function hygieneBlock(
  * El total y el dinero salen de funciones de ventana, que se calculan ANTES
  * del límite: la lista se corta en 50, los números no.
  */
-async function leadsEnSilencio(organizationId: string, businessCurrency: string, now: Date) {
-  const corte = new Date(now.getTime() - SILENCIO_DIAS * 86_400_000);
-  // `mapWith`: un timestamp en SQL crudo llega como texto SIN zona, y
-  // `new Date()` lo leería en la hora local del servidor. El mapeador de la
-  // columna lo lee como UTC, que es lo que guarda.
-  const ultimo = sql<Date>`coalesce(${schema.conversation.lastInboundAt}, ${schema.lead.lastActivityAt}, ${schema.lead.createdAt})`.mapWith(
+async function leadsInSilence(organizationId: string, businessCurrency: string, now: Date, scope: LeadScope) {
+  const cutoff = new Date(now.getTime() - SILENCE_DAYS * 86_400_000);
+  // `mapWith`: un timestamp en SQL crudo llega como texto, y el mapeador de
+  // la columna (`timestamptz`, 1002) lo convierte en Date con su desfase.
+  const last = sql<Date>`coalesce(${schema.conversation.lastInboundAt}, ${schema.lead.lastActivityAt}, ${schema.lead.createdAt})`.mapWith(
     schema.lead.createdAt
   );
 
@@ -69,7 +71,7 @@ async function leadsEnSilencio(organizationId: string, businessCurrency: string,
       name: schema.contact.name,
       amountCents: schema.lead.amountCents,
       currency: schema.lead.currency,
-      ultimo,
+      last: last,
       total: sql<number>`(count(*) over ())::int`,
       totalCents: sql<string>`coalesce(sum(case when ${schema.lead.amountCents} is not null and coalesce(${schema.lead.currency}, ${businessCurrency}) = ${businessCurrency} then ${schema.lead.amountCents} end) over (), 0)::bigint`,
     })
@@ -90,39 +92,40 @@ async function leadsEnSilencio(organizationId: string, businessCurrency: string,
         eq(schema.pipelineStage.kind, "open"),
         isNull(schema.contact.archivedAt),
         notLabContact(schema.lead.contactId),
+        ownLeadCondition(scope),
         // El instante va como texto con cast explícito: dentro de un
         // `coalesce` el tipo del parámetro es desconocido y el driver no sabe
         // serializar un Date contra "unknown".
-        sql`${ultimo} < ${corte.toISOString()}::timestamp`
+        sql`${last} < ${cutoff.toISOString()}::timestamptz`
       )
     )
     // Lo más frío primero: si hay más de 50, se ven los que más urge rescatar.
-    .orderBy(asc(ultimo))
-    .limit(MAX_SILENCIOSOS);
+    .orderBy(asc(last))
+    .limit(MAX_SILENT);
 
-  const lista = rows
+  const list = rows
     .map((r) => ({
       leadId: r.leadId,
       contactId: r.contactId,
       name: r.name,
-      days: Math.floor((now.getTime() - r.ultimo.getTime()) / 86_400_000),
+      days: Math.floor((now.getTime() - r.last.getTime()) / 86_400_000),
       // Solo el dinero en la moneda del negocio entra en el total en riesgo.
-      amountCents: sumable({ amountCents: r.amountCents, currency: r.currency }, businessCurrency)
+      amountCents: summable({ amountCents: r.amountCents, currency: r.currency }, businessCurrency)
         ? r.amountCents
         : null,
     }))
     .sort((a, b) => (b.amountCents ?? 0) - (a.amountCents ?? 0) || b.days - a.days);
 
   return {
-    lista,
+    list: list,
     total: rows[0]?.total ?? 0,
     totalCents: Number(rows[0]?.totalCents ?? 0),
   };
 }
 
 /** Salientes que no llegaron en los últimos 30 días, por motivo. */
-async function mensajesFallidos(organizationId: string, now: Date) {
-  const desde = new Date(now.getTime() - 30 * 86_400_000);
+async function failedMessagesValue(organizationId: string, now: Date) {
+  const since = new Date(now.getTime() - 30 * 86_400_000);
 
   const rows = await getDb()
     .select({
@@ -145,7 +148,7 @@ async function mensajesFallidos(organizationId: string, now: Date) {
         schema.message.organizationId,
         organizationId,
         eq(schema.message.status, "failed"),
-        gt(schema.message.createdAt, desde)
+        gt(schema.message.createdAt, since)
       )
     )
     .groupBy(schema.message.error)
@@ -166,9 +169,9 @@ async function mensajesFallidos(organizationId: string, now: Date) {
  * Pasada esa ventana solo se puede escribir con plantilla: es la diferencia
  * entre responder gratis y gastar una.
  */
-async function ventanasPorVencer(organizationId: string, now: Date) {
-  const limite = new Date(now.getTime() - 20 * 3_600_000);
-  const vencida = new Date(now.getTime() - 24 * 3_600_000);
+async function windowsAboutToExpire(organizationId: string, now: Date, scope: LeadScope) {
+  const limit = new Date(now.getTime() - 20 * 3_600_000);
+  const expired = new Date(now.getTime() - 24 * 3_600_000);
 
   const rows = await getDb()
     .select({
@@ -185,8 +188,9 @@ async function ventanasPorVencer(organizationId: string, now: Date) {
         organizationId,
         eq(schema.conversation.isTest, false),
         isNotNull(schema.conversation.lastInboundAt),
-        lt(schema.conversation.lastInboundAt, limite),
-        gt(schema.conversation.lastInboundAt, vencida),
+        lt(schema.conversation.lastInboundAt, limit),
+        gt(schema.conversation.lastInboundAt, expired),
+        visibleContactCondition(scope, schema.conversation.contactId),
         // Sin respuesta nuestra posterior a lo último que dijo el cliente.
         sql`(${schema.conversation.lastMessageAt} is null or ${schema.conversation.lastMessageAt} <= ${schema.conversation.lastInboundAt})`
       )

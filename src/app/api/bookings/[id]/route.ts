@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { parseBody, withAuth } from "@/lib/api";
+import { apiError, parseBody, withAuth } from "@/lib/api";
 import { agendaDisabledResponse, agendaEnabled } from "@/server/agenda/flag";
 import {
   cancelBooking,
@@ -8,6 +8,7 @@ import {
   retryMeetingLink,
 } from "@/server/agenda/service";
 import { bookingErrorResponse } from "@/server/agenda/http";
+import { canSeeBooking, getLeadScope } from "@/server/leads/scope";
 
 export const dynamic = "force-dynamic";
 
@@ -30,6 +31,10 @@ const patchSchema = z.discriminatedUnion("action", [
 export const PATCH = withAuth(async (session, req: Request, ctx: Params) => {
   if (!agendaEnabled()) return agendaDisabledResponse();
   const { id } = await ctx.params;
+  // 022, D11: someone else's booking does not exist for a sales rep.
+  if (!(await canSeeBooking(getLeadScope(session), session.organizationId, id))) {
+    return apiError(404, "not_found", "Cita no encontrada");
+  }
   const body = await parseBody(req, patchSchema);
   if (!body.ok) return body.response;
 

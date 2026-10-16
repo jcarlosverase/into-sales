@@ -32,10 +32,10 @@ import type { Credentials } from "@/server/whatsapp/credentials";
  * cada valor secreto en la salida formateada, no solo en los campos.
  */
 
-const RAIZ = path.resolve(import.meta.dirname, "..", "..");
-const EJEMPLO = readFileSync(path.join(RAIZ, ".env.example"), "utf8");
+const ROOT = path.resolve(import.meta.dirname, "..", "..");
+const EXAMPLE = readFileSync(path.join(ROOT, ".env.example"), "utf8");
 
-const VALIDO = {
+const VALID = {
   APP_BASE_URL: "https://localhost",
   DATABASE_URL: "postgresql://postgres:pw-secreta-xyz@postgres:5432/vocero",
   BETTER_AUTH_SECRET: "secreto-de-sesiones-" + "s".repeat(24),
@@ -43,10 +43,10 @@ const VALIDO = {
   META_WEBHOOK_VERIFY_TOKEN: "token-verificacion-" + "t".repeat(45),
 };
 
-const porLabel = (results: CheckResult[], label: string) =>
+const byLabel = (results: CheckResult[], label: string) =>
   results.find((r) => r.label === label);
 
-const salida = (results: CheckResult[]) => results.map(formatResult).join("\n");
+const output = (results: CheckResult[]) => results.map(formatResult).join("\n");
 
 describe("requiredEnvKeys", () => {
   it("son las del esquema sin default ni optional, sin copiarlas a mano", () => {
@@ -62,106 +62,106 @@ describe("requiredEnvKeys", () => {
 
 describe("evaluateEnv", () => {
   it("un entorno válido: una ✓ por obligatoria y el env parseado", () => {
-    const { results, env } = evaluateEnv(VALIDO);
+    const { results, env } = evaluateEnv(VALID);
     expect(results.map((r) => r.status)).toEqual(["ok", "ok", "ok", "ok", "ok"]);
     expect(env?.APP_BASE_URL).toBe("https://localhost");
   });
 
   it("lo que deja pnpm init-env pasa entero", () => {
-    const { results, env } = evaluateEnv(parseEnv(renderInitEnv(EJEMPLO).content));
+    const { results, env } = evaluateEnv(parseEnv(renderInitEnv(EXAMPLE).content));
     expect(results.every((r) => r.status === "ok")).toBe(true);
     expect(env).not.toBeNull();
   });
 
   it("el .env.example copiado tal cual: cada placeholder sale ✗ con su comando", () => {
-    const { results, env } = evaluateEnv(parseEnv(EJEMPLO));
+    const { results, env } = evaluateEnv(parseEnv(EXAMPLE));
     expect(env).toBeNull();
     for (const key of requiredEnvKeys()) {
-      const r = porLabel(results, key);
+      const r = byLabel(results, key);
       expect(r?.status, key).toBe("fail");
       expect(r?.detail, key).toContain("REEMPLAZA_");
     }
-    expect(porLabel(results, "BETTER_AUTH_SECRET")?.fix).toContain("openssl rand -base64 32");
-    expect(porLabel(results, "ENCRYPTION_KEY")?.fix).toContain("openssl rand -base64 32");
-    expect(porLabel(results, "META_WEBHOOK_VERIFY_TOKEN")?.fix).toContain("openssl rand -hex 32");
-    expect(porLabel(results, "APP_BASE_URL")?.fix).toContain("https://");
+    expect(byLabel(results, "BETTER_AUTH_SECRET")?.fix).toContain("openssl rand -base64 32");
+    expect(byLabel(results, "ENCRYPTION_KEY")?.fix).toContain("openssl rand -base64 32");
+    expect(byLabel(results, "META_WEBHOOK_VERIFY_TOKEN")?.fix).toContain("openssl rand -hex 32");
+    expect(byLabel(results, "APP_BASE_URL")?.fix).toContain("https://");
     // Las de compose las lista evaluateComposeEnv: aquí no se duplican.
-    expect(porLabel(results, "DOMAIN")).toBeUndefined();
-    expect(porLabel(results, "POSTGRES_PASSWORD")).toBeUndefined();
+    expect(byLabel(results, "DOMAIN")).toBeUndefined();
+    expect(byLabel(results, "POSTGRES_PASSWORD")).toBeUndefined();
   });
 
   it("una variable que falta y una ENCRYPTION_KEY mal generada: mensaje en español y el arreglo", () => {
-    const source: Record<string, string> = { ...VALIDO, ENCRYPTION_KEY: "corta" };
+    const source: Record<string, string> = { ...VALID, ENCRYPTION_KEY: "corta" };
     delete source.META_WEBHOOK_VERIFY_TOKEN;
     const { results } = evaluateEnv(source);
-    const token = porLabel(results, "META_WEBHOOK_VERIFY_TOKEN");
+    const token = byLabel(results, "META_WEBHOOK_VERIFY_TOKEN");
     expect(token?.status).toBe("fail");
     expect(token?.detail).toBe("falta");
     expect(token?.fix).toContain("openssl rand -hex 32");
-    const key = porLabel(results, "ENCRYPTION_KEY");
+    const key = byLabel(results, "ENCRYPTION_KEY");
     expect(key?.status).toBe("fail");
     expect(key?.detail).toContain("32 bytes");
   });
 
   it("una URL mal escrita y un secreto corto se explican sin inglés", () => {
     const { results } = evaluateEnv({
-      ...VALIDO,
+      ...VALID,
       APP_BASE_URL: "crm.ejemplo.com",
       BETTER_AUTH_SECRET: "corto",
     });
-    expect(porLabel(results, "APP_BASE_URL")?.detail).toContain("no es una URL válida");
-    expect(porLabel(results, "BETTER_AUTH_SECRET")?.detail).toContain("mínimo 16");
+    expect(byLabel(results, "APP_BASE_URL")?.detail).toContain("no es una URL válida");
+    expect(byLabel(results, "BETTER_AUTH_SECRET")?.detail).toContain("mínimo 16");
   });
 
   it("una opcional mal escrita también sale ✗: tumba el arranque igual", () => {
-    const { results, env } = evaluateEnv({ ...VALIDO, OPENROUTER_BASE_URL: "no-es-url" });
+    const { results, env } = evaluateEnv({ ...VALID, OPENROUTER_BASE_URL: "no-es-url" });
     expect(env).toBeNull();
-    expect(porLabel(results, "OPENROUTER_BASE_URL")?.status).toBe("fail");
+    expect(byLabel(results, "OPENROUTER_BASE_URL")?.status).toBe("fail");
   });
 
   it("jamás imprime un secreto: ni en ✓ ni en ✗", () => {
-    const texto = salida(evaluateEnv(VALIDO).results);
-    expect(texto).not.toContain("pw-secreta-xyz");
-    expect(texto).not.toContain(VALIDO.BETTER_AUTH_SECRET);
-    expect(texto).not.toContain(VALIDO.ENCRYPTION_KEY);
-    expect(texto).not.toContain(VALIDO.META_WEBHOOK_VERIFY_TOKEN);
-    expect(texto).toContain("postgresql://postgres:***@postgres:5432/vocero");
-    expect(texto).toContain("definida (44 caracteres)");
+    const text = output(evaluateEnv(VALID).results);
+    expect(text).not.toContain("pw-secreta-xyz");
+    expect(text).not.toContain(VALID.BETTER_AUTH_SECRET);
+    expect(text).not.toContain(VALID.ENCRYPTION_KEY);
+    expect(text).not.toContain(VALID.META_WEBHOOK_VERIFY_TOKEN);
+    expect(text).toContain("postgresql://postgres:***@postgres:5432/vocero");
+    expect(text).toContain("definida (44 caracteres)");
 
-    const roto = salida(
-      evaluateEnv({ ...VALIDO, ENCRYPTION_KEY: "clave-rota-no-base64-zzz" }).results
+    const broken = output(
+      evaluateEnv({ ...VALID, ENCRYPTION_KEY: "clave-rota-no-base64-zzz" }).results
     );
-    expect(roto).not.toContain("clave-rota-no-base64-zzz");
+    expect(broken).not.toContain("clave-rota-no-base64-zzz");
   });
 });
 
 describe("evaluateComposeEnv (DOMAIN y POSTGRES_PASSWORD)", () => {
   it("placeholder: ✗ con su arreglo; ausente: solo informativo", () => {
-    const conPlaceholder = evaluateComposeEnv(parseEnv(EJEMPLO));
-    expect(porLabel(conPlaceholder, "DOMAIN")?.status).toBe("fail");
-    expect(porLabel(conPlaceholder, "POSTGRES_PASSWORD")?.status).toBe("fail");
-    expect(porLabel(conPlaceholder, "POSTGRES_PASSWORD")?.fix).toContain("openssl rand -hex 24");
+    const withPlaceholder = evaluateComposeEnv(parseEnv(EXAMPLE));
+    expect(byLabel(withPlaceholder, "DOMAIN")?.status).toBe("fail");
+    expect(byLabel(withPlaceholder, "POSTGRES_PASSWORD")?.status).toBe("fail");
+    expect(byLabel(withPlaceholder, "POSTGRES_PASSWORD")?.fix).toContain("openssl rand -hex 24");
 
-    const ausentes = evaluateComposeEnv(VALIDO);
-    expect(ausentes.map((r) => r.status)).toEqual(["skip", "skip"]);
+    const missing = evaluateComposeEnv(VALID);
+    expect(missing.map((r) => r.status)).toEqual(["skip", "skip"]);
   });
 
   it("avisa cuando POSTGRES_PASSWORD no es la contraseña de DATABASE_URL (host postgres)", () => {
-    const results = evaluateComposeEnv({ ...VALIDO, DOMAIN: "localhost", POSTGRES_PASSWORD: "otra" });
-    const aviso = results.find((r) => r.status === "warn");
-    expect(aviso?.label).toBe("POSTGRES_PASSWORD");
-    expect(aviso?.fix).toContain("docker compose");
-    expect(salida(results)).not.toContain("pw-secreta-xyz");
+    const results = evaluateComposeEnv({ ...VALID, DOMAIN: "localhost", POSTGRES_PASSWORD: "otra" });
+    const notice = results.find((r) => r.status === "warn");
+    expect(notice?.label).toBe("POSTGRES_PASSWORD");
+    expect(notice?.fix).toContain("docker compose");
+    expect(output(results)).not.toContain("pw-secreta-xyz");
   });
 
   it("no avisa cuando coinciden", () => {
-    const results = evaluateComposeEnv({ ...VALIDO, DOMAIN: "localhost", POSTGRES_PASSWORD: "pw-secreta-xyz" });
+    const results = evaluateComposeEnv({ ...VALID, DOMAIN: "localhost", POSTGRES_PASSWORD: "pw-secreta-xyz" });
     expect(results.every((r) => r.status === "ok")).toBe(true);
   });
 });
 
 describe("checkDatabase", () => {
-  const url = VALIDO.DATABASE_URL;
+  const url = VALID.DATABASE_URL;
 
   it("select 1 responde: ✓ con la URL sin contraseña", async () => {
     const r = await checkDatabase(url, async () => {});
@@ -217,16 +217,16 @@ describe("checkMediaDir", () => {
   });
 
   it("no escribible: ✗ con qué hacer dentro y fuera de Docker", async () => {
-    const archivo = path.join(tmp, "no-soy-directorio");
-    await writeFile(archivo, "x");
-    const r = await checkMediaDir(path.join(archivo, "media"));
+    const file = path.join(tmp, "no-soy-directorio");
+    await writeFile(file, "x");
+    const r = await checkMediaDir(path.join(file, "media"));
     expect(r.status).toBe("fail");
     expect(r.fix).toContain("/data");
   });
 });
 
 describe("checkWhatsApp", () => {
-  const credenciales = (token: string): Credentials => ({
+  const credentials = (token: string): Credentials => ({
     id: "cred_1",
     organizationId: "org_1",
     wabaId: "waba1",
@@ -236,11 +236,11 @@ describe("checkWhatsApp", () => {
     status: "connected",
     token,
   });
-  const guardada = (token: string) => ({
+  const saved = (token: string) => ({
     organization: "Ferretería El Martillo",
     phoneNumberId: "pn1",
     displayPhoneNumber: "+52 1 55 0000 0000",
-    credentials: credenciales(token),
+    credentials: credentials(token),
   });
 
   it("sin conexión guardada: informativo, no ✗ (se conecta desde la app)", async () => {
@@ -252,7 +252,7 @@ describe("checkWhatsApp", () => {
   it("token vigente: ✓ con los últimos 4 del token y nunca el token entero", async () => {
     const token = "EAAG-token-super-secreto-abcd";
     const [r] = await checkWhatsApp({
-      load: async () => [guardada(token)],
+      load: async () => [saved(token)],
       test: async () => ({ ok: true, displayPhoneNumber: "+52 55 0000 0000", verifiedName: "Ferretería" }),
     });
     expect(r?.status).toBe("ok");
@@ -262,7 +262,7 @@ describe("checkWhatsApp", () => {
 
   it("token vencido: ✗ y el arreglo es pegar uno nuevo en la app", async () => {
     const [r] = await checkWhatsApp({
-      load: async () => [guardada("EAAG-vencido-9999")],
+      load: async () => [saved("EAAG-vencido-9999")],
       test: async () => ({ ok: false, code: "invalid_token", message: "El token no es válido o expiró." }),
     });
     expect(r?.status).toBe("fail");
@@ -272,7 +272,7 @@ describe("checkWhatsApp", () => {
 
   it("Meta caída: aviso, no ✗ (no es algo que el usuario arregle)", async () => {
     const [r] = await checkWhatsApp({
-      load: async () => [guardada("EAAG-x-1234")],
+      load: async () => [saved("EAAG-x-1234")],
       test: async () => ({ ok: false, code: "meta_unavailable", message: "Meta no está disponible" }),
     });
     expect(r?.status).toBe("warn");
@@ -280,7 +280,7 @@ describe("checkWhatsApp", () => {
 
   it("una fila que no descifra apunta a la ENCRYPTION_KEY", async () => {
     const [r] = await checkWhatsApp({
-      load: async () => [{ ...guardada("x"), credentials: null }],
+      load: async () => [{ ...saved("x"), credentials: null }],
     });
     expect(r?.status).toBe("fail");
     expect(r?.detail).toContain("ENCRYPTION_KEY");

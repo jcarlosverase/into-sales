@@ -1,6 +1,7 @@
 import {
   boolean,
   check,
+  date,
   index,
   integer,
   jsonb,
@@ -12,12 +13,10 @@ import {
 import { sql } from "drizzle-orm";
 
 /**
- * Tiempo: todas las columnas son `timestamp without time zone` y el marco es
- * UTC. Drizzle lo respeta en ambas direcciones; `now()` de los `defaultNow()`
- * solo lo respeta porque la conexión fija `TimeZone: "UTC"`
- * (ver src/lib/db/index.ts). No cambies una columna a `timestamptz` de forma
- * aislada: al leerla Drizzle seguiría añadiéndole "+0000" salvo que también
- * lleve `{ withTimezone: true }`.
+ * Tiempo: todas las columnas de fecha son `timestamptz` (`withTimezone: true`,
+ * spec 1002): guardan un instante absoluto. La base muestra por defecto la
+ * hora de Lima y la conexión de la app trabaja en UTC (ver src/lib/db/index.ts).
+ * Una columna nueva lleva siempre `{ withTimezone: true }`.
  */
 
 /* ============================================================
@@ -30,16 +29,16 @@ export const user = pgTable("user", {
   email: text("email").notNull().unique(),
   emailVerified: boolean("email_verified").notNull().default(false),
   image: text("image"),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 export const session = pgTable("session", {
   id: text("id").primaryKey(),
-  expiresAt: timestamp("expires_at").notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
   token: text("token").notNull().unique(),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   ipAddress: text("ip_address"),
   userAgent: text("user_agent"),
   userId: text("user_id")
@@ -58,21 +57,21 @@ export const account = pgTable("account", {
   accessToken: text("access_token"),
   refreshToken: text("refresh_token"),
   idToken: text("id_token"),
-  accessTokenExpiresAt: timestamp("access_token_expires_at"),
-  refreshTokenExpiresAt: timestamp("refresh_token_expires_at"),
+  accessTokenExpiresAt: timestamp("access_token_expires_at", { withTimezone: true }),
+  refreshTokenExpiresAt: timestamp("refresh_token_expires_at", { withTimezone: true }),
   scope: text("scope"),
   password: text("password"),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 export const verification = pgTable("verification", {
   id: text("id").primaryKey(),
   identifier: text("identifier").notNull(),
   value: text("value").notNull(),
-  expiresAt: timestamp("expires_at").notNull(),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 export const organization = pgTable("organization", {
@@ -80,7 +79,7 @@ export const organization = pgTable("organization", {
   name: text("name").notNull(),
   slug: text("slug").unique(),
   logo: text("logo"),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   metadata: text("metadata"),
 });
 
@@ -93,7 +92,7 @@ export const member = pgTable("member", {
     .notNull()
     .references(() => user.id, { onDelete: "cascade" }),
   role: text("role").notNull().default("member"),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 export const invitation = pgTable("invitation", {
@@ -104,7 +103,7 @@ export const invitation = pgTable("invitation", {
   email: text("email").notNull(),
   role: text("role"),
   status: text("status").notNull().default("pending"),
-  expiresAt: timestamp("expires_at").notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
   inviterId: text("inviter_id")
     .notNull()
     .references(() => user.id, { onDelete: "cascade" }),
@@ -177,9 +176,9 @@ export const contact = pgTable(
     source: text("source", {
       enum: ["anuncio", "organico", "referido", "conocido", "otro"],
     }),
-    archivedAt: timestamp("archived_at"),
-    createdAt: timestamp("created_at").notNull().defaultNow(),
-    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+    archivedAt: timestamp("archived_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
     // 014: el canal entra en la llave. Sin el, un IGSID que coincidiera con
@@ -207,7 +206,7 @@ export const pipelineStage = pgTable(
     kind: text("kind", { enum: ["open", "won", "lost"] })
       .notNull()
       .default("open"),
-    createdAt: timestamp("created_at").notNull().defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index("stage_org_pos_idx").on(t.organizationId, t.position)]
 );
@@ -240,14 +239,72 @@ export const lead = pgTable(
      * en que lo que ve es lo que él puso.
      */
     priority: text("priority", { enum: ["alta", "media", "baja"] }),
-    priorityUpdatedAt: timestamp("priority_updated_at"),
-    lastActivityAt: timestamp("last_activity_at"),
-    createdAt: timestamp("created_at").notNull().defaultNow(),
-    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+    priorityUpdatedAt: timestamp("priority_updated_at", { withTimezone: true }),
+    lastActivityAt: timestamp("last_activity_at", { withTimezone: true }),
+    /**
+     * 022 — The sales rep who owns this lead. NULL = unassigned (only
+     * supervisors see it). SET NULL on user deletion: the lead goes back to
+     * "unassigned" instead of pointing at someone who no longer exists.
+     */
+    assignedUserId: text("assigned_user_id").references(() => user.id, {
+      onDelete: "set null",
+    }),
+    assignedAt: timestamp("assigned_at", { withTimezone: true }),
+    /**
+     * 029 — Day of the next follow-up, in the business calendar (no time, no
+     * zone: «call on Thursday»). NULL = none set. Drives «Hoy».
+     */
+    followUpOn: date("follow_up_on", { mode: "string" }),
+    /** 029 — Short note for that follow-up (max 200, checked by the route). */
+    followUpNote: text("follow_up_note"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
     uniqueIndex("lead_contact_uq").on(t.contactId),
+    // 029 — «Hoy» filters by organization and follow-up day.
+    index("lead_org_follow_up_idx").on(t.organizationId, t.followUpOn),
     index("lead_org_stage_idx").on(t.organizationId, t.stageId, t.position),
+    // 022 — every "only my leads" query filters by these two columns.
+    index("lead_org_assignee_idx").on(t.organizationId, t.assignedUserId),
+  ]
+);
+
+/**
+ * 022 — Lead routing settings and round-robin cursor, one row per
+ * organization. A missing row means "enabled, nobody served yet".
+ *
+ * `lastAssignedUserId` has no foreign key on purpose: if that user leaves,
+ * the rotation simply continues with the next one in line.
+ */
+export const leadRouting = pgTable("lead_routing", {
+  organizationId: text("organization_id")
+    .primaryKey()
+    .references(() => organization.id, { onDelete: "cascade" }),
+  enabled: boolean("enabled").notNull().default(true),
+  lastAssignedUserId: text("last_assigned_user_id"),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/**
+ * 022 — Per-rep exception to the rotation. Only the exception is stored: a
+ * rep without a row DOES receive new leads.
+ */
+export const leadRoutingMember = pgTable(
+  "lead_routing_member",
+  {
+    id: text("id").primaryKey(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    receivesLeads: boolean("receives_leads").notNull().default(true),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("lead_routing_member_org_user_uq").on(t.organizationId, t.userId),
   ]
 );
 
@@ -293,7 +350,7 @@ export const leadStageEvent = pgTable(
       .notNull()
       .default("open"),
     /** Cuándo PASÓ (no cuándo se registró). */
-    occurredAt: timestamp("occurred_at").notNull().defaultNow(),
+    occurredAt: timestamp("occurred_at", { withTimezone: true }).notNull().defaultNow(),
     /** NULL = no lo movió una persona (bot, sistema, migración). */
     actorUserId: text("actor_user_id").references(() => user.id, {
       onDelete: "set null",
@@ -317,7 +374,7 @@ export const leadStageEvent = pgTable(
       ],
     }),
     lossNote: text("loss_note"),
-    createdAt: timestamp("created_at").notNull().defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
     index("lse_org_occurred_idx").on(t.organizationId, t.occurredAt),
@@ -363,7 +420,7 @@ export const conversation = pgTable(
      */
     channelThreadRef: text("channel_thread_ref"),
     aiEnabled: boolean("ai_enabled").notNull().default(true),
-    handoffAt: timestamp("handoff_at"),
+    handoffAt: timestamp("handoff_at", { withTimezone: true }),
     handoffReason: text("handoff_reason", {
       // 008: manual_reply = el dueño respondió desde la app del teléfono.
       // hostilidad = el lead se puso agresivo y el agente se retiró.
@@ -376,11 +433,11 @@ export const conversation = pgTable(
         "manual_reply",
       ],
     }),
-    lastInboundAt: timestamp("last_inbound_at"),
-    lastMessageAt: timestamp("last_message_at"),
+    lastInboundAt: timestamp("last_inbound_at", { withTimezone: true }),
+    lastMessageAt: timestamp("last_message_at", { withTimezone: true }),
     unreadCount: integer("unread_count").notNull().default(0),
-    createdAt: timestamp("created_at").notNull().defaultNow(),
-    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
     // Una conversación real por contacto; las de prueba no compiten.
@@ -427,8 +484,8 @@ export const message = pgTable(
     mediaAssetId: text("media_asset_id").references(() => mediaAsset.id, {
       onDelete: "set null",
     }),
-    waTimestamp: timestamp("wa_timestamp"),
-    createdAt: timestamp("created_at").notNull().defaultNow(),
+    waTimestamp: timestamp("wa_timestamp", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
     index("message_org_conv_idx").on(
@@ -479,8 +536,8 @@ export const mediaAsset = pgTable(
       .notNull()
       .default("pending"),
     fetchError: text("fetch_error"),
-    createdAt: timestamp("created_at").notNull().defaultNow(),
-    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
     index("media_asset_org_idx").on(t.organizationId, t.createdAt),
@@ -505,8 +562,8 @@ export const metaCredentials = pgTable(
     status: text("status", { enum: ["connected", "reconnect_required"] })
       .notNull()
       .default("connected"),
-    createdAt: timestamp("created_at").notNull().defaultNow(),
-    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
     uniqueIndex("meta_credentials_org_uq").on(t.organizationId),
@@ -544,8 +601,8 @@ export const instagramCredentials = pgTable(
     status: text("status", { enum: ["connected", "reconnect_required"] })
       .notNull()
       .default("connected"),
-    createdAt: timestamp("created_at").notNull().defaultNow(),
-    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
     uniqueIndex("instagram_credentials_org_uq").on(t.organizationId),
@@ -588,8 +645,8 @@ export const messengerCredentials = pgTable(
     status: text("status", { enum: ["connected", "reconnect_required"] })
       .notNull()
       .default("connected"),
-    createdAt: timestamp("created_at").notNull().defaultNow(),
-    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
     uniqueIndex("messenger_credentials_org_uq").on(t.organizationId),
@@ -626,8 +683,8 @@ export const tiktokCredentials = pgTable(
     status: text("status", { enum: ["connected", "reconnect_required"] })
       .notNull()
       .default("connected"),
-    createdAt: timestamp("created_at").notNull().defaultNow(),
-    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
     uniqueIndex("tiktok_credentials_org_uq").on(t.organizationId),
@@ -648,10 +705,22 @@ export const agentProfile = pgTable(
     instructions: text("instructions"),
     escalationRules: text("escalation_rules"),
     greeting: text("greeting"),
-    createdAt: timestamp("created_at").notNull().defaultNow(),
-    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+    /**
+     * 031 — When the agent replies: `always` (default) or only outside the
+     * team's attention hours (`outside_hours`).
+     */
+    replyMode: text("reply_mode", { enum: ["always", "outside_hours"] }).notNull().default("always"),
+    /** 031 — `{"mon":[{"start":"09:00","end":"18:00"}]}`, wall clock. NULL = default hours. */
+    attentionHours: jsonb("attention_hours"),
+    /** 031 — IANA zone of those hours. NULL = the business zone. */
+    attentionTimezone: text("attention_timezone"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [uniqueIndex("agent_profile_org_uq").on(t.organizationId)]
+  (t) => [
+    uniqueIndex("agent_profile_org_uq").on(t.organizationId),
+    check("agent_profile_reply_mode_check", sql`${t.replyMode} in ('always', 'outside_hours')`),
+  ]
 );
 
 export const kbEntry = pgTable(
@@ -665,8 +734,8 @@ export const kbEntry = pgTable(
     question: text("question"),
     answer: text("answer"),
     content: text("content"),
-    createdAt: timestamp("created_at").notNull().defaultNow(),
-    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index("kb_org_idx").on(t.organizationId)]
 );
@@ -689,8 +758,8 @@ export const template = pgTable(
       .default("draft"),
     rejectionReason: text("rejection_reason"),
     waTemplateId: text("wa_template_id"),
-    createdAt: timestamp("created_at").notNull().defaultNow(),
-    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
     uniqueIndex("template_org_name_lang_uq").on(
@@ -713,8 +782,8 @@ export const agentTestRun = pgTable(
       .default("running"),
     score: integer("score"),
     error: text("error"),
-    startedAt: timestamp("started_at").notNull().defaultNow(),
-    finishedAt: timestamp("finished_at"),
+    startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
+    finishedAt: timestamp("finished_at", { withTimezone: true }),
   },
   (t) => [
     // Lock de concurrencia en BD: máximo 1 corrida activa por organización.
@@ -747,7 +816,7 @@ export const calendarSettings = pgTable(
     bufferMinutes: integer("buffer_minutes").notNull().default(0),
     minNoticeHours: integer("min_notice_hours").notNull().default(2),
     maxDaysAhead: integer("max_days_ahead").notNull().default(7),
-    timezone: text("timezone").notNull().default("America/Mexico_City"),
+    timezone: text("timezone").notNull().default("America/Lima"),
     /**
      * Cómo se entrega la reunión. `enlace-fijo` no habla con nadie: es el
      * default y la razón de que encender la agenda no exija terceros.
@@ -756,8 +825,8 @@ export const calendarSettings = pgTable(
     connector: text("connector").notNull().default("enlace-fijo"),
     /** Sala fija del conector `enlace-fijo`; null ⇒ citas sin link. */
     meetingLink: text("meeting_link"),
-    createdAt: timestamp("created_at").notNull().defaultNow(),
-    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [uniqueIndex("calendar_settings_org_uq").on(t.organizationId)]
 );
@@ -792,7 +861,7 @@ export const booking = pgTable(
     }),
     leadId: text("lead_id").references(() => lead.id, { onDelete: "set null" }),
     /** Instante UTC. El horario semanal es de pared; esto ya está resuelto. */
-    scheduledAt: timestamp("scheduled_at").notNull(),
+    scheduledAt: timestamp("scheduled_at", { withTimezone: true }).notNull(),
     /** Capturada al crear: cambiar la configuración no reescribe el pasado. */
     durationMinutes: integer("duration_minutes").notNull(),
     /**
@@ -816,8 +885,8 @@ export const booking = pgTable(
     /** Conversación del Laboratorio: jamás llama a un conector real. */
     isTest: boolean("is_test").notNull().default(false),
     notes: text("notes"),
-    createdAt: timestamp("created_at").notNull().defaultNow(),
-    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
     index("booking_org_when_idx").on(t.organizationId, t.scheduledAt),
@@ -857,10 +926,10 @@ export const offeredSlot = pgTable(
     conversationId: text("conversation_id")
       .notNull()
       .references(() => conversation.id, { onDelete: "cascade" }),
-    startUtc: timestamp("start_utc").notNull(),
+    startUtc: timestamp("start_utc", { withTimezone: true }).notNull(),
     /** La etiqueta EXACTA que se le mostró al cliente. */
     label: text("label").notNull(),
-    offeredAt: timestamp("offered_at").notNull().defaultNow(),
+    offeredAt: timestamp("offered_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index("offered_slot_conv_idx").on(t.conversationId, t.startUtc)]
 );
@@ -887,8 +956,8 @@ export const zoomCredentials = pgTable(
     status: text("status", { enum: ["connected", "error"] })
       .notNull()
       .default("connected"),
-    createdAt: timestamp("created_at").notNull().defaultNow(),
-    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [uniqueIndex("zoom_credentials_org_uq").on(t.organizationId)]
 );
@@ -916,8 +985,8 @@ export const googleCredentials = pgTable(
     status: text("status", { enum: ["connected", "error"] })
       .notNull()
       .default("connected"),
-    createdAt: timestamp("created_at").notNull().defaultNow(),
-    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [uniqueIndex("google_credentials_org_uq").on(t.organizationId)]
 );
@@ -944,7 +1013,7 @@ export const agentTestCase = pgTable(
     })
       .notNull()
       .default("pending"),
-    createdAt: timestamp("created_at").notNull().defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index("test_case_run_idx").on(t.runId)]
 );
@@ -1002,7 +1071,7 @@ export const adAttribution = pgTable(
      * cuando hay que reparar la copia.
      */
     raw: jsonb("raw").notNull(),
-    createdAt: timestamp("created_at").notNull().defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
     uniqueIndex("ad_attribution_org_conversation_uq").on(
@@ -1045,8 +1114,8 @@ export const conversionEvent = pgTable(
      * evento de su lado; sin persistirla, un `sent` no se puede reclamar.
      */
     fbTraceId: text("fb_trace_id"),
-    sentAt: timestamp("sent_at"),
-    createdAt: timestamp("created_at").notNull().defaultNow(),
+    sentAt: timestamp("sent_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
     // El dedup ES este índice: la fila se inserta ANTES de hablar con Meta y
@@ -1090,8 +1159,8 @@ export const capiSettings = pgTable(
     status: text("status", { enum: ["connected", "error"] })
       .notNull()
       .default("connected"),
-    createdAt: timestamp("created_at").notNull().defaultNow(),
-    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [uniqueIndex("capi_settings_org_uq").on(t.organizationId)]
 );
@@ -1137,9 +1206,9 @@ export const aiCredentials = pgTable(
       .notNull()
       .default("active"),
     statusReason: text("status_reason"),
-    statusChangedAt: timestamp("status_changed_at"),
-    createdAt: timestamp("created_at").notNull().defaultNow(),
-    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+    statusChangedAt: timestamp("status_changed_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [uniqueIndex("ai_credentials_org_uq").on(t.organizationId)]
 );
@@ -1186,10 +1255,10 @@ export const dispatch = pgTable(
      * hacia adelante. El worker solo toma filas cuyo `not_before` ya venció,
      * así que una ráfaga se junta sola.
      */
-    notBefore: timestamp("not_before").notNull().defaultNow(),
-    firstMessageAt: timestamp("first_message_at").notNull(),
-    lastMessageAt: timestamp("last_message_at").notNull(),
-    leasedUntil: timestamp("leased_until"),
+    notBefore: timestamp("not_before", { withTimezone: true }).notNull().defaultNow(),
+    firstMessageAt: timestamp("first_message_at", { withTimezone: true }).notNull(),
+    lastMessageAt: timestamp("last_message_at", { withTimezone: true }).notNull(),
+    leasedUntil: timestamp("leased_until", { withTimezone: true }),
     /**
      * 025 — Los entrantes que este despacho le DEBE al cerebro: los que lo
      * encolaron o lo extendieron.
@@ -1203,8 +1272,8 @@ export const dispatch = pgTable(
     messageIds: jsonb("message_ids").$type<string[]>(),
     /** Motivo del último fallo. Nunca el cuerpo firmado ni la llave. */
     lastError: text("last_error"),
-    createdAt: timestamp("created_at").notNull().defaultNow(),
-    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
     /**
@@ -1230,5 +1299,60 @@ export const dispatch = pgTable(
     ),
     // La consulta del worker: pendientes cuya ventana ya venció.
     index("dispatch_status_notbefore_idx").on(t.status, t.notBefore),
+  ]
+);
+
+/* ============================================================
+ * 028 — Latido al servicio central de into
+ * ============================================================ */
+
+export const CENTRAL_RESULTS = [
+  "ok",
+  "llave_invalida",
+  "limite",
+  "rechazado",
+  "sin_respuesta",
+] as const;
+export type CentralResult = (typeof CENTRAL_RESULTS)[number];
+
+/**
+ * La llave de licencia de into de la organización y lo último que dijo el
+ * central (spec 028). Conector opcional: sin la bandera `INTO_CENTRAL_URL`
+ * esta tabla queda vacía y nadie la lee. La llave va cifrada como el token de
+ * WhatsApp; hacia fuera, solo sus últimos 4.
+ */
+export const centralLicense = pgTable(
+  "central_license",
+  {
+    id: text("id").primaryKey(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    keyCipher: text("key_cipher").notNull(),
+    keyIv: text("key_iv").notNull(),
+    keyTag: text("key_tag").notNull(),
+    /** Lo ÚNICO de la llave que puede salir hacia el cliente. */
+    keyLast4: text("key_last4").notNull(),
+    lastAttemptAt: timestamp("last_attempt_at", { withTimezone: true }),
+    lastResult: text("last_result", { enum: CENTRAL_RESULTS }),
+    lastOkAt: timestamp("last_ok_at", { withTimezone: true }),
+    planCode: text("plan_code"),
+    planName: text("plan_name"),
+    customerStatus: text("customer_status", { enum: ["active", "suspended"] }),
+    /** Lo que pidió el central, sin acotar; el temporizador lo acota. */
+    nextHeartbeatSeconds: integer("next_heartbeat_seconds"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("central_license_org_uq").on(t.organizationId),
+    check(
+      "central_license_last_result_check",
+      sql`${t.lastResult} is null or ${t.lastResult} in ('ok', 'llave_invalida', 'limite', 'rechazado', 'sin_respuesta')`
+    ),
+    check(
+      "central_license_customer_status_check",
+      sql`${t.customerStatus} is null or ${t.customerStatus} in ('active', 'suspended')`
+    ),
   ]
 );

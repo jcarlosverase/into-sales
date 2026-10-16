@@ -120,7 +120,7 @@ describe("contentDisposition (el nombre del archivo)", () => {
 });
 
 describe("mediaResponseHeaders (lo que ve el navegador)", () => {
-  const siempre = (h: Record<string, string>) => {
+  const always = (h: Record<string, string>) => {
     expect(h["x-content-type-options"]).toBe("nosniff");
     expect(h["content-security-policy"]).toBe("default-src 'none'; sandbox");
     expect(h["cache-control"]).toBe("private, max-age=86400");
@@ -128,7 +128,7 @@ describe("mediaResponseHeaders (lo que ve el navegador)", () => {
 
   it("una imagen va inline, con nosniff y CSP sandbox", () => {
     const h = mediaResponseHeaders({ mimeType: "image/jpeg", fileName: null }, 1234);
-    siempre(h);
+    always(h);
     expect(h["content-type"]).toBe("image/jpeg");
     expect(h["content-length"]).toBe("1234");
     expect(h["content-disposition"]).toBe("inline");
@@ -139,7 +139,7 @@ describe("mediaResponseHeaders (lo que ve el navegador)", () => {
       { mimeType: "application/pdf", fileName: "cotizacion.pdf" },
       10
     );
-    siempre(h);
+    always(h);
     expect(h["content-disposition"]).toMatch(/^inline; filename="cotizacion\.pdf"/);
   });
 
@@ -152,19 +152,19 @@ describe("mediaResponseHeaders (lo que ve el navegador)", () => {
       },
       10
     );
-    siempre(h);
+    always(h);
     expect(h["content-disposition"]).toMatch(/^attachment; filename="contrato\.docx"/);
   });
 
   it("un HTML que entró como «documento» desde WhatsApp jamás se abre como página", () => {
     const h = mediaResponseHeaders({ mimeType: "text/html", fileName: "factura.html" }, 10);
-    siempre(h);
+    always(h);
     expect(h["content-disposition"]).toMatch(/^attachment;/);
   });
 
   it("un asset sin tipo se descarga como octet-stream", () => {
     const h = mediaResponseHeaders({ mimeType: null, fileName: null }, 10);
-    siempre(h);
+    always(h);
     expect(h["content-type"]).toBe("application/octet-stream");
     expect(h["content-disposition"]).toBe("attachment");
   });

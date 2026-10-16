@@ -10,9 +10,9 @@ import {
   channelDisabledResponse,
   isChannelEnabled,
 } from "@/server/channels/enabled";
-import { ensureWebhookForOrg } from "@/server/zernio/conexiones";
-import { accountHealth, zernioAccountName } from "@/server/zernio/cuentas";
-import { resolveZernioAccount } from "@/server/zernio/guardar";
+import { ensureWebhookForOrg } from "@/server/zernio/connections";
+import { accountHealth, zernioAccountName } from "@/server/zernio/accounts";
+import { resolveZernioAccount } from "@/server/zernio/save-connection";
 
 export const dynamic = "force-dynamic";
 
@@ -65,27 +65,27 @@ export const PUT = withAuth(async (session, req: Request) => {
     );
   }
 
-  const previa = await getMessengerCredentialsByOrg(session.organizationId);
+  const previous = await getMessengerCredentialsByOrg(session.organizationId);
   // Sin secreto nuevo se conserva el que había: reconectar no debe apagar la
   // verificación de firma.
   const webhookSecret =
     data.webhookSecret ??
-    (previa?.source === data.source ? previa.webhookSecret : null) ??
+    (previous?.source === data.source ? previous.webhookSecret : null) ??
     null;
 
   if (data.source === "zernio") {
     // 023: la cuenta se resuelve contra Zernio, no se guarda a ciegas. De ahí
     // salen también la página y su nombre.
-    const cuenta = await resolveZernioAccount(data.token, data.accountRef, "messenger");
-    if (!cuenta.ok) return cuenta.response;
-    const pageName = zernioAccountName(cuenta.account);
+    const account = await resolveZernioAccount(data.token, data.accountRef, "messenger");
+    if (!account.ok) return account.response;
+    const pageName = zernioAccountName(account.account);
 
     await saveMessengerCredentials({
       organizationId: session.organizationId,
       source: "zernio",
-      pageId: cuenta.account.metadata?.selectedPageId ?? data.pageId ?? null,
+      pageId: account.account.metadata?.selectedPageId ?? data.pageId ?? null,
       pageName,
-      accountRef: cuenta.account._id,
+      accountRef: account.account._id,
       token: data.token,
       webhookSecret,
     });
@@ -95,9 +95,9 @@ export const PUT = withAuth(async (session, req: Request) => {
     return Response.json({
       ok: true,
       pageName,
-      accountRef: cuenta.account._id,
+      accountRef: account.account._id,
       accountName: pageName,
-      health: accountHealth(cuenta.account, "messenger"),
+      health: accountHealth(account.account, "messenger"),
       webhook,
     });
   }

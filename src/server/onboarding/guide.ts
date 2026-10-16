@@ -108,7 +108,7 @@ export async function guideStatus(organizationId: string): Promise<Guide> {
  * de los pasos) y solo mientras falte algo: con todos los pasos listos y el
  * agente encendido se entra directo a la Bandeja, como siempre.
  *
- * Un negocio demo recién sembrado («Ferretería El Martillo») pasa por aquí
+ * Un negocio demo recién sembrado («Academia Horizonte») pasa por aquí
  * igual: el seed deja el agente configurado (paso 1 listo) pero no puede
  * vincular una llave de IA ni un número, y sin eso el agente no contesta.
  * Capturar `/` no encierra a nadie: el menú lleva a cualquier pantalla.

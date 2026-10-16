@@ -63,7 +63,7 @@ se cerró y dónde se atoran los tratos.
 1. **Given** leads creados y movidos de etapa, **When** abre Resultados sin
    elegir nada, **Then** ve los últimos 30 días terminando hoy, con días
    cortados en la zona del negocio (la de la agenda; sin agenda,
-   `America/Mexico_City`).
+   `America/Lima`).
 2. **Given** el periodo, **Then** ve prospectos nuevos, tratos ganados, dinero
    ganado y tratos perdidos, cada uno contra el periodo anterior; tasa de
    cierre (ganados ÷ ganados+perdidos) siempre con su denominador; y ticket
@@ -175,7 +175,7 @@ No es histórico: describe el ahora y no toma rango.
   guarda (018, D3); sus conversaciones cuentan por la fuente capturada o como
   «sin identificar».
 - **Zona horaria propia de Resultados**: se usa la de la agenda. Una instancia
-  sin agenda corta los días en `America/Mexico_City`.
+  sin agenda corta los días en `America/Lima`.
 - **Cotizaciones y acciones vencidas**: tablas que Vocero no tiene (Cloud
   tampoco las trajo).
 
@@ -191,7 +191,7 @@ No es histórico: describe el ahora y no toma rango.
   bandera (D3); las citas respetan la bandera `AGENDA` (D4).
 - **VIII Foco vertical**: medir cuánto de lo que llega por WhatsApp se
   convierte es el CRM, no marketing.
-- **IX Verificación en vivo**: `pnpm test:e2e:resultados` siembra por el
+- **IX Verificación en vivo**: `pnpm test:e2e:results` siembra por el
   webhook y la API reales (con y sin anuncio, etapas, una venta, respuestas del
   agente, un escalamiento, un envío fallido, una corrida del Laboratorio) y
   compara lo que devuelve cada bloque.
@@ -203,3 +203,8 @@ No es histórico: describe el ahora y no toma rango.
 - **SC-002**: Una corrida del Laboratorio no cambia ningún número.
 - **SC-003**: `/results` no se recorta a lo ancho en teléfono (390 px), ni en
   claro ni en oscuro.
+
+> **2026-10-15** — La zona por defecto pasó de `America/Mexico_City` a
+> `America/Lima` (pedido de Juan Carlos; `DEFAULT_TIMEZONE` en
+> `src/server/agenda/settings.ts` y migración `0023`). Lo guardado en Ajustes →
+> Agenda sigue mandando.

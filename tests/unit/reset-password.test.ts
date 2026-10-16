@@ -21,11 +21,11 @@ const SCRIPT = path.resolve(import.meta.dirname, "../../scripts/reset-password.m
 const TIMEOUT = 20_000;
 
 /** Saca el hash `salt:clave` del SQL que imprime el script. */
-function hashDeLaSalida(stdout: string): string | null {
+function hashOfOutput(stdout: string): string | null {
   return stdout.match(/'([0-9a-f]{32}:[0-9a-f]{128})'/)?.[1] ?? null;
 }
 
-async function correr(args: string[], password?: string) {
+async function run(args: string[], password?: string) {
   const env = { ...process.env };
   delete env.NEW_PASSWORD;
   if (password !== undefined) env.NEW_PASSWORD = password;
@@ -43,10 +43,10 @@ describe("reset-password", () => {
     "el hash que imprime deja entrar con esa contraseña y no con otra",
     async () => {
       const password = "una-contrasena-nueva-123";
-      const { code, stdout } = await correr(["duena@ejemplo.com"], password);
+      const { code, stdout } = await run(["duena@ejemplo.com"], password);
       expect(code).toBe(0);
 
-      const hash = hashDeLaSalida(stdout);
+      const hash = hashOfOutput(stdout);
       expect(hash).not.toBeNull();
 
       // Lo único que de verdad importa: better-auth acepta ese hash.
@@ -60,9 +60,9 @@ describe("reset-password", () => {
     "acentos y eñes sobreviven el viaje (normalización NFKC)",
     async () => {
       const password = "contraseña-única-ñandú";
-      const { code, stdout } = await correr(["duena@ejemplo.com"], password);
+      const { code, stdout } = await run(["duena@ejemplo.com"], password);
       expect(code).toBe(0);
-      expect(await verifyPassword({ hash: hashDeLaSalida(stdout)!, password })).toBe(true);
+      expect(await verifyPassword({ hash: hashOfOutput(stdout)!, password })).toBe(true);
     },
     TIMEOUT
   );
@@ -72,17 +72,17 @@ describe("reset-password", () => {
     // formato o los parámetros de scrypt, esto se pone rojo AQUÍ — antes de
     // que las contraseñas ya guardadas dejen de funcionar en producción y
     // nadie pueda entrar a arreglarlo.
-    const congelado =
+    const frozen =
       "181acaf1397646b882722b5b5b7f71e7:b8106a42eb4765159f070a73f3bb5cd2f8839753da5b959dc4096a88e6af95a2622146a025f42c10cf6865fbbd065ecdc04766f19c0ba90992fff8080a5c847e";
     expect(
-      await verifyPassword({ hash: congelado, password: "canario-de-formato-vocero" })
+      await verifyPassword({ hash: frozen, password: "canario-de-formato-vocero" })
     ).toBe(true);
   });
 
   it(
     "el SQL apunta a la credencial del usuario, no a toda la tabla",
     async () => {
-      const { stdout } = await correr(["duena@ejemplo.com"], "una-contrasena-nueva-123");
+      const { stdout } = await run(["duena@ejemplo.com"], "una-contrasena-nueva-123");
       // Las comillas van escapadas porque el SQL viaja dentro de `psql -c "…"`.
       expect(stdout).toContain(`\\"provider_id\\" = 'credential'`);
       expect(stdout).toContain(`lower(\\"email\\") = lower('duena@ejemplo.com')`);
@@ -97,7 +97,7 @@ describe("reset-password", () => {
   it(
     "una comilla en el correo se escapa en vez de romper el SQL",
     async () => {
-      const { code, stdout } = await correr(["o'brien@ejemplo.com"], "una-contrasena-nueva-123");
+      const { code, stdout } = await run(["o'brien@ejemplo.com"], "una-contrasena-nueva-123");
       expect(code).toBe(0);
       expect(stdout).toContain("o''brien@ejemplo.com");
     },
@@ -106,20 +106,20 @@ describe("reset-password", () => {
 
   describe("guardas", () => {
     it("sin argumentos no imprime SQL y sale con error", async () => {
-      const { code, stdout, stderr } = await correr([]);
+      const { code, stdout, stderr } = await run([]);
       expect(code).toBe(1);
       expect(stdout).not.toContain("UPDATE");
       expect(stderr).toContain("NEW_PASSWORD");
     });
 
     it("sin correo tampoco, aunque haya contraseña", async () => {
-      const { code, stdout } = await correr([], "una-contrasena-nueva-123");
+      const { code, stdout } = await run([], "una-contrasena-nueva-123");
       expect(code).toBe(1);
       expect(stdout).not.toContain("UPDATE");
     });
 
     it("una contraseña corta se rechaza antes de generar nada", async () => {
-      const { code, stdout, stderr } = await correr(["duena@ejemplo.com"], "corta");
+      const { code, stdout, stderr } = await run(["duena@ejemplo.com"], "corta");
       expect(code).toBe(1);
       expect(stdout).not.toContain("UPDATE");
       expect(stderr).toContain("8 caracteres");

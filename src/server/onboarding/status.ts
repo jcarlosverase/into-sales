@@ -1,6 +1,6 @@
 import { getDb, schema } from "@/lib/db";
 import { scoped } from "@/lib/db/tenant";
-import { estadoIaDe, mensajeDeEstado } from "@/lib/ai/provider";
+import { aiStatusOf, statusMessage } from "@/lib/ai/provider";
 import { agendaEnabled } from "@/server/agenda/flag";
 import { verifyCalendar } from "./calendar-verifiers";
 
@@ -72,16 +72,16 @@ export async function onboardingStatus(
     .from(schema.metaCredentials)
     .where(scoped(schema.metaCredentials.organizationId, organizationId))
     .limit(1);
-  const ia = await estadoIaDe(organizationId);
+  const ia = await aiStatusOf(organizationId);
 
   const steps: ReadinessStep[] = [
-    pasoPerfil(profile, Boolean(kb)),
+    stepProfile(profile, Boolean(kb)),
     {
       key: "ai",
       label: "Proveedor de IA",
-      status: ia.activa ? "ready" : "pending",
-      nextAction: ia.activa
-        ? ia.origen === "org"
+      status: ia.active ? "ready" : "pending",
+      nextAction: ia.active
+        ? ia.source === "org"
           ? "Llave guardada en Ajustes → IA"
           : "Respaldo del entorno (OPENROUTER_*)"
         : "Pega la llave de tu proveedor y elige el modelo en Ajustes → IA",
@@ -89,8 +89,8 @@ export async function onboardingStatus(
       // «Sin configurar» es lo obvio del paso; lo que sí hay que decir es por
       // qué una llave que el dueño YA pegó no sirve.
       problem:
-        !ia.activa && ia.motivo !== "sin_configurar"
-          ? mensajeDeEstado(ia)
+        !ia.active && ia.reason !== "sin_configurar"
+          ? statusMessage(ia)
           : null,
     },
     {
@@ -112,7 +112,7 @@ export async function onboardingStatus(
   ];
 
   if (agendaEnabled()) {
-    steps.push(await pasoAgenda(organizationId, db));
+    steps.push(await stepAgenda(organizationId, db));
   } else {
     // Sin la bandera, la agenda no existe en esta instancia (015): el paso se
     // reporta para que la guía sepa que no aplica, sin enlace a una pantalla
@@ -131,22 +131,22 @@ export async function onboardingStatus(
   return { steps, enabled: profile?.enabled ?? false };
 }
 
-type Perfil = { name: string; instructions: string | null; enabled: boolean };
+type Profile = { name: string; instructions: string | null; enabled: boolean };
 
 /**
  * El agente está «configurado» cuando tiene con qué contestar: instrucciones
  * o conocimiento. El nombre viene con default («Asistente»), así que no es
  * lo que distingue a un perfil trabajado de uno recién sembrado.
  */
-function pasoPerfil(profile: Perfil | undefined, hayConocimiento: boolean): ReadinessStep {
-  const listo =
+function stepProfile(profile: Profile | undefined, hasKnowledge: boolean): ReadinessStep {
+  const ready =
     Boolean(profile?.name.trim()) &&
-    (Boolean(profile?.instructions?.trim()) || hayConocimiento);
+    (Boolean(profile?.instructions?.trim()) || hasKnowledge);
   return {
     key: "profile",
     label: "Configuración del agente",
-    status: listo ? "ready" : "pending",
-    nextAction: listo
+    status: ready ? "ready" : "pending",
+    nextAction: ready
       ? "Nombre, instrucciones y conocimiento revisados"
       : "Dale un nombre y escribe sus instrucciones o carga conocimiento del negocio",
     href: "/agent",
@@ -154,7 +154,7 @@ function pasoPerfil(profile: Perfil | undefined, hayConocimiento: boolean): Read
   };
 }
 
-async function pasoAgenda(organizationId: string, db: Db): Promise<ReadinessStep> {
+async function stepAgenda(organizationId: string, db: Db): Promise<ReadinessStep> {
   const [settings] = await db
     .select({
       connector: schema.calendarSettings.connector,
@@ -183,11 +183,11 @@ async function pasoAgenda(organizationId: string, db: Db): Promise<ReadinessStep
   if (status === "unsupported") {
     problem = `El conector «${settings?.connector}» no existe en esta instancia: elige otro en Ajustes → Agenda.`;
   } else if (status === "pending" && settings && settings.connector !== "enlace-fijo") {
-    const nombre = settings.connector === "zoom" ? "Zoom" : "Google";
+    const name = settings.connector === "zoom" ? "Zoom" : "Google";
     const cred = settings.connector === "zoom" ? zoom : google;
     problem = cred
-      ? `${nombre} rechazó la credencial guardada: vuelve a conectarlo en Ajustes → Agenda.`
-      : `Elegiste ${nombre} pero no está conectado: pega sus credenciales en Ajustes → Agenda.`;
+      ? `${name} rechazó la credencial guardada: vuelve a conectarlo en Ajustes → Agenda.`
+      : `Elegiste ${name} pero no está conectado: pega sus credenciales en Ajustes → Agenda.`;
   }
 
   return {

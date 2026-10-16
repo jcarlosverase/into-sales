@@ -4,6 +4,7 @@ import { scoped } from "@/lib/db/tenant";
 import type { DateRange } from "@/lib/time/calendar";
 import { addDaysISO, partsInTz, zonedWallClockToUtc } from "@/lib/time/slots";
 import { getSettings, type CalendarSettings } from "@/server/agenda/settings";
+import { visibleBookingCondition, type LeadScope } from "@/server/leads/scope";
 
 /** 015 — Listado de citas para la UI, con la hora en la zona del negocio. */
 
@@ -66,11 +67,13 @@ function baseQuery() {
 /** Las últimas 200 citas: el listado de siempre, para quien no pide rango. */
 export async function listBookings(
   organizationId: string,
-  settings?: CalendarSettings
+  settings?: CalendarSettings,
+  scope: LeadScope = { kind: "all" }
 ): Promise<BookingListItem[]> {
   const resolved = settings ?? (await getSettings(organizationId));
   const rows = await baseQuery()
-    .where(scoped(schema.booking.organizationId, organizationId))
+    // 022, D11: a sales rep only gets their contacts' bookings and the blocks.
+    .where(scoped(schema.booking.organizationId, organizationId, visibleBookingCondition(scope)))
     .orderBy(desc(schema.booking.scheduledAt))
     .limit(LIST_LIMIT);
   return rows.map((r) => toListItem(r, resolved.timezone));
@@ -86,7 +89,8 @@ export async function listBookings(
 export async function listBookingsInRange(
   organizationId: string,
   range: DateRange,
-  settings?: CalendarSettings
+  settings?: CalendarSettings,
+  scope: LeadScope = { kind: "all" }
 ): Promise<{ bookings: BookingListItem[]; truncated: boolean }> {
   const resolved = settings ?? (await getSettings(organizationId));
   const tz = resolved.timezone;
@@ -100,7 +104,8 @@ export async function listBookingsInRange(
         schema.booking.organizationId,
         organizationId,
         gte(schema.booking.scheduledAt, new Date(start.getTime() - LOOKBACK_MS)),
-        lt(schema.booking.scheduledAt, end)
+        lt(schema.booking.scheduledAt, end),
+        visibleBookingCondition(scope)
       )
     )
     .orderBy(asc(schema.booking.scheduledAt))

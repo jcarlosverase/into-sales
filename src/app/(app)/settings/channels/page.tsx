@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { ChannelsClient } from "@/components/settings/channels-client";
 import { isChannelEnabled } from "@/server/channels/enabled";
-import { ZERNIO_CHANNELS } from "@/server/zernio/conexiones";
+import { ZERNIO_CHANNELS } from "@/server/zernio/connections";
 
 export const dynamic = "force-dynamic";
 

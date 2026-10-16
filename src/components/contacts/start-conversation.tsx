@@ -32,7 +32,7 @@ export function StartConversation({
   const [templates, setTemplates] = useState<TemplateDto[] | null>(null);
   const [templateId, setTemplateId] = useState("");
   const [vars, setVars] = useState<string[]>([]);
-  const [enviando, setEnviando] = useState(false);
+  const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -40,17 +40,17 @@ export function StartConversation({
       const res = await fetch("/api/templates").catch(() => null);
       if (!res?.ok) return setTemplates([]);
       const data = (await res.json()) as { templates: TemplateDto[] };
-      const aprobadas = data.templates.filter((t) => t.status === "approved");
-      setTemplates(aprobadas);
-      setTemplateId(aprobadas[0]?.id ?? "");
+      const approved = data.templates.filter((t) => t.status === "approved");
+      setTemplates(approved);
+      setTemplateId(approved[0]?.id ?? "");
     })();
   }, []);
 
-  const elegida = templates?.find((t) => t.id === templateId) ?? null;
-  const nVars = elegida ? countVariables(elegida.body) : 0;
+  const chosen = templates?.find((t) => t.id === templateId) ?? null;
+  const nVars = chosen ? countVariables(chosen.body) : 0;
 
-  async function enviar() {
-    setEnviando(true);
+  async function send() {
+    setSending(true);
     setError(null);
     const res = await fetch(`/api/contacts/${contactId}/start-conversation`, {
       method: "POST",
@@ -60,7 +60,7 @@ export function StartConversation({
         variables: nVars > 0 ? vars.slice(0, nVars) : undefined,
       }),
     }).catch(() => null);
-    setEnviando(false);
+    setSending(false);
     const data = (await res?.json().catch(() => null)) as
       | { error?: { message?: string }; conversationId?: string }
       | null;
@@ -115,9 +115,9 @@ export function StartConversation({
         ))}
       </select>
 
-      {elegida && (
+      {chosen && (
         <p className="rounded-md border bg-subtle px-3 py-2 text-[12px] text-text-2">
-          {elegida.body}
+          {chosen.body}
         </p>
       )}
 
@@ -137,11 +137,11 @@ export function StartConversation({
 
       <Button
         size="sm"
-        disabled={enviando || !templateId || vars.slice(0, nVars).some((v) => !v?.trim())}
-        onClick={() => void enviar()}
+        disabled={sending || !templateId || vars.slice(0, nVars).some((v) => !v?.trim())}
+        onClick={() => void send()}
       >
         <Send className="mr-1.5 h-3.5 w-3.5" strokeWidth={1.7} />
-        {enviando ? "Enviando…" : "Iniciar conversación"}
+        {sending ? "Enviando…" : "Iniciar conversación"}
       </Button>
       {error && <p className="text-xs text-danger-text">{error}</p>}
     </div>

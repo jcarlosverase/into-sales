@@ -3,6 +3,7 @@ import { getEnv } from "@/lib/env";
 import {
   isValidSignature,
   isValidWebhookToken,
+  warnInvalidSignature,
   type WebhookPayload,
 } from "@/server/inbox/webhook";
 import { processEchoesValue, processMessagesValue } from "@/server/inbox/ingest";
@@ -46,6 +47,7 @@ export async function POST(req: Request, { params }: Params) {
   const rawBody = await req.text();
   const signature = req.headers.get("x-hub-signature-256");
   if (!isValidSignature(rawBody, signature, env.META_APP_SECRET)) {
+    warnInvalidSignature("wa", signature !== null);
     return new Response(null, { status: 401 });
   }
 

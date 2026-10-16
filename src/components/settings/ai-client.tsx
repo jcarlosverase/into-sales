@@ -16,7 +16,7 @@ import {
   AI_PROVIDERS,
   AI_PROVIDER_PRESETS,
   AI_STATUS_LABEL,
-  presetDeBaseUrl,
+  presetFromBaseUrl,
   type AiProviderId,
   type AiStatus,
 } from "@/lib/ai/presets";
@@ -31,216 +31,216 @@ import {
  * con el proveedor usando lo escrito, sin guardar nada.
  */
 
-type Credencial = {
-  proveedor: AiProviderId;
+type Credential = {
+  provider: AiProviderId;
   baseUrl: string;
-  modelo: string;
+  model: string;
   tokenLast4: string;
-  estado: AiStatus;
-  motivo: string | null;
-  desde: string | null;
-  actualizado: string;
+  status: AiStatus;
+  reason: string | null;
+  since: string | null;
+  updatedAt: string;
 };
 
-type Vista = {
-  credencial: Credencial | null;
-  activa: boolean;
-  origen: "org" | "env" | null;
-  mensaje: string | null;
-  respaldoEntorno: { baseUrl: string; modelo: string; tokenLast4: string } | null;
+type View = {
+  credential: Credential | null;
+  active: boolean;
+  source: "org" | "env" | null;
+  message: string | null;
+  envFallback: { baseUrl: string; model: string; tokenLast4: string } | null;
 };
 
-type Modelo = { id: string; nombre: string | null };
+type Model = { id: string; name: string | null };
 
-type Mensaje = { kind: "ok" | "error" | "info"; text: string };
+type Message = { kind: "ok" | "error" | "info"; text: string };
 
-type Ocupado = "guardar" | "probar" | "modelos" | "quitar" | null;
+type Busy = "guardar" | "probar" | "modelos" | "quitar" | null;
 
-const BADGE_DE_ESTADO: Record<AiStatus, "success" | "warning" | "destructive"> = {
+const STATUS_BADGE: Record<AiStatus, "success" | "warning" | "destructive"> = {
   active: "success",
   paused_no_credit: "warning",
   paused_invalid_token: "destructive",
 };
 
 export function AiClient() {
-  const [vista, setVista] = useState<Vista | null>(null);
+  const [view, setView] = useState<View | null>(null);
   const [provider, setProvider] = useState<AiProviderId>("openrouter");
   const [baseUrl, setBaseUrl] = useState("");
   const [model, setModel] = useState("");
   const [token, setToken] = useState("");
-  const [ocupado, setOcupado] = useState<Ocupado>(null);
-  const [mensaje, setMensaje] = useState<Mensaje | null>(null);
-  const [modelos, setModelos] = useState<Modelo[] | null>(null);
+  const [busy, setBusy] = useState<Busy>(null);
+  const [message, setMessage] = useState<Message | null>(null);
+  const [models, setModels] = useState<Model[] | null>(null);
 
-  const cargar = useCallback(async (): Promise<Vista | null> => {
+  const load = useCallback(async (): Promise<View | null> => {
     const res = await fetch("/api/settings/ai").catch(() => null);
     if (!res?.ok) return null;
-    const data = (await res.json()) as Vista;
-    setVista(data);
+    const data = (await res.json()) as View;
+    setView(data);
     return data;
   }, []);
 
   useEffect(() => {
     void (async () => {
-      const data = await cargar();
+      const data = await load();
       if (!data) return;
       // El formulario arranca con lo guardado; si no hay nada, con el respaldo
       // del entorno (para que «Guardar» lo deje escrito tal cual se usa hoy).
-      const base = data.credencial
+      const base = data.credential
         ? {
-            provider: data.credencial.proveedor,
-            baseUrl: data.credencial.baseUrl,
-            modelo: data.credencial.modelo,
+            provider: data.credential.provider,
+            baseUrl: data.credential.baseUrl,
+            model: data.credential.model,
           }
-        : data.respaldoEntorno
+        : data.envFallback
           ? {
-              provider: presetDeBaseUrl(data.respaldoEntorno.baseUrl),
-              baseUrl: data.respaldoEntorno.baseUrl,
-              modelo: data.respaldoEntorno.modelo,
+              provider: presetFromBaseUrl(data.envFallback.baseUrl),
+              baseUrl: data.envFallback.baseUrl,
+              model: data.envFallback.model,
             }
           : null;
       if (base) {
         setProvider(base.provider);
         setBaseUrl(base.provider === "openai_compatible" ? base.baseUrl : "");
-        setModel(base.modelo);
+        setModel(base.model);
       }
     })();
-  }, [cargar]);
+  }, [load]);
 
   const preset = AI_PROVIDER_PRESETS[provider];
-  const cred = vista?.credencial ?? null;
+  const cred = view?.credential ?? null;
 
   /** Lo que viaja en cada llamada: el token solo si se escribió. */
-  function cuerpo(conModelo: boolean) {
+  function body(withModel: boolean) {
     return JSON.stringify({
       provider,
       ...(provider === "openai_compatible" ? { baseUrl: baseUrl.trim() } : {}),
-      ...(conModelo ? { model: model.trim() } : {}),
+      ...(withModel ? { model: model.trim() } : {}),
       ...(token.trim() ? { token: token.trim() } : {}),
     });
   }
 
-  async function leerError(res: Response | null, porDefecto: string) {
+  async function readError(res: Response | null, byDefault: string) {
     const data = (await res?.json().catch(() => null)) as {
       error?: { message?: string };
     } | null;
-    return data?.error?.message ?? porDefecto;
+    return data?.error?.message ?? byDefault;
   }
 
-  const faltaBase = provider === "openai_compatible" && !baseUrl.trim();
-  const faltaLlave = !token.trim() && !cred;
-  const puedeProbar = !faltaBase && !faltaLlave && model.trim().length > 0;
+  const missingBase = provider === "openai_compatible" && !baseUrl.trim();
+  const missingKey = !token.trim() && !cred;
+  const canTest = !missingBase && !missingKey && model.trim().length > 0;
 
-  async function probar() {
-    setOcupado("probar");
-    setMensaje(null);
+  async function test() {
+    setBusy("probar");
+    setMessage(null);
     const res = await fetch("/api/settings/ai/test", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: cuerpo(true),
+      body: body(true),
     }).catch(() => null);
-    setOcupado(null);
+    setBusy(null);
     if (!res?.ok) {
-      setMensaje({
+      setMessage({
         kind: "error",
-        text: await leerError(res, "No se pudo probar la conexión"),
+        text: await readError(res, "No se pudo probar la conexión"),
       });
       return;
     }
     const data = (await res.json()) as {
       latencyMs: number;
-      reactivada: boolean;
-      vista: Vista | null;
+      reactivated: boolean;
+      view: View | null;
     };
-    if (data.vista) setVista(data.vista);
-    setMensaje({
+    if (data.view) setView(data.view);
+    setMessage({
       kind: "ok",
-      text: data.reactivada
+      text: data.reactivated
         ? `Conexión correcta (${data.latencyMs} ms). Tu llave vuelve a estar activa.`
         : `Conexión correcta (${data.latencyMs} ms)${token.trim() ? ". Pulsa Guardar para dejarla configurada." : "."}`,
     });
   }
 
-  async function traerModelos() {
-    setOcupado("modelos");
-    setMensaje(null);
+  async function fetchModels() {
+    setBusy("modelos");
+    setMessage(null);
     const res = await fetch("/api/settings/ai/models", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: cuerpo(false),
+      body: body(false),
     }).catch(() => null);
-    setOcupado(null);
+    setBusy(null);
     if (!res?.ok) {
-      setMensaje({
+      setMessage({
         kind: "error",
-        text: await leerError(res, "No se pudo traer la lista de modelos"),
+        text: await readError(res, "No se pudo traer la lista de modelos"),
       });
       return;
     }
     const data = (await res.json()) as {
-      soportado: boolean;
-      modelos: Modelo[];
-      mensaje?: string;
+      supported: boolean;
+      models: Model[];
+      message?: string;
     };
-    if (!data.soportado) {
-      setModelos(null);
-      setMensaje({
+    if (!data.supported) {
+      setModels(null);
+      setMessage({
         kind: "info",
-        text: data.mensaje ?? "Este proveedor no publica su lista de modelos.",
+        text: data.message ?? "Este proveedor no publica su lista de modelos.",
       });
       return;
     }
-    setModelos(data.modelos);
-    setMensaje({
+    setModels(data.models);
+    setMessage({
       kind: "info",
-      text: `${data.modelos.length} modelos disponibles: escribe para filtrar en el campo Modelo.`,
+      text: `${data.models.length} modelos disponibles: escribe para filtrar en el campo Modelo.`,
     });
   }
 
-  async function guardar(e: React.FormEvent) {
+  async function save(e: React.FormEvent) {
     e.preventDefault();
-    setOcupado("guardar");
-    setMensaje(null);
+    setBusy("guardar");
+    setMessage(null);
     const res = await fetch("/api/settings/ai", {
       method: "PUT",
       headers: { "content-type": "application/json" },
-      body: cuerpo(true),
+      body: body(true),
     }).catch(() => null);
-    setOcupado(null);
+    setBusy(null);
     if (!res?.ok) {
-      setMensaje({
+      setMessage({
         kind: "error",
-        text: await leerError(res, "No se pudo guardar. Revisa los datos e inténtalo de nuevo."),
+        text: await readError(res, "No se pudo guardar. Revisa los datos e inténtalo de nuevo."),
       });
       return;
     }
-    setVista((await res.json()) as Vista);
+    setView((await res.json()) as View);
     // La llave se borra del formulario en cuanto viaja: no tiene por qué
     // seguir en pantalla ni en la memoria de la pestaña.
     setToken("");
-    setMensaje({
+    setMessage({
       kind: "ok",
       text: "Guardado. Prueba la conexión y corre el Laboratorio antes de encender el agente con clientes reales.",
     });
   }
 
-  async function quitar() {
-    setOcupado("quitar");
-    setMensaje(null);
+  async function remove() {
+    setBusy("quitar");
+    setMessage(null);
     const res = await fetch("/api/settings/ai", { method: "DELETE" }).catch(
       () => null
     );
-    setOcupado(null);
+    setBusy(null);
     if (!res?.ok) {
-      setMensaje({ kind: "error", text: "No se pudo quitar la llave." });
+      setMessage({ kind: "error", text: "No se pudo quitar la llave." });
       return;
     }
-    const data = (await res.json()) as Vista;
-    setVista(data);
+    const data = (await res.json()) as View;
+    setView(data);
     setToken("");
-    setMensaje({
+    setMessage({
       kind: "info",
-      text: data.respaldoEntorno
+      text: data.envFallback
         ? "Llave eliminada. El agente sigue con las variables del entorno de la instancia."
         : "Llave eliminada. Tu agente no puede contestar hasta que configures otra.",
     });
@@ -258,17 +258,17 @@ export function AiClient() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {vista === null ? (
+          {view === null ? (
             <p className="text-sm text-muted-foreground">Cargando…</p>
           ) : cred ? (
-            <EstadoGuardado cred={cred} vista={vista} />
-          ) : vista.respaldoEntorno ? (
+            <SavedStatus cred={cred} view={view} />
+          ) : view.envFallback ? (
             <div className="rounded-md border p-3 text-sm">
               <p>
                 Hoy el agente usa las variables del entorno de la instancia:{" "}
-                <code className="font-mono">{vista.respaldoEntorno.modelo || "sin modelo"}</code>{" "}
+                <code className="font-mono">{view.envFallback.model || "sin modelo"}</code>{" "}
                 con la llave{" "}
-                <code className="font-mono">••••{vista.respaldoEntorno.tokenLast4}</code>.
+                <code className="font-mono">••••{view.envFallback.tokenLast4}</code>.
               </p>
               <p className="mt-1 text-muted-foreground">
                 Lo que guardes aquí manda sobre ellas, sin reiniciar nada.
@@ -281,9 +281,9 @@ export function AiClient() {
             </p>
           )}
 
-          <AyudaLlave provider={provider} />
+          <HelpKey provider={provider} />
 
-          <form onSubmit={guardar} className="space-y-3">
+          <form onSubmit={save} className="space-y-3">
             <div className="space-y-1.5">
               <Label htmlFor="ai-provider">Proveedor</Label>
               <select
@@ -291,7 +291,7 @@ export function AiClient() {
                 value={provider}
                 onChange={(e) => {
                   setProvider(e.target.value as AiProviderId);
-                  setModelos(null);
+                  setModels(null);
                 }}
                 className="h-9 w-full rounded-md border border-input bg-card px-2 text-sm"
               >
@@ -330,7 +330,7 @@ export function AiClient() {
               <div className="flex gap-2">
                 <Input
                   id="ai-model"
-                  list={modelos ? "ai-modelos" : undefined}
+                  list={models ? "ai-modelos" : undefined}
                   value={model}
                   onChange={(e) => setModel(e.target.value)}
                   placeholder={preset.modelPlaceholder}
@@ -339,17 +339,17 @@ export function AiClient() {
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={traerModelos}
-                  disabled={ocupado !== null || faltaBase || faltaLlave}
+                  onClick={fetchModels}
+                  disabled={busy !== null || missingBase || missingKey}
                 >
-                  {ocupado === "modelos" ? "Trayendo…" : "Traer modelos"}
+                  {busy === "modelos" ? "Trayendo…" : "Traer modelos"}
                 </Button>
               </div>
-              {modelos && (
+              {models && (
                 <datalist id="ai-modelos">
-                  {modelos.map((m) => (
+                  {models.map((m) => (
                     <option key={m.id} value={m.id}>
-                      {m.nombre ?? undefined}
+                      {m.name ?? undefined}
                     </option>
                   ))}
                 </datalist>
@@ -379,18 +379,18 @@ export function AiClient() {
               </p>
             </div>
 
-            {mensaje && (
+            {message && (
               <p
-                role={mensaje.kind === "error" ? "alert" : "status"}
+                role={message.kind === "error" ? "alert" : "status"}
                 className={
-                  mensaje.kind === "error"
+                  message.kind === "error"
                     ? "text-sm text-danger-text"
-                    : mensaje.kind === "ok"
+                    : message.kind === "ok"
                       ? "text-sm text-success-text"
                       : "text-sm text-muted-foreground"
                 }
               >
-                {mensaje.text}
+                {message.text}
               </p>
             )}
 
@@ -398,22 +398,22 @@ export function AiClient() {
               <Button
                 type="button"
                 variant="outline"
-                onClick={probar}
-                disabled={ocupado !== null || !puedeProbar}
+                onClick={test}
+                disabled={busy !== null || !canTest}
               >
-                {ocupado === "probar" ? "Probando…" : "Probar conexión"}
+                {busy === "probar" ? "Probando…" : "Probar conexión"}
               </Button>
               <Button
                 type="submit"
-                disabled={ocupado !== null || !puedeProbar}
+                disabled={busy !== null || !canTest}
               >
-                {ocupado === "guardar" ? "Guardando…" : "Guardar"}
+                {busy === "guardar" ? "Guardando…" : "Guardar"}
               </Button>
               {cred && (
                 <button
                   type="button"
-                  onClick={quitar}
-                  disabled={ocupado !== null}
+                  onClick={remove}
+                  disabled={busy !== null}
                   className="text-sm text-text-3 hover:text-foreground"
                 >
                   Quitar
@@ -427,30 +427,30 @@ export function AiClient() {
   );
 }
 
-function EstadoGuardado({ cred, vista }: { cred: Credencial; vista: Vista }) {
+function SavedStatus({ cred, view: view }: { cred: Credential; view: View }) {
   return (
-    <div className="rounded-md border p-3 text-sm" data-ai-estado={cred.estado}>
+    <div className="rounded-md border p-3 text-sm" data-ai-estado={cred.status}>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <span>
           Llave conectada: <code className="font-mono">••••{cred.tokenLast4}</code>
           {" · "}
-          {AI_PROVIDER_PRESETS[cred.proveedor].label}
+          {AI_PROVIDER_PRESETS[cred.provider].label}
           {" · "}
-          <code className="font-mono">{cred.modelo}</code>
+          <code className="font-mono">{cred.model}</code>
         </span>
-        <Badge variant={BADGE_DE_ESTADO[cred.estado]}>
-          {AI_STATUS_LABEL[cred.estado]}
+        <Badge variant={STATUS_BADGE[cred.status]}>
+          {AI_STATUS_LABEL[cred.status]}
         </Badge>
       </div>
-      {cred.proveedor === "openai_compatible" && (
+      {cred.provider === "openai_compatible" && (
         <p className="mt-1 text-xs text-muted-foreground">{cred.baseUrl}</p>
       )}
-      {vista.mensaje && (
-        <p className="mt-2 text-muted-foreground">{vista.mensaje}</p>
+      {view.message && (
+        <p className="mt-2 text-muted-foreground">{view.message}</p>
       )}
-      {cred.motivo && (
+      {cred.reason && (
         <p className="mt-1 text-xs text-muted-foreground">
-          El proveedor dijo: {cred.motivo}
+          El proveedor dijo: {cred.reason}
         </p>
       )}
     </div>
@@ -458,7 +458,7 @@ function EstadoGuardado({ cred, vista }: { cred: Credencial; vista: Vista }) {
 }
 
 /** Lo que hay que saber ANTES de pegar nada. Plegado: no estorba al que ya lo sabe. */
-function AyudaLlave({ provider }: { provider: AiProviderId }) {
+function HelpKey({ provider }: { provider: AiProviderId }) {
   return (
     <details className="rounded-lg border p-3 text-sm">
       <summary className="cursor-pointer font-medium">¿Cómo consigo mi llave?</summary>

@@ -2,11 +2,11 @@ import { and, eq } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db";
 import { apiError } from "@/lib/api";
 import { requireBotKey, resolveInstanceOrg } from "@/server/bot/auth";
-import { serializeFicha } from "@/server/bot/ficha";
+import { serializeQualification } from "@/server/bot/qualification";
 import { findContactByIdentity } from "@/server/inbox/identity";
 import { isWindowOpen, windowRemainingMs } from "@/server/inbox/window";
 import { windowMsFor } from "@/server/channels/capabilities";
-import { citasParaContexto } from "@/server/agenda/context";
+import { bookingsForContext } from "@/server/agenda/context";
 
 export const dynamic = "force-dynamic";
 
@@ -105,7 +105,7 @@ export async function GET(req: Request) {
         )
       )
       .limit(1),
-    citasParaContexto(organizationId, contact.id),
+    bookingsForContext(organizationId, contact.id),
   ]);
 
   return Response.json({
@@ -118,7 +118,7 @@ export async function GET(req: Request) {
       waIdentity: contact.waIdentity,
       channel: contact.channel,
       phone: contact.phone,
-      ficha: serializeFicha(contact),
+      ficha: serializeQualification(contact),
     },
     conversation: {
       id: conversation.id,

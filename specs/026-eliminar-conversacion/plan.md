@@ -6,14 +6,14 @@ Spec: [spec.md](spec.md).
 
 | Pieza | Cloud (`fdf3c17`) | Raíz |
 |---|---|---|
-| Borrado transaccional | `src/server/inbox/eliminar.ts` | Mismo módulo, sin cuota (`mediaUsedBytes`), sin cotizaciones y sin la prueba de activación, que el raíz no tiene |
+| Borrado transaccional | `src/server/inbox/delete-conversation.ts` | Mismo módulo, sin cuota (`mediaUsedBytes`), sin cotizaciones y sin la prueba de activación, que el raíz no tiene |
 | Ruta | `DELETE /api/conversations/[id]`, permiso `configure` | Misma ruta; el permiso es `canConfigure(session.role)` |
 | Evento | `construirEventoOlvido`, `avisarOlvido` | `construirEventoOlvido` idéntico; `avisarOlvido` contra el único destino del raíz (`leerConfigDespacho`) |
 | Ficha | `vaciarFicha` | Igual (`contact.ficha`) |
 | Archivos | `borrarMedia` (S3 o disco) | `deleteMediaFile` (disco, `MEDIA_DIR`) |
 | SSE | `conversation.deleted` | Igual |
 | Interfaz | Diálogo y entrada en Detalles | Igual, sin la frase de cotizaciones |
-| Guion | `scripts/e2e-eliminar.mjs` con `brain-mock` | Guion nuevo que levanta su propio cerebro, como `e2e-despacho.mjs` |
+| Guion | `scripts/e2e-delete-conversation.mjs` con `brain-mock` | Guion nuevo que levanta su propio cerebro, como `e2e-dispatch.mjs` |
 
 ## Modelo de datos
 
@@ -59,12 +59,12 @@ El id del evento es `olv_<nanoid>` (`newId("olvido")`).
 
 ## Pruebas
 
-- `tests/unit/olvido-contrato.test.ts`: el cuerpo y la firma gemelos de
+- `tests/unit/forget-contract.test.ts`: el cuerpo y la firma gemelos de
   `nea-agent/tests/test_olvido.py` (`CUERPO_GEMELO`, `FIRMA_GEMELA`,
   `SECRETO_GEMELO`), byte a byte; el orden de las claves; `avisarOlvido` con un
   `fetch` de mentira (200 → avisado, 500 o sin respuesta → sin confirmar, sin
   despacho → no aplica, y que manda las cabeceras de D6 y un solo intento).
-- `scripts/e2e-eliminar.mjs`, dos modos como `e2e-despacho.mjs`: con cerebro
+- `scripts/e2e-delete-conversation.mjs`, dos modos como `e2e-dispatch.mjs`: con cerebro
   (AC1–AC5, AC7–AC9, y AC6 si `AGENDA=on`) y con el agente incluido (AC8 «no
   aplica»).
 - Interfaz en local: la entrada al fondo de Detalles, el diálogo en claro y

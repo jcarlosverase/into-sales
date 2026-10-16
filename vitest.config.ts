@@ -8,7 +8,9 @@ export default defineConfig({
   // en una prueba (ver tests/unit/switch.test.ts).
   esbuild: { jsx: "automatic" },
   test: {
-    include: ["tests/unit/**/*.test.ts"],
+    // Integration tests (tests/integration) need TEST_DATABASE_URL and skip
+    // themselves without it.
+    include: ["tests/unit/**/*.test.ts", "tests/integration/**/*.test.ts"],
     environment: "node",
   },
   resolve: {

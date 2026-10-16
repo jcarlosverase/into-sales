@@ -16,9 +16,9 @@ import { createHmac, timingSafeEqual } from "node:crypto";
  * ediciones. La única diferencia está en `mediaId`, y se explica abajo.
  */
 
-export type CanalDelEvento = "whatsapp" | "instagram" | "messenger" | "tiktok";
+export type EventChannel = "whatsapp" | "instagram" | "messenger" | "tiktok";
 
-export type MensajeDelEvento = {
+export type EventMessage = {
   id: string;
   at: string;
   type: string;
@@ -35,12 +35,12 @@ export type MensajeDelEvento = {
   caption?: string | null;
 };
 
-export type EventoDespacho = {
+export type EventDispatch = {
   dispatchId: string;
   organization: { id: string; slug: string | null };
   conversation: {
     id: string;
-    channel: CanalDelEvento;
+    channel: EventChannel;
     aiEnabled: boolean;
     windowOpen: boolean;
     windowExpiresAt: string | null;
@@ -50,13 +50,13 @@ export type EventoDespacho = {
     displayName: string;
     identity: string;
   };
-  messages: MensajeDelEvento[];
+  messages: EventMessage[];
   firstMessageAt: string;
   lastMessageAt: string;
 };
 
 /** Lo que hace falta saber de un mensaje para meterlo al evento. */
-export type MensajeParaEvento = {
+export type MessageForEvent = {
   id: string;
   createdAt: Date;
   type: string;
@@ -71,49 +71,49 @@ export type MensajeParaEvento = {
 /**
  * Arma el evento. Pura, y es la ÚNICA que lo arma: el orden de las claves es
  * contrato —se firma el JSON tal como sale de aquí— y
- * `tests/unit/despacho-contrato.test.ts` fija un cuerpo y su firma byte a
+ * `tests/unit/dispatch-contract.test.ts` fija un cuerpo y su firma byte a
  * byte. La prueba gemela vive en el repo del cerebro.
  */
-export function armarEvento(datos: {
+export function buildEvent(data: {
   dispatchId: string;
   organization: { id: string; slug: string | null };
   conversation: {
     id: string;
-    channel: CanalDelEvento;
+    channel: EventChannel;
     aiEnabled: boolean;
     windowOpen: boolean;
     windowExpiresAt: Date | null;
   };
   contact: { id: string; displayName: string; identity: string };
-  messages: MensajeParaEvento[];
+  messages: MessageForEvent[];
   firstMessageAt: Date;
   lastMessageAt: Date;
-}): EventoDespacho {
+}): EventDispatch {
   return {
-    dispatchId: datos.dispatchId,
+    dispatchId: data.dispatchId,
     organization: {
-      id: datos.organization.id,
-      slug: datos.organization.slug,
+      id: data.organization.id,
+      slug: data.organization.slug,
     },
     conversation: {
-      id: datos.conversation.id,
-      channel: datos.conversation.channel,
-      aiEnabled: datos.conversation.aiEnabled,
-      windowOpen: datos.conversation.windowOpen,
-      windowExpiresAt: datos.conversation.windowExpiresAt?.toISOString() ?? null,
+      id: data.conversation.id,
+      channel: data.conversation.channel,
+      aiEnabled: data.conversation.aiEnabled,
+      windowOpen: data.conversation.windowOpen,
+      windowExpiresAt: data.conversation.windowExpiresAt?.toISOString() ?? null,
     },
     contact: {
-      id: datos.contact.id,
-      displayName: datos.contact.displayName,
-      identity: datos.contact.identity,
+      id: data.contact.id,
+      displayName: data.contact.displayName,
+      identity: data.contact.identity,
     },
-    messages: datos.messages.map(mensajeDelEvento),
-    firstMessageAt: datos.firstMessageAt.toISOString(),
-    lastMessageAt: datos.lastMessageAt.toISOString(),
+    messages: data.messages.map(eventMessage),
+    firstMessageAt: data.firstMessageAt.toISOString(),
+    lastMessageAt: data.lastMessageAt.toISOString(),
   };
 }
 
-function mensajeDelEvento(m: MensajeParaEvento): MensajeDelEvento {
+function eventMessage(m: MessageForEvent): EventMessage {
   const base = {
     id: m.id,
     at: m.createdAt.toISOString(),
@@ -139,51 +139,51 @@ function mensajeDelEvento(m: MensajeParaEvento): MensajeDelEvento {
  * porque un cerebro suele indexar su memoria por persona, no por el id de
  * conversación del CRM.
  */
-export type EventoOlvido = {
+export type EventForget = {
   type: "conversation.deleted";
   eventId: string;
   organization: { id: string; slug: string | null };
-  conversation: { id: string; channel: CanalDelEvento };
+  conversation: { id: string; channel: EventChannel };
   contact: { id: string; identity: string };
   deletedAt: string;
 };
 
-export const TIPO_OLVIDO = "conversation.deleted" as const;
+export const TYPE_FORGET = "conversation.deleted" as const;
 
 /**
  * El orden de las claves es contrato: se firma el JSON tal como sale de aquí.
  * Es el mismo cuerpo que manda Vocero Cloud, y la prueba gemela de `nea-agent`
  * (`tests/test_olvido.py`) lo tiene copiado byte a byte, igual que
- * `tests/unit/olvido-contrato.test.ts` aquí.
+ * `tests/unit/forget-contract.test.ts` aquí.
  */
-export function construirEventoOlvido(datos: {
+export function buildEventForget(data: {
   eventId: string;
   organization: { id: string; slug: string | null };
-  conversation: { id: string; channel: CanalDelEvento };
+  conversation: { id: string; channel: EventChannel };
   contact: { id: string; identity: string };
   deletedAt: Date;
-}): EventoOlvido {
+}): EventForget {
   return {
-    type: TIPO_OLVIDO,
-    eventId: datos.eventId,
+    type: TYPE_FORGET,
+    eventId: data.eventId,
     organization: {
-      id: datos.organization.id,
-      slug: datos.organization.slug,
+      id: data.organization.id,
+      slug: data.organization.slug,
     },
     conversation: {
-      id: datos.conversation.id,
-      channel: datos.conversation.channel,
+      id: data.conversation.id,
+      channel: data.conversation.channel,
     },
-    contact: { id: datos.contact.id, identity: datos.contact.identity },
-    deletedAt: datos.deletedAt.toISOString(),
+    contact: { id: data.contact.id, identity: data.contact.identity },
+    deletedAt: data.deletedAt.toISOString(),
   };
 }
 
-export const CABECERA_FIRMA = "x-vocero-signature";
-export const CABECERA_DISPATCH = "x-vocero-dispatch-id";
-export const CABECERA_ORG = "x-vocero-organization";
+export const HEADER_SIGNATURE = "x-vocero-signature";
+export const HEADER_DISPATCH = "x-vocero-dispatch-id";
+export const HEADER_ORG = "x-vocero-organization";
 /** Para los eventos que no son un turno: hoy, `conversation.deleted` (026). */
-export const CABECERA_EVENTO = "x-vocero-event";
+export const HEADER_EVENT = "x-vocero-event";
 
 /**
  * Firma del cuerpo CRUDO, con prefijo `sha256=`.
@@ -191,9 +191,9 @@ export const CABECERA_EVENTO = "x-vocero-event";
  * El prefijo es contrato: el webhook de Zernio NO lo lleva y el nuestro SÍ. La
  * asimetría es del proveedor, no nuestra.
  */
-export function firmarCuerpo(cuerpoCrudo: string, secreto: string): string {
-  const hex = createHmac("sha256", secreto)
-    .update(cuerpoCrudo, "utf8")
+export function signBody(rawBody: string, secret: string): string {
+  const hex = createHmac("sha256", secret)
+    .update(rawBody, "utf8")
     .digest("hex");
   return `sha256=${hex}`;
 }
@@ -203,16 +203,16 @@ export function firmarCuerpo(cuerpoCrudo: string, secreto: string): string {
  * existe para que el cerebro de prueba del arnés y las pruebas comprueben la
  * firma con la misma regla que debe usar un cerebro real.
  */
-export function firmaValida(
-  cuerpoCrudo: string,
-  secreto: string,
-  firmaRecibida: string | null
+export function validSignature(
+  rawBody: string,
+  secret: string,
+  receivedSignature: string | null
 ): boolean {
-  if (!firmaRecibida) return false;
-  const esperada = Buffer.from(firmarCuerpo(cuerpoCrudo, secreto));
-  const recibida = Buffer.from(firmaRecibida);
-  if (esperada.length !== recibida.length) return false;
-  return timingSafeEqual(esperada, recibida);
+  if (!receivedSignature) return false;
+  const expected = Buffer.from(signBody(rawBody, secret));
+  const received = Buffer.from(receivedSignature);
+  if (expected.length !== received.length) return false;
+  return timingSafeEqual(expected, received);
 }
 
 /**
@@ -223,22 +223,22 @@ export function firmaValida(
  * único que va a atender esa conversación. Un 3xx cae aquí también: no se
  * siguen redirecciones.
  */
-export type ResultadoEntrega =
+export type ResultDelivery =
   | { ok: true }
-  | { ok: false; reintentable: boolean; detalle: string };
+  | { ok: false; retryable: boolean; detail: string };
 
-export function clasificarRespuesta(status: number): ResultadoEntrega {
+export function classifyResponse(status: number): ResultDelivery {
   if (status >= 200 && status < 300) return { ok: true };
   if (status === 429 || status >= 500) {
     return {
       ok: false,
-      reintentable: true,
-      detalle: `el cerebro respondió ${status}`,
+      retryable: true,
+      detail: `el cerebro respondió ${status}`,
     };
   }
   return {
     ok: false,
-    reintentable: false,
-    detalle: `el cerebro respondió ${status} (no se reintenta)`,
+    retryable: false,
+    detail: `el cerebro respondió ${status} (no se reintenta)`,
   };
 }

@@ -4,7 +4,8 @@ import type { ZodIssue } from "zod";
 import { getDb, PG_CONNECTION_OPTIONS, schema } from "@/lib/db";
 import { scoped } from "@/lib/db/tenant";
 import { envSchema, safeParseEnv, type Env } from "@/lib/env";
-import { leerConfigDespacho } from "@/server/brains/config";
+import { readConfigDispatch } from "@/server/brains/config";
+import { readConfigCentral } from "@/server/central/flag";
 import { GENERATED_SECRETS, PLACEHOLDER_PREFIX } from "@/server/doctor/init-env";
 import { probeMediaDir } from "@/server/media-dir";
 import { testConnection, type ConnectionCheck } from "@/server/whatsapp/connect";
@@ -62,7 +63,7 @@ const FIX: Record<string, string> = {
   APP_BASE_URL:
     "en .env: APP_BASE_URL=https://crm.tudominio.com (con docker compose en esta máquina: https://localhost)",
   DATABASE_URL:
-    "en .env: DATABASE_URL=postgresql://postgres:<POSTGRES_PASSWORD>@postgres:5432/vocero (docker compose) o ...@localhost:5432/vocero (docker-compose.dev.yml)",
+    "en .env: DATABASE_URL=postgresql://postgres:<POSTGRES_PASSWORD>@postgres:5432/vocero (docker compose) o ...@localhost:5433/vocero (docker-compose.dev.yml)",
   DOMAIN:
     "en .env: DOMAIN=crm.tudominio.com (o localhost para probar aquí); solo lo usa docker compose para el HTTPS de Caddy",
 };
@@ -537,7 +538,7 @@ export function checkAi(env: Env): CheckResult {
 export function checkDispatch(
   source: Record<string, string | undefined>
 ): CheckResult {
-  const config = leerConfigDespacho(source);
+  const config = readConfigDispatch(source);
   const label = "BRAIN_DISPATCH_URL";
   if (config.active) {
     return {
@@ -567,6 +568,34 @@ export function checkDispatch(
     label,
     detail: "no definida: contesta el agente incluido, o un cerebro que reciba el webhook por su cuenta",
   };
+}
+
+/* ---------- Servicio central (opcional) ---------- */
+
+/**
+ * 028 — El latido al servicio central de into. Apagado no es un fallo (es un
+ * conector opcional); mal escrito es un aviso: el latido queda inactivo y el
+ * CRM sigue igual. La llave vive cifrada en la base, así que aquí no se mira.
+ */
+export function checkCentral(source: Record<string, string | undefined>): CheckResult {
+  const config = readConfigCentral(source);
+  const label = "INTO_CENTRAL_URL";
+  if (config.active) {
+    return {
+      status: "ok",
+      label,
+      detail: `late a ${config.host} cada 15 min; la llave de licencia se pega en Ajustes → Plan`,
+    };
+  }
+  if (config.problem === "url") {
+    return {
+      status: "warn",
+      label,
+      detail: "no es una URL http:// o https:// válida (o lleva usuario:clave): el latido queda INACTIVO",
+      fix: "en .env: INTO_CENTRAL_URL=https://api.into.center",
+    };
+  }
+  return { status: "skip", label, detail: "no definida: el CRM no late a ningún servicio central" };
 }
 
 /* ---------- Salida ---------- */

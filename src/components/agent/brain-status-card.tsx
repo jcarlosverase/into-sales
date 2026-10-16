@@ -3,9 +3,9 @@
 import { AlertTriangle, Cable, Info, Send, Sparkles, type LucideIcon } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
-  despachoFallando,
+  dispatchFailing,
   externalBrainName,
-  haceCuanto,
+  howLongAgo,
   type BrainDispatchDto,
   type BrainHealthDto,
   type BrainRelayDto,
@@ -73,7 +73,7 @@ export function BrainStatusCard({
             id="embedded"
             icon={Sparkles}
             label="Agente incluido"
-            hint="El de Vocero, con el comportamiento de esta página."
+            hint="El de IntoSales, con el comportamiento de esta página."
             view={embeddedView(status)}
           />
           <BrainRow
@@ -148,8 +148,8 @@ function embeddedView(s: BrainStatusDto): RowView {
 
 function externalView(s: BrainStatusDto, now: number): RowView {
   const { keyConfigured, lastSeenAt, active, health } = s.external;
-  const llamada = lastSeenAt
-    ? `última llamada ${haceCuanto(lastSeenAt, now)}`
+  const call = lastSeenAt
+    ? `última llamada ${howLongAgo(lastSeenAt, now)}`
     : "sin llamadas desde el último arranque";
 
   if (health?.reachable) {
@@ -162,7 +162,7 @@ function externalView(s: BrainStatusDto, now: number): RowView {
       health.relay && relayLabel(health.relay),
     ].filter(Boolean);
     return keyConfigured
-      ? { tone: "ok", headline: capitalize(parts.join(" · ")), detail: `${capitalize(llamada)}.` }
+      ? { tone: "ok", headline: capitalize(parts.join(" · ")), detail: `${capitalize(call)}.` }
       : {
           tone: "warn",
           headline: capitalize(parts.join(" · ")),
@@ -174,7 +174,7 @@ function externalView(s: BrainStatusDto, now: number): RowView {
       tone: "warn",
       headline: "No se puede consultar su estado",
       detail: `BRAIN_HEALTH_URL no es una URL http:// o https:// válida (p. ej. http://nea:8000/health): corrígela y vuelve a desplegar el CRM.${
-        keyConfigured ? ` ${capitalize(llamada)}.` : ""
+        keyConfigured ? ` ${capitalize(call)}.` : ""
       }`,
     };
   }
@@ -184,49 +184,49 @@ function externalView(s: BrainStatusDto, now: number): RowView {
       tone: "warn",
       headline: capitalize(`${name ? `${name} · ` : ""}no está en línea`),
       detail: `${health.host} ${problemLabel(health)}.${
-        keyConfigured ? ` ${capitalize(llamada)}.` : ""
+        keyConfigured ? ` ${capitalize(call)}.` : ""
       }`,
     };
   }
   if (keyConfigured) {
-    return { tone: active ? "ok" : "off", headline: `Llave configurada · ${llamada}`, detail: null };
+    return { tone: active ? "ok" : "off", headline: `Llave configurada · ${call}`, detail: null };
   }
   return { tone: "off", headline: "Sin cerebro externo", detail: null };
 }
 
 function dispatchView(d: BrainDispatchDto, now: number): RowView {
-  const mientras = "Mientras tanto contesta el agente incluido, si está encendido.";
+  const meanwhile = "Mientras tanto contesta el agente incluido, si está encendido.";
   if (d.problem === "url") {
     return {
       tone: "warn",
       headline: "No se puede despachar",
-      detail: `BRAIN_DISPATCH_URL no es una URL http:// o https:// válida, o lleva usuario y clave (p. ej. http://nea:8000/vocero/dispatch): corrígela y vuelve a desplegar el CRM. ${mientras}`,
+      detail: `BRAIN_DISPATCH_URL no es una URL http:// o https:// válida, o lleva usuario y clave (p. ej. http://nea:8000/vocero/dispatch): corrígela y vuelve a desplegar el CRM. ${meanwhile}`,
     };
   }
   if (d.problem === "sin_llave") {
     return {
       tone: "warn",
       headline: "No se puede despachar",
-      detail: `Falta BOT_API_KEY (mínimo 16 caracteres): con ella se firma cada turno y contesta el cerebro. ${mientras}`,
+      detail: `Falta BOT_API_KEY (mínimo 16 caracteres): con ella se firma cada turno y contesta el cerebro. ${meanwhile}`,
     };
   }
-  const espera =
+  const wait =
     d.pending > 0
       ? ` ${d.pending === 1 ? "1 turno en espera" : `${d.pending} turnos en espera`}.`
       : "";
-  if (d.lastFailure && despachoFallando(d)) {
+  if (d.lastFailure && dispatchFailing(d)) {
     return {
       tone: "warn",
       headline: `Activo · ${d.host} · el último turno no llegó`,
-      detail: `${capitalize(d.lastFailure.detail)} (${haceCuanto(d.lastFailure.at, now)}). Tras tres intentos fallidos, la conversación queda con una persona.${espera}`,
+      detail: `${capitalize(d.lastFailure.detail)} (${howLongAgo(d.lastFailure.at, now)}). Tras tres intentos fallidos, la conversación queda con una persona.${wait}`,
     };
   }
   return {
     tone: "ok",
     headline: `Activo · ${d.host}`,
     detail: d.lastDeliveredAt
-      ? `Último turno entregado ${haceCuanto(d.lastDeliveredAt, now)}.${espera}`
-      : `Aún no se ha despachado ningún turno.${espera}`,
+      ? `Último turno entregado ${howLongAgo(d.lastDeliveredAt, now)}.${wait}`
+      : `Aún no se ha despachado ningún turno.${wait}`,
   };
 }
 

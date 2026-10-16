@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { comparable, delta, MIN_SAMPLE, rate } from "@/lib/analytics";
-import { armarEmbudo, clasificarCierres, motivosDePerdida, type Desenlace } from "@/server/analytics/sales";
-import { MAX_ANUNCIOS, unirAnuncios, unirFuentes } from "@/server/analytics/ads";
-import { escalaLimpia, etiqueta } from "@/components/results/time-bars";
+import { buildFunnel, classifyClosings, lostReasons, type Outcome } from "@/server/analytics/sales";
+import { MAX_ADS, joinAds, joinSources } from "@/server/analytics/ads";
+import { cleanScale, label } from "@/components/results/time-bars";
 
 /**
  * 019 — La aritmética de la pantalla Resultados (portada de Vocero Cloud, sin
@@ -28,9 +28,9 @@ describe("rate", () => {
 
   it("marca la muestra chica en vez de esconderla", () => {
     // 1 de 1 es 100 %, y presentarlo como firme sería mentir con la verdad.
-    const flaca = rate(1, 1);
-    expect(flaca.value).toBe(100);
-    expect(flaca.reliable).toBe(false);
+    const thin = rate(1, 1);
+    expect(thin.value).toBe(100);
+    expect(thin.reliable).toBe(false);
     expect(rate(5, MIN_SAMPLE).reliable).toBe(true);
   });
 
@@ -56,27 +56,27 @@ describe("delta", () => {
   });
 });
 
-const desenlace = (d: Partial<Desenlace> & Pick<Desenlace, "leadId" | "kind">): Desenlace => ({
+const outcome = (d: Partial<Outcome> & Pick<Outcome, "leadId" | "kind">): Outcome => ({
   lossReason: null,
   amountCents: null,
   currency: null,
   ...d,
 });
 
-describe("clasificarCierres", () => {
+describe("classifyClosings", () => {
   it("cuenta el LEAD, y el dinero solo en la moneda del negocio", () => {
-    const c = clasificarCierres(
+    const c = classifyClosings(
       [
-        desenlace({ leadId: "a", kind: "won", amountCents: 100_00, currency: "MXN" }),
+        outcome({ leadId: "a", kind: "won", amountCents: 100_00, currency: "MXN" }),
         // Sin moneda = la del negocio al capturarlo.
-        desenlace({ leadId: "b", kind: "won", amountCents: 50_00 }),
+        outcome({ leadId: "b", kind: "won", amountCents: 50_00 }),
         // Otra moneda: se cuenta como trato, no se suma.
-        desenlace({ leadId: "c", kind: "won", amountCents: 999_00, currency: "USD" }),
+        outcome({ leadId: "c", kind: "won", amountCents: 999_00, currency: "USD" }),
         // Sin monto: trato ganado, no suma ni entra al ticket promedio.
-        desenlace({ leadId: "d", kind: "won" }),
-        desenlace({ leadId: "e", kind: "lost", lossReason: "precio" }),
+        outcome({ leadId: "d", kind: "won" }),
+        outcome({ leadId: "e", kind: "lost", lossReason: "precio" }),
         // Volvió al embudo dentro del rango: no cerró nada.
-        desenlace({ leadId: "f", kind: "open", amountCents: 70_00 }),
+        outcome({ leadId: "f", kind: "open", amountCents: 70_00 }),
       ],
       "MXN"
     );
@@ -87,14 +87,14 @@ describe("clasificarCierres", () => {
   });
 });
 
-describe("motivosDePerdida", () => {
+describe("lostReasons", () => {
   it("sale del mismo desenlace: solo los perdidos, del más frecuente al menos", () => {
-    const m = motivosDePerdida([
-      desenlace({ leadId: "a", kind: "lost", lossReason: "precio" }),
-      desenlace({ leadId: "b", kind: "lost", lossReason: "precio" }),
+    const m = lostReasons([
+      outcome({ leadId: "a", kind: "lost", lossReason: "precio" }),
+      outcome({ leadId: "b", kind: "lost", lossReason: "precio" }),
       // Sembrado por la migración: perdido sin motivo capturado.
-      desenlace({ leadId: "c", kind: "lost" }),
-      desenlace({ leadId: "d", kind: "won" }),
+      outcome({ leadId: "c", kind: "lost" }),
+      outcome({ leadId: "d", kind: "won" }),
     ]);
     expect(m).toEqual([
       { reason: "precio", label: "Le pareció caro", count: 2 },
@@ -103,8 +103,8 @@ describe("motivosDePerdida", () => {
   });
 });
 
-describe("armarEmbudo", () => {
-  const etapas = [
+describe("buildFunnel", () => {
+  const stages = [
     { id: "s1", name: "Nuevo", kind: "open" as const, position: 0 },
     { id: "s2", name: "Interesado", kind: "open" as const, position: 1 },
     { id: "s3", name: "Cotizado", kind: "open" as const, position: 2 },
@@ -114,34 +114,34 @@ describe("armarEmbudo", () => {
   ];
 
   it("cada lead cuenta una vez por etapa y el acumulado solo corre sobre abiertas", () => {
-    const pasos = armarEmbudo(etapas, [
+    const steps = buildFunnel(stages, [
       { maxOpenPos: 0, won: 0 }, // se quedó en Nuevo
       { maxOpenPos: 1, won: 0 }, // llegó a Interesado y se perdió
       { maxOpenPos: 2, won: 1 }, // hasta Cotizado y se ganó
       { maxOpenPos: 0, won: 1 }, // de Nuevo directo a Cliente
       { maxOpenPos: null, won: 0 }, // sus etapas ya no existen
     ]);
-    expect(pasos.map((p) => [p.name, p.reached])).toEqual([
+    expect(steps.map((p) => [p.name, p.reached])).toEqual([
       ["Nuevo", 4],
       ["Interesado", 2],
       ["Cotizado", 1],
       ["Cliente", 2],
     ]);
-    expect(pasos.find((p) => p.name === "Perdido")).toBeUndefined();
+    expect(steps.find((p) => p.name === "Perdido")).toBeUndefined();
     // La proporción que pasa a la siguiente, con su denominador.
-    expect(pasos[0]!.advanceRate).toEqual({ value: 50, sample: 4, reliable: false });
-    expect(pasos.at(-1)!.advanceRate).toBeNull();
+    expect(steps[0]!.advanceRate).toEqual({ value: 50, sample: 4, reliable: false });
+    expect(steps.at(-1)!.advanceRate).toBeNull();
   });
 
   it("sin etapa ganada configurada, el último paso sigue llamándose Ganado", () => {
-    const pasos = armarEmbudo([etapas[0]!], [{ maxOpenPos: 0, won: 1 }]);
-    expect(pasos.at(-1)).toMatchObject({ name: "Ganado", kind: "won", reached: 1 });
+    const steps = buildFunnel([stages[0]!], [{ maxOpenPos: 0, won: 1 }]);
+    expect(steps.at(-1)).toMatchObject({ name: "Ganado", kind: "won", reached: 1 });
   });
 });
 
-describe("unirFuentes", () => {
+describe("joinSources", () => {
   it("las seis fuentes en su orden fijo, solo las que tienen algo, y sin identificar al final", () => {
-    const filas = unirFuentes(
+    const rows = joinSources(
       [
         { key: null, n: 3 },
         { key: "anuncio", n: 5 },
@@ -151,21 +151,21 @@ describe("unirFuentes", () => {
         { key: "referido", leads: 1, won: 1 },
       ]
     );
-    expect(filas.map((f) => [f.value, f.conversations, f.leads, f.won])).toEqual([
+    expect(rows.map((f) => [f.value, f.conversations, f.leads, f.won])).toEqual([
       ["anuncio", 5, 4, 1],
       ["referido", 0, 1, 1],
       ["desconocida", 3, 0, 0],
     ]);
-    expect(filas[0]!.label).toBe("Anuncio");
-    expect(filas.at(-1)!.label).toBe("Sin identificar");
+    expect(rows[0]!.label).toBe("Anuncio");
+    expect(rows.at(-1)!.label).toBe("Sin identificar");
     // La tasa de la fila es ventas entre prospectos, calculada en el servidor.
-    expect(filas[0]!.winRate).toEqual({ value: 25, sample: 4, reliable: false });
-    expect(filas.at(-1)!.winRate.value).toBeNull();
+    expect(rows[0]!.winRate).toEqual({ value: 25, sample: 4, reliable: false });
+    expect(rows.at(-1)!.winRate.value).toBeNull();
   });
 });
 
-describe("unirAnuncios", () => {
-  const meta = (key: string, extra: Partial<Parameters<typeof unirAnuncios>[0][number]> = {}) => ({
+describe("joinAds", () => {
+  const meta = (key: string, extra: Partial<Parameters<typeof joinAds>[0][number]> = {}) => ({
     key,
     sourceId: key.startsWith("ad_") ? null : key,
     sourceType: "ad",
@@ -176,11 +176,11 @@ describe("unirAnuncios", () => {
   });
 
   it("junta conversaciones y prospectos del mismo anuncio en una fila", () => {
-    const [fila] = unirAnuncios(
+    const [row] = joinAds(
       [{ ...meta("1202"), conversations: 3 }],
       [{ ...meta("1202", { imageAssetId: "ma_1" }), leads: 2, won: 1 }]
     );
-    expect(fila).toMatchObject({
+    expect(row).toMatchObject({
       key: "1202",
       conversations: 3,
       leads: 2,
@@ -192,13 +192,13 @@ describe("unirAnuncios", () => {
   });
 
   it("un anuncio con prospectos pero sin conversaciones del periodo también sale", () => {
-    const filas = unirAnuncios([], [{ ...meta("1203"), leads: 1, won: 0 }]);
-    expect(filas).toHaveLength(1);
-    expect(filas[0]).toMatchObject({ conversations: 0, leads: 1, won: 0 });
+    const rows = joinAds([], [{ ...meta("1203"), leads: 1, won: 0 }]);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ conversations: 0, leads: 1, won: 0 });
   });
 
   it("más conversaciones primero; a igualdad, más prospectos y luego el más reciente", () => {
-    const filas = unirAnuncios(
+    const rows = joinAds(
       [
         { ...meta("viejo", { lastAt: 100 }), conversations: 2 },
         { ...meta("nuevo", { lastAt: 900 }), conversations: 2 },
@@ -207,33 +207,33 @@ describe("unirAnuncios", () => {
       ],
       [{ ...meta("con-prospectos", { lastAt: 50 }), leads: 2, won: 0 }]
     );
-    expect(filas.map((f) => f.key)).toEqual(["grande", "con-prospectos", "nuevo", "viejo"]);
+    expect(rows.map((f) => f.key)).toEqual(["grande", "con-prospectos", "nuevo", "viejo"]);
     // El instante de orden no viaja al cliente.
-    expect(filas[0]).not.toHaveProperty("lastAt");
+    expect(rows[0]).not.toHaveProperty("lastAt");
   });
 
-  it(`corta en ${MAX_ANUNCIOS} filas`, () => {
-    const muchas = Array.from({ length: MAX_ANUNCIOS + 5 }, (_, i) => ({
+  it(`corta en ${MAX_ADS} filas`, () => {
+    const many = Array.from({ length: MAX_ADS + 5 }, (_, i) => ({
       ...meta(`a${i}`),
       conversations: i + 1,
     }));
-    const filas = unirAnuncios(muchas, []);
-    expect(filas).toHaveLength(MAX_ANUNCIOS);
-    expect(filas[0]!.conversations).toBe(MAX_ANUNCIOS + 5);
+    const rows = joinAds(many, []);
+    expect(rows).toHaveLength(MAX_ADS);
+    expect(rows[0]!.conversations).toBe(MAX_ADS + 5);
   });
 });
 
 describe("escala y etiquetas de la serie", () => {
   it("el tope es un número limpio que cubre el máximo", () => {
-    expect(escalaLimpia(0)).toBe(1);
-    expect(escalaLimpia(1)).toBe(1);
-    expect(escalaLimpia(3)).toBe(5);
-    expect(escalaLimpia(37)).toBe(50);
-    expect(escalaLimpia(120)).toBe(200);
+    expect(cleanScale(0)).toBe(1);
+    expect(cleanScale(1)).toBe(1);
+    expect(cleanScale(3)).toBe(5);
+    expect(cleanScale(37)).toBe(50);
+    expect(cleanScale(120)).toBe(200);
   });
 
   it("fechas cortas en español", () => {
-    expect(etiqueta("2026-08-13")).toBe("13 ago");
-    expect(etiqueta("2026-01")).toBe("ene 26");
+    expect(label("2026-08-13")).toBe("13 ago");
+    expect(label("2026-01")).toBe("ene 26");
   });
 });

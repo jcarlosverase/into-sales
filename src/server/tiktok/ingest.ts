@@ -75,11 +75,11 @@ export function normalizeZernioTiktokEvent(payload: unknown): TiktokInbound[] {
     typeof evt.message?.text === "string" && evt.message.text.length > 0
       ? evt.message.text
       : null;
-  const adjunto = evt.message?.attachments?.[0];
+  const attachment = evt.message?.attachments?.[0];
   const type = text
     ? "text"
-    : adjunto
-      ? (ATTACHMENT_TYPE[adjunto.type ?? ""] ?? "unsupported")
+    : attachment
+      ? (ATTACHMENT_TYPE[attachment.type ?? ""] ?? "unsupported")
       : null;
   if (!type) return []; // ni texto ni adjunto: no hay nada que ingerir
 

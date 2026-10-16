@@ -1,7 +1,7 @@
 import { scheduleAgentTurn } from "@/server/ai/pipeline";
 import { isAiConfiguredFor } from "@/lib/ai/provider";
-import { despachoActivo } from "@/server/brains/config";
-import { despacharAlCerebro } from "@/server/dispatch/encolar";
+import { activeDispatch } from "@/server/brains/config";
+import { dispatchToBrain } from "@/server/dispatch/enqueue";
 
 /**
  * Punto de enganche del turno tras la ingesta de un mensaje entrante REAL (las
@@ -25,8 +25,8 @@ export async function maybeRunAgentTurn(
   organizationId: string,
   messageId: string
 ): Promise<void> {
-  if (despachoActivo()) {
-    await despacharAlCerebro(conversationId, organizationId, messageId);
+  if (activeDispatch()) {
+    await dispatchToBrain(conversationId, organizationId, messageId);
     return;
   }
   if (!(await isAiConfiguredFor(organizationId))) return;

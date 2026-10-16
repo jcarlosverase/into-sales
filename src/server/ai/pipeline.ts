@@ -1,3 +1,4 @@
+import { silencedByAttentionHours } from "@/server/ai/attention";
 import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db";
 import { newId } from "@/lib/db/ids";
@@ -19,14 +20,14 @@ import {
 import { HANDOFF_BACKUP_ACK, matchesHandoffIntent } from "@/server/ai/handoff";
 import { buildAgentSystemPrompt } from "@/server/ai/prompts";
 import {
-  atendidoPorPersona,
-  debidosVigentes,
-  ordenarParaElTurno,
-  quedanDebidos,
-} from "@/server/ai/orden-turno";
+  handledByPerson,
+  currentOwed,
+  sortForTurn,
+  remainingOwed,
+} from "@/server/ai/turn-order";
 import { agendaEnabled } from "@/server/agenda/flag";
 import { bookSlot, offerSlots } from "@/server/agenda/agent";
-import { getOffers, mapaDeHuecosParaModelo } from "@/server/agenda/offers";
+import { getOffers, slotsMapForModel } from "@/server/agenda/offers";
 
 /**
  * Turno del agente (FR-021..FR-025).
@@ -48,7 +49,7 @@ type CoalesceEntry = {
   running: boolean;
   pending: boolean;
   /** Entrantes anotados para el siguiente turno. */
-  debidos: Set<string>;
+  owed: Set<string>;
 };
 
 const globalForAgent = globalThis as unknown as {
@@ -75,10 +76,10 @@ export function scheduleAgentTurn(
     timer: null,
     running: false,
     pending: false,
-    debidos: new Set<string>(),
+    owed: new Set<string>(),
   };
   map.set(conversationId, entry);
-  entry.debidos.add(messageId);
+  entry.owed.add(messageId);
 
   if (entry.running) {
     entry.pending = true; // se re-encola al terminar el turno actual
@@ -99,25 +100,25 @@ async function executeTurn(conversationId: string): Promise<void> {
   entry.running = true;
   // Lo anotado hasta aquí es de ESTE turno. Lo que entre desde ahora cae en
   // un conjunto nuevo: es lo que, al terminar, puede seguir debiéndose.
-  const deEsteTurno = [...entry.debidos];
-  entry.debidos = new Set();
-  let leido: TurnoLeido | undefined;
+  const fromThisTurn = [...entry.owed];
+  entry.owed = new Set();
+  let read: TurnRead | undefined;
   try {
-    leido = await runAgentTurn(conversationId, { debidos: deEsteTurno });
+    read = await runAgentTurn(conversationId, { owed: fromThisTurn });
   } catch (err) {
     console.error("[agente] turno falló:", err);
   } finally {
     entry.running = false;
     // Si el turno no llegó a leer (falló, o se calló antes de abrir el
     // historial), lo que traía se sigue debiendo.
-    if (!leido) for (const id of deEsteTurno) entry.debidos.add(id);
+    if (!read) for (const id of fromThisTurn) entry.owed.add(id);
     // Y si leyó, lo que entró mientras tanto y alcanzó a ver ya está
     // atendido: repetir el turno sería contestarle dos veces.
-    const quedan = quedanDebidos(entry.debidos, leido?.vistos);
-    entry.debidos = new Set(quedan);
-    const repetir = entry.pending && quedan.length > 0;
+    const remaining = remainingOwed(entry.owed, read?.vistos);
+    entry.owed = new Set(remaining);
+    const repeat = entry.pending && remaining.length > 0;
     entry.pending = false;
-    if (repetir) {
+    if (repeat) {
       void executeTurn(conversationId);
     } else {
       map.delete(conversationId);
@@ -126,7 +127,7 @@ async function executeTurn(conversationId: string): Promise<void> {
 }
 
 /** Lo que el turno alcanzó a leer. Ausente si no llegó a abrir el historial. */
-export type TurnoLeido = { vistos: string[] };
+export type TurnRead = { vistos: string[] };
 
 /**
  * Ejecuta UN turno del agente ahora (el Laboratorio lo llama directo, con
@@ -138,8 +139,8 @@ export type TurnoLeido = { vistos: string[] };
  */
 export async function runAgentTurn(
   conversationId: string,
-  opciones: { debidos?: readonly string[] } = {}
-): Promise<TurnoLeido | undefined> {
+  options: { owed?: readonly string[] } = {}
+): Promise<TurnRead | undefined> {
   const db = getDb();
   const convRows = await db
     .select()
@@ -170,17 +171,21 @@ export async function runAgentTurn(
   // El toggle global aplica a conversaciones reales; el Laboratorio evalúa el
   // comportamiento configurado aunque el agente aún no esté encendido.
   if (!conversation.isTest && !profile.enabled) return;
+  // 031 — «Solo fuera del horario de atención»: dentro del horario la IA calla
+  // y la conversación queda para el equipo, sin marcarla como traspasada. Se
+  // decide AHORA, al pensar el turno (D3). El Laboratorio no mira el horario (D4).
+  if (!conversation.isTest && (await silencedByAttentionHours(organizationId, profile))) return;
 
-  const recientes = await db
+  const recent = await db
     .select()
     .from(schema.message)
     .where(eq(schema.message.conversationId, conversationId))
     .orderBy(desc(schema.message.createdAt))
     .limit(20);
-  recientes.reverse();
+  recent.reverse();
   // Por id y no solo «los últimos 20»: un mensaje debido que ya no quepa en
   // esa ventana seguiría debiéndose después de cada turno.
-  const debidos = opciones.debidos?.length
+  const owed = options.owed?.length
     ? await db
         .select()
         .from(schema.message)
@@ -191,24 +196,24 @@ export async function runAgentTurn(
             and(
               eq(schema.message.conversationId, conversationId),
               eq(schema.message.direction, "in"),
-              inArray(schema.message.id, [...opciones.debidos])
+              inArray(schema.message.id, [...options.owed])
             )
           )
         )
     : [];
-  const vigentes = debidosVigentes(recientes, debidos);
-  const history = ordenarParaElTurno(recientes, vigentes);
+  const current = currentOwed(recent, owed);
+  const history = sortForTurn(recent, current);
   const lastInbound = [...history].reverse().find((m) => m.direction === "in");
   if (!lastInbound) return;
-  const leido: TurnoLeido = {
+  const read: TurnRead = {
     vistos: history.filter((m) => m.direction === "in").map((m) => m.id),
   };
 
   // Una persona contestó desde la bandeja antes de que este turno arrancara:
   // lo que lo provocó ya está atendido. Solo en el camino del coalesce (el
   // que trae debidos); el Laboratorio no tiene quien conteste a mano.
-  if (opciones.debidos && !vigentes.length && atendidoPorPersona(recientes)) {
-    return leido;
+  if (options.owed && !current.length && handledByPerson(recent)) {
+    return read;
   }
 
   // Ventana cerrada: el agente JAMÁS envía texto libre → handoff 'ventana'.
@@ -221,7 +226,7 @@ export async function runAgentTurn(
     )
   ) {
     await applyHandoff(conversationId, organizationId, "ventana");
-    return leido;
+    return read;
   }
 
   // Patrón de respaldo ANTES del LLM (FR-022). Avisa y traspasa, en el mismo
@@ -230,7 +235,7 @@ export async function runAgentTurn(
   if (lastInbound.text && matchesHandoffIntent(lastInbound.text)) {
     await acknowledgeHandoff(conversation);
     await applyHandoff(conversationId, organizationId, "cliente");
-    return leido;
+    return read;
   }
 
   const kb = await db
@@ -266,8 +271,8 @@ export async function runAgentTurn(
    *
    * Reportado por @Diony7004 en #50, con el diagnóstico ya hecho.
    */
-  const ofertas = agenda ? await getOffers(organizationId, conversationId) : [];
-  const mapaDeHuecos = mapaDeHuecosParaModelo(ofertas);
+  const offers = agenda ? await getOffers(organizationId, conversationId) : [];
+  const slotsMap = slotsMapForModel(offers);
 
   const messages: ChatMessage[] = [
     {
@@ -284,8 +289,8 @@ export async function runAgentTurn(
      * Va AL FINAL, después del historial: es el estado de AHORA, y ponerlo
      * antes lo dejaría enterrado bajo la conversación en cuanto esta crezca.
      */
-    ...(mapaDeHuecos
-      ? [{ role: "system" as const, content: mapaDeHuecos }]
+    ...(slotsMap
+      ? [{ role: "system" as const, content: slotsMap }]
       : []),
   ];
 
@@ -293,11 +298,11 @@ export async function runAgentTurn(
     organizationId,
   });
   if (!result.ok) {
-    if (result.error === "not_configured") return leido;
+    if (result.error === "not_configured") return read;
     // Fallo persistente del proveedor o salida imposible → escalar (FR-022).
     console.error(`[agente] fallo del proveedor (raw): ${result.detail}`);
     await applyHandoff(conversationId, organizationId, "error");
-    return leido;
+    return read;
   }
 
   let action: AgentActionType = result.data;
@@ -329,7 +334,7 @@ export async function runAgentTurn(
             data: { conversation: { id: conversationId } },
           });
         }
-        return leido;
+        return read;
       } catch (err) {
         console.error(`[agente] el motor de agenda falló: ${err}`);
         action = degradeAction(action);
@@ -350,30 +355,30 @@ export async function runAgentTurn(
       if (action.reply) {
         await deliverReply(conversation, action.reply);
       }
-      return leido;
+      return read;
     }
   }
 
   switch (action.action) {
     case "none":
-      return leido;
+      return read;
     case "reply":
       await deliverReply(conversation, action.text);
-      return leido;
+      return read;
     case "update_lead": {
       await appendLeadNote(organizationId, conversation.contactId, action.note);
       if (action.reply) await deliverReply(conversation, action.reply);
-      return leido;
+      return read;
     }
     case "handoff": {
       if (action.farewell) {
         await deliverReply(conversation, action.farewell);
       }
       await applyHandoff(conversationId, organizationId, "modelo");
-      return leido;
+      return read;
     }
   }
-  return leido;
+  return read;
 }
 
 type Conversation = typeof schema.conversation.$inferSelect;

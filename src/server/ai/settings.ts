@@ -7,9 +7,9 @@ import {
 } from "@/lib/ai/presets";
 import {
   envAiProvider,
-  estadoIaDe,
-  mensajeDeEstado,
-  type EstadoIa,
+  aiStatusOf,
+  statusMessage,
+  type AiStatus,
 } from "@/lib/ai/provider";
 import {
   getAiCredentialPublic,
@@ -39,7 +39,7 @@ const tokenSchema = z.string().trim().min(8).max(4096);
 
 const modelSchema = z.string().trim().min(1).max(200);
 
-const conProveedor = {
+const withProvider = {
   // Sin `.default()`: con él, `parseBody` infiere el tipo de ENTRADA (con
   // `undefined`) y el handler pierde el tipado. La UI siempre lo manda.
   provider: z.enum(AI_PROVIDERS),
@@ -47,7 +47,7 @@ const conProveedor = {
   baseUrl: baseUrlSchema.optional(),
 };
 
-function exigeBaseUrl(
+function requiresBaseUrl(
   data: { provider: AiProviderId; baseUrl?: string },
   ctx: z.RefinementCtx
 ) {
@@ -63,31 +63,31 @@ function exigeBaseUrl(
 /** `PUT /api/settings/ai`: sin `token` solo cambia proveedor/modelo. */
 export const aiSettingsPutSchema = z
   .object({
-    ...conProveedor,
+    ...withProvider,
     model: modelSchema,
     token: tokenSchema.optional(),
   })
-  .superRefine(exigeBaseUrl);
+  .superRefine(requiresBaseUrl);
 
 /** `POST /api/settings/ai/test`: sin `token` se prueba la llave guardada. */
 export const aiProbeSchema = z
   .object({
-    ...conProveedor,
+    ...withProvider,
     model: modelSchema,
     token: tokenSchema.optional(),
   })
-  .superRefine(exigeBaseUrl);
+  .superRefine(requiresBaseUrl);
 
 /** `POST /api/settings/ai/models`: sin `token` se usa la llave guardada. */
 export const aiModelsSchema = z
   .object({
-    ...conProveedor,
+    ...withProvider,
     token: tokenSchema.optional(),
   })
-  .superRefine(exigeBaseUrl);
+  .superRefine(requiresBaseUrl);
 
 /** La base URL que de verdad se usa: la del preset, o la escrita. */
-export function baseUrlEfectiva(
+export function baseUrlEffective(
   provider: AiProviderId,
   baseUrl: string | undefined
 ): string {
@@ -102,73 +102,73 @@ export function baseUrlEfectiva(
  * La llave con la que probar o listar: la escrita, o la guardada. `null` si
  * no hay ninguna de las dos.
  */
-export async function llaveParaProbar(
+export async function keyForTest(
   organizationId: string,
-  escrita: string | undefined
-): Promise<{ token: string; guardada: boolean } | null> {
-  if (escrita) return { token: escrita, guardada: false };
+  written: string | undefined
+): Promise<{ token: string; saved: boolean } | null> {
+  if (written) return { token: written, saved: false };
   const cred = await getAiCredentialSecret(organizationId);
-  return cred ? { token: cred.token, guardada: true } : null;
+  return cred ? { token: cred.token, saved: true } : null;
 }
 
 export type AiSettingsView = {
-  credencial: {
-    proveedor: AiProviderId;
+  credential: {
+    provider: AiProviderId;
     baseUrl: string;
-    modelo: string;
+    model: string;
     tokenLast4: string;
-    estado: AiCredentialPublic["status"];
-    motivo: string | null;
-    desde: string | null;
-    actualizado: string;
+    status: AiCredentialPublic["status"];
+    reason: string | null;
+    since: string | null;
+    updatedAt: string;
   } | null;
   /** Lo que resuelve el adaptador ahora mismo (fila, y si no, entorno). */
-  activa: boolean;
-  origen: "org" | "env" | null;
-  mensaje: string | null;
+  active: boolean;
+  source: "org" | "env" | null;
+  message: string | null;
   /** Las variables `OPENROUTER_*`, si están: el respaldo. */
-  respaldoEntorno: { baseUrl: string; modelo: string; tokenLast4: string } | null;
+  envFallback: { baseUrl: string; model: string; tokenLast4: string } | null;
 };
 
-export function credencialVista(
+export function credentialView(
   cred: AiCredentialPublic | null
-): AiSettingsView["credencial"] {
+): AiSettingsView["credential"] {
   if (!cred) return null;
   return {
-    proveedor: cred.provider,
+    provider: cred.provider,
     baseUrl: cred.baseUrl,
-    modelo: cred.model,
+    model: cred.model,
     tokenLast4: cred.tokenLast4,
-    estado: cred.status,
-    motivo: cred.statusReason,
-    desde: cred.statusChangedAt?.toISOString() ?? null,
-    actualizado: cred.updatedAt.toISOString(),
+    status: cred.status,
+    reason: cred.statusReason,
+    since: cred.statusChangedAt?.toISOString() ?? null,
+    updatedAt: cred.updatedAt.toISOString(),
   };
 }
 
-export async function vistaAjustesIa(
+export async function viewSettingsIa(
   organizationId: string
 ): Promise<AiSettingsView> {
-  const [cred, estado] = await Promise.all([
+  const [cred, status] = await Promise.all([
     getAiCredentialPublic(organizationId),
-    estadoIaDe(organizationId),
+    aiStatusOf(organizationId),
   ]);
-  return armarVista(cred, estado);
+  return buildView(cred, status);
 }
 
 /** Pura, para las pruebas. */
-export function armarVista(
+export function buildView(
   cred: AiCredentialPublic | null,
-  estado: EstadoIa
+  status: AiStatus
 ): AiSettingsView {
   const env = envAiProvider();
   return {
-    credencial: credencialVista(cred),
-    activa: estado.activa,
-    origen: estado.activa ? estado.origen : null,
-    mensaje: mensajeDeEstado(estado),
-    respaldoEntorno: env
-      ? { baseUrl: env.baseUrl, modelo: env.model, tokenLast4: last4(env.token) }
+    credential: credentialView(cred),
+    active: status.active,
+    source: status.active ? status.source : null,
+    message: statusMessage(status),
+    envFallback: env
+      ? { baseUrl: env.baseUrl, model: env.model, tokenLast4: last4(env.token) }
       : null,
   };
 }

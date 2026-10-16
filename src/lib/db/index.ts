@@ -7,22 +7,17 @@ import * as schema from "./schema";
  * Opciones de conexión comunes a TODA conexión que abra este repo (app, seeds,
  * migraciones, arneses E2E).
  *
- * `TimeZone: "UTC"` no es cosmético, es el invariante de tiempo del proyecto.
- * Las columnas son `timestamp without time zone`, y Drizzle las trata siempre
- * como UTC en ambas direcciones: al leer hace `new Date(valor + "+0000")` y al
- * escribir hace `valor.toISOString()`. El único escritor que se sale de ese
- * marco es SQL: `now()` de los `defaultNow()` se castea a `timestamp` usando
- * la zona de la SESIÓN, así que en un Postgres que no corra en UTC escribe
- * hora LOCAL y ese mismo valor se vuelve a leer como si fuera UTC.
+ * Las columnas de fecha son `timestamptz` (spec 1002) y la base tiene por
+ * defecto la zona de Lima: quien la abre con psql o un panel ve la hora de
+ * Lima (`-05`). La app, en cambio, fija su sesión en UTC a propósito: ya no
+ * hace falta para `now()` (un `timestamptz` guarda el instante), pero deja en
+ * UTC todo lo que depende de la zona de la sesión —`::date`, `to_char`, un
+ * texto sin zona— y el código aplica la zona del negocio solo donde la pide
+ * (Resultados, agenda, «Hoy»).
  *
- * Síntoma real (Postgres en UTC-6): un saliente mostraba 08:59 en la burbuja
- * del hilo (`message.created_at`, escrito por `now()`) y 14:59 en la lista
- * (`conversation.last_message_at`, escrito desde JS). Fijar la zona de sesión
- * en UTC alinea `now()` con Drizzle y con eso TODAS las columnas
- * `defaultNow()` del esquema de golpe, sin migración y sin depender de cómo
- * esté configurado el servidor de BD. En Docker los contenedores ya corren en
- * UTC — esto hace que el dev local y cualquier Postgres self-hosted se
- * comporten igual.
+ * Historia: con `timestamp without time zone`, un Postgres en UTC-5 hacía que
+ * `now()` escribiera hora LOCAL y se leyera como UTC (08:59 en la burbuja del
+ * hilo, 14:59 en la lista). Por eso nació esta opción.
  */
 export const PG_CONNECTION_OPTIONS = {
   onnotice: () => {},

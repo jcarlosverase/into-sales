@@ -2,20 +2,20 @@ import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db";
 import { scoped } from "@/lib/db/tenant";
 import {
-  armarEvento,
-  clasificarRespuesta,
-  firmarCuerpo,
-  CABECERA_DISPATCH,
-  CABECERA_EVENTO,
-  CABECERA_FIRMA,
-  CABECERA_ORG,
-  type EventoOlvido,
-  type EventoDespacho,
-  type MensajeParaEvento,
-  type ResultadoEntrega,
+  buildEvent,
+  classifyResponse,
+  signBody,
+  HEADER_DISPATCH,
+  HEADER_EVENT,
+  HEADER_SIGNATURE,
+  HEADER_ORG,
+  type EventForget,
+  type EventDispatch,
+  type MessageForEvent,
+  type ResultDelivery,
 } from "@/server/brains/contract";
-import { leerConfigDespacho } from "@/server/brains/config";
-import type { FilaDespacho } from "@/server/dispatch/outbox";
+import { readConfigDispatch } from "@/server/brains/config";
+import type { DispatchRow } from "@/server/dispatch/outbox";
 import { isWindowOpen, windowExpiresAt } from "@/server/inbox/window";
 import { windowMsFor } from "@/server/channels/capabilities";
 
@@ -26,16 +26,16 @@ import { windowMsFor } from "@/server/channels/capabilities";
  */
 
 /** Lo que el CRM espera por el 2xx. Significa «recibido», no «ya contesté». */
-export const TIMEOUT_ENTREGA_MS = 20_000;
+export const TIMEOUT_DELIVERY_MS = 20_000;
 
 /** Cuántos mensajes hacia atrás se mira para delimitar la ráfaga. */
-const VENTANA_DE_MENSAJES = 20;
+const MESSAGES_WINDOW = 20;
 
 /**
  * Las columnas de un mensaje que el evento necesita, con su adjunto. Función y
  * no constante: el esquema no se toca al importar el módulo.
  */
-function columnasDelMensaje() {
+function messageColumns() {
   return {
     id: schema.message.id,
     direction: schema.message.direction,
@@ -49,7 +49,7 @@ function columnasDelMensaje() {
   };
 }
 
-function paraEvento(m: {
+function forEvent(m: {
   id: string;
   createdAt: Date;
   type: string;
@@ -58,7 +58,7 @@ function paraEvento(m: {
   mimeType: string | null;
   caption: string | null;
   assetId: string | null;
-}): MensajeParaEvento {
+}): MessageForEvent {
   return {
     id: m.id,
     createdAt: m.createdAt,
@@ -89,14 +89,14 @@ function paraEvento(m: {
  * sea del agente): ese mensaje ya tuvo quien lo atendiera, y mandárselo al
  * cerebro sería contestarle dos veces al cliente.
  */
-export async function rafagaDe(
+export async function burstOf(
   organizationId: string,
   conversationId: string,
-  debidos: readonly string[] = []
-): Promise<MensajeParaEvento[]> {
+  owed: readonly string[] = []
+): Promise<MessageForEvent[]> {
   const db = getDb();
-  const filas = await db
-    .select(columnasDelMensaje())
+  const rows = await db
+    .select(messageColumns())
     .from(schema.message)
     .leftJoin(
       schema.mediaAsset,
@@ -110,25 +110,25 @@ export async function rafagaDe(
       )
     )
     .orderBy(desc(schema.message.createdAt))
-    .limit(VENTANA_DE_MENSAJES);
+    .limit(MESSAGES_WINDOW);
 
-  const ordenados = filas.slice().reverse();
-  const ultimaSalida = ordenados.reduce(
+  const sorted = rows.slice().reverse();
+  const lastOutput = sorted.reduce(
     (idx, m, i) => (m.direction === "out" ? i : idx),
     -1
   );
-  const rafaga = ordenados
-    .slice(ultimaSalida + 1)
+  const burst = sorted
+    .slice(lastOutput + 1)
     .filter((m) => m.direction === "in");
 
-  const enRafaga = new Set(rafaga.map((m) => m.id));
-  const faltan = [...new Set(debidos)].filter((id) => !enRafaga.has(id));
-  if (!faltan.length) return rafaga.map(paraEvento);
+  const inBurst = new Set(burst.map((m) => m.id));
+  const missing = [...new Set(owed)].filter((id) => !inBurst.has(id));
+  if (!missing.length) return burst.map(forEvent);
 
   // La comparación de horas se hace en Postgres, que guarda microsegundos: en
   // JS dos mensajes del mismo milisegundo no tienen orden.
-  const atrasados = await db
-    .select(columnasDelMensaje())
+  const overdue = await db
+    .select(messageColumns())
     .from(schema.message)
     .leftJoin(
       schema.mediaAsset,
@@ -141,21 +141,21 @@ export async function rafagaDe(
         and(
           eq(schema.message.conversationId, conversationId),
           eq(schema.message.direction, "in"),
-          inArray(schema.message.id, faltan),
+          inArray(schema.message.id, missing),
           sql`${schema.message.createdAt} > coalesce((
             select max(s.created_at) from message s
             where s.organization_id = ${organizationId}
               and s.conversation_id = ${conversationId}
               and s.direction = 'out'
               and s.ai_generated = false
-          ), '-infinity'::timestamp)`
+          ), '-infinity'::timestamptz)`
         )
       )
     )
     .orderBy(schema.message.createdAt);
   // Los atrasados son, por definición, anteriores al último saliente; la
   // ráfaga, posterior. Concatenar ya los deja en orden.
-  return [...atrasados, ...rafaga].map(paraEvento);
+  return [...overdue, ...burst].map(forEvent);
 }
 
 /**
@@ -166,20 +166,20 @@ export async function rafagaDe(
  * hay algo nuevo, se encola otro despacho. Se compara por id y no por hora por
  * lo mismo que el lease: microsegundos contra milisegundos.
  */
-export function hayMensajesSinDespachar(
-  entregados: readonly string[],
-  rafagaActual: readonly { id: string }[]
+export function hasUndispatchedMessages(
+  delivered: readonly string[],
+  currentBurst: readonly { id: string }[]
 ): boolean {
-  return sinDespachar(entregados, rafagaActual).length > 0;
+  return withoutDispatch(delivered, currentBurst).length > 0;
 }
 
 /** Pura: cuáles. Son los ids que el despacho siguiente lleva anotados. */
-export function sinDespachar(
-  entregados: readonly string[],
-  rafagaActual: readonly { id: string }[]
+export function withoutDispatch(
+  delivered: readonly string[],
+  currentBurst: readonly { id: string }[]
 ): string[] {
-  const vistos = new Set(entregados);
-  return rafagaActual.filter((m) => !vistos.has(m.id)).map((m) => m.id);
+  const seen = new Set(delivered);
+  return currentBurst.filter((m) => !seen.has(m.id)).map((m) => m.id);
 }
 
 /**
@@ -190,9 +190,9 @@ export function sinDespachar(
  * de la ventana y ya no se debe nada. Ese evento no se entrega; quien llama lo
  * descarta.
  */
-export async function construirEvento(
-  fila: FilaDespacho
-): Promise<EventoDespacho | null> {
+export async function buildEventValue(
+  row: DispatchRow
+): Promise<EventDispatch | null> {
   const db = getDb();
   const [conv] = await db
     .select()
@@ -200,8 +200,8 @@ export async function construirEvento(
     .where(
       scoped(
         schema.conversation.organizationId,
-        fila.organizationId,
-        eq(schema.conversation.id, fila.conversationId)
+        row.organizationId,
+        eq(schema.conversation.id, row.conversationId)
       )
     )
     .limit(1);
@@ -210,7 +210,7 @@ export async function construirEvento(
   const [org] = await db
     .select({ id: schema.organization.id, slug: schema.organization.slug })
     .from(schema.organization)
-    .where(eq(schema.organization.id, fila.organizationId))
+    .where(eq(schema.organization.id, row.organizationId))
     .limit(1);
   if (!org) return null;
 
@@ -220,21 +220,21 @@ export async function construirEvento(
     .where(
       scoped(
         schema.contact.organizationId,
-        fila.organizationId,
+        row.organizationId,
         eq(schema.contact.id, conv.contactId)
       )
     )
     .limit(1);
   if (!contact) return null;
 
-  const messages = await rafagaDe(
-    fila.organizationId,
+  const messages = await burstOf(
+    row.organizationId,
     conv.id,
-    fila.messageIds ?? []
+    row.messageIds ?? []
   );
 
-  return armarEvento({
-    dispatchId: fila.id,
+  return buildEvent({
+    dispatchId: row.id,
     organization: org,
     conversation: {
       id: conv.id,
@@ -257,8 +257,8 @@ export async function construirEvento(
       identity: contact.waIdentity,
     },
     messages,
-    firstMessageAt: fila.firstMessageAt,
-    lastMessageAt: fila.lastMessageAt,
+    firstMessageAt: row.firstMessageAt,
+    lastMessageAt: row.lastMessageAt,
   });
 }
 
@@ -270,41 +270,41 @@ export async function construirEvento(
  * redirecciones —un cerebro no redirige, y seguirlas sería mandarle el turno a
  * donde diga otro—, y ni el cuerpo ni la llave llegan a un log.
  */
-export async function entregar(
-  evento: EventoDespacho,
-  destino: { url: string; secret: string },
+export async function deliver(
+  event: EventDispatch,
+  destination: { url: string; secret: string },
   opts: { timeoutMs?: number; fetchImpl?: typeof fetch } = {}
-): Promise<ResultadoEntrega> {
-  const cuerpo = JSON.stringify(evento);
+): Promise<ResultDelivery> {
+  const body = JSON.stringify(event);
   const controller = new AbortController();
   const timer = setTimeout(
     () => controller.abort(),
-    opts.timeoutMs ?? TIMEOUT_ENTREGA_MS
+    opts.timeoutMs ?? TIMEOUT_DELIVERY_MS
   );
   try {
-    const res = await (opts.fetchImpl ?? fetch)(destino.url, {
+    const res = await (opts.fetchImpl ?? fetch)(destination.url, {
       method: "POST",
       headers: {
         "content-type": "application/json",
-        [CABECERA_FIRMA]: firmarCuerpo(cuerpo, destino.secret),
-        [CABECERA_DISPATCH]: evento.dispatchId,
-        [CABECERA_ORG]: evento.organization.slug ?? evento.organization.id,
+        [HEADER_SIGNATURE]: signBody(body, destination.secret),
+        [HEADER_DISPATCH]: event.dispatchId,
+        [HEADER_ORG]: event.organization.slug ?? event.organization.id,
       },
       redirect: "manual",
       cache: "no-store",
-      body: cuerpo,
+      body: body,
       signal: controller.signal,
     });
     await res.body?.cancel().catch(() => {});
-    return clasificarRespuesta(res.status);
+    return classifyResponse(res.status);
   } catch {
     // Sin respuesta a tiempo, nombre que no resuelve, conexión rechazada:
     // todo reintentable. El cerebro puede estar reiniciándose.
     return {
       ok: false,
-      reintentable: true,
-      detalle: controller.signal.aborted
-        ? `el cerebro no contestó en ${Math.round((opts.timeoutMs ?? TIMEOUT_ENTREGA_MS) / 1000)} s`
+      retryable: true,
+      detail: controller.signal.aborted
+        ? `el cerebro no contestó en ${Math.round((opts.timeoutMs ?? TIMEOUT_DELIVERY_MS) / 1000)} s`
         : "no se pudo conectar con el cerebro",
     };
   } finally {
@@ -313,13 +313,13 @@ export async function entregar(
 }
 
 /** 026 — Lo que ve quien eliminó: si el cerebro confirmó que olvidó. */
-export type ResultadoOlvido = "no_aplica" | "avisado" | "sin_confirmar";
+export type ResultForget = "no_aplica" | "avisado" | "sin_confirmar";
 
 /**
  * No se le hace esperar a quien elimina lo que espera un despacho: quien acusa
  * recibo de un borrado solo tiene que guardarlo, no pensar una respuesta.
  */
-export const TIMEOUT_OLVIDO_MS = 8000;
+export const TIMEOUT_FORGET_MS = 8000;
 
 /**
  * 026 — Le avisa al cerebro que una conversación se eliminó.
@@ -332,39 +332,39 @@ export const TIMEOUT_OLVIDO_MS = 8000;
  * Sin despacho configurado no hay a quién avisar: el agente incluido no guarda
  * nada aparte, su memoria ERAN los mensajes. Nunca lanza.
  */
-export async function avisarOlvido(
-  evento: EventoOlvido,
+export async function notifyForget(
+  event: EventForget,
   opts: {
-    destino?: { url: string; secret: string } | null;
+    destination?: { url: string; secret: string } | null;
     timeoutMs?: number;
     fetchImpl?: typeof fetch;
   } = {}
-): Promise<ResultadoOlvido> {
-  const config = leerConfigDespacho();
-  const destino =
-    opts.destino !== undefined
-      ? opts.destino
+): Promise<ResultForget> {
+  const config = readConfigDispatch();
+  const destination =
+    opts.destination !== undefined
+      ? opts.destination
       : config.active
         ? { url: config.url, secret: config.secret }
         : null;
-  if (!destino) return "no_aplica";
+  if (!destination) return "no_aplica";
 
   // Se serializa UNA vez y se firma ese string, igual que un despacho.
-  const cuerpo = JSON.stringify(evento);
+  const body = JSON.stringify(event);
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), opts.timeoutMs ?? TIMEOUT_OLVIDO_MS);
+  const timer = setTimeout(() => controller.abort(), opts.timeoutMs ?? TIMEOUT_FORGET_MS);
   try {
-    const res = await (opts.fetchImpl ?? fetch)(destino.url, {
+    const res = await (opts.fetchImpl ?? fetch)(destination.url, {
       method: "POST",
       headers: {
         "content-type": "application/json",
-        [CABECERA_FIRMA]: firmarCuerpo(cuerpo, destino.secret),
-        [CABECERA_EVENTO]: evento.type,
-        [CABECERA_ORG]: evento.organization.slug ?? evento.organization.id,
+        [HEADER_SIGNATURE]: signBody(body, destination.secret),
+        [HEADER_EVENT]: event.type,
+        [HEADER_ORG]: event.organization.slug ?? event.organization.id,
       },
       redirect: "manual",
       cache: "no-store",
-      body: cuerpo,
+      body: body,
       signal: controller.signal,
     });
     await res.body?.cancel().catch(() => {});
