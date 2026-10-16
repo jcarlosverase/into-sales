@@ -1,6 +1,6 @@
 /**
  * Self-test E2E de comportamiento — búsqueda de la Bandeja y filtro por etapa
- * del embudo (Bandeja + Contactos). Guion tests/e2e/us-busqueda-filtros.md.
+ * del embudo (Bandeja + Contactos). Guion tests/e2e/us-search-filters.md.
  *
  * Reproduce el fallo reportado el 2026-08-05: teclear en el buscador mientras
  * la página aún hidrata descartaba el texto en silencio, y el teléfono solo

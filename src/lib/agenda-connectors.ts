@@ -8,7 +8,7 @@
  * Un conector es la forma en que la cita se convierte en una reunión. El motor
  * no sabe de proveedores: PREGUNTA capacidades, igual que el envío pregunta las
  * del canal. Agregar el tuyo en un fork es escribir su adaptador y declararlo
- * aquí — ver docs/agenda-conectores.md.
+ * aquí — ver docs/agenda-connectors.md.
  */
 
 export type ConnectorId = "enlace-fijo" | "zoom" | "google";

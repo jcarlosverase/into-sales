@@ -1,6 +1,6 @@
 /**
  * Self-test E2E de comportamiento — icono de la pestaña y logo de la barra
- * (guion tests/e2e/us-diseno-atlas.md, secciones "icono" y "logo").
+ * (guion tests/e2e/us-atlas-design.md, secciones "icono" y "logo").
  *
  * Dos cosas se prueban aquí sobre todo: que TODA instancia tenga icono sin
  * configurar nada, y que no se pueda colar un documento haciéndolo pasar por

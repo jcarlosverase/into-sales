@@ -3,7 +3,7 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 /**
  * 021 — El contrato del despacho: lo que el CRM le manda a un cerebro externo
  * cuando un cliente escribe. Ver
- * `specs/021-despacho-estandar/contracts/despacho.md`. Este módulo define la
+ * `specs/021-standard-dispatch/contracts/dispatch.md`. Este módulo define la
  * FORMA del evento y la firma; no habla con nadie ni toca la base.
  *
  * La regla que lo sostiene: el cerebro recibe un evento NORMALIZADO. No sabe

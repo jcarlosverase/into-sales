@@ -13,7 +13,7 @@
  *      ZERNIO_BASE_URL → zernio-mock.
  *   2) node --env-file=.env scripts/e2e-channels.mjs
  *
- * Sale con código 1 si algún check falla. Guion: tests/e2e/us-canales.md.
+ * Sale con código 1 si algún check falla. Guion: tests/e2e/us-channels.md.
  */
 import { createHmac } from "node:crypto";
 

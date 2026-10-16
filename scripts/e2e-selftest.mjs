@@ -1614,7 +1614,7 @@ async function whoAnswers(convId, status, url, nea) {
 }
 
 /* ============================================================
- * Guía de inicio — la primera pantalla (tests/e2e/us-guia-de-inicio.md, #86)
+ * Guía de inicio — la primera pantalla (tests/e2e/us-onboarding-guide.md, #86)
  *
  * Lo que se protege: que la raíz mande a la guía mientras falte un paso o el
  * agente siga apagado, que cada paso se marque solo cuando la pieza de verdad
@@ -2750,7 +2750,7 @@ main().catch((err) => {
 });
 
 /* ============================================================
- * 016 — Atribución de anuncios y Conversions API (tests/e2e/us-atribucion.md)
+ * 016 — Atribución de anuncios y Conversions API (tests/e2e/us-attribution.md)
  *
  * Cubre las dos configuraciones de la bandera, la conexión del dataset, la
  * captura del anuncio, los dos eventos con la FORMA de su payload, el dedup,
@@ -3142,7 +3142,7 @@ async function attributionChecks() {
 }
 
 /* ============================================================
- * 018 — De qué anuncio llegó cada conversación (tests/e2e/us-atribucion.md)
+ * 018 — De qué anuncio llegó cada conversación (tests/e2e/us-attribution.md)
  *
  * Corre con la bandera ATRIBUCION apagada Y encendida: el origen del anuncio
  * se ve siempre, y lo único que cambia es si Meta identificó el clic. Puerto
@@ -3555,7 +3555,7 @@ async function r11BotChecks() {
 }
 
 /**
- * 028 — Latido al servicio central (tests/e2e/us-latido-central.md). Con la
+ * 028 — Latido al servicio central (tests/e2e/us-central-heartbeat.md). Con la
  * bandera apagada, la superficie no existe. Encendida, apunta al mock del
  * central de este mismo CRM (`INTO_CENTRAL_URL=${BASE}/api/dev/central-mock`):
  * el final de la llave elige la respuesta del mock.
@@ -3654,7 +3654,7 @@ async function centralChecks() {
 }
 
 /**
- * 029 — «A quién llamar hoy» (tests/e2e/us-hoy.md). El operador del arnés es
+ * 029 — «A quién llamar hoy» (tests/e2e/us-today.md). El operador del arnés es
  * el dueño (supervisor): ve la lista de todos.
  */
 async function todayChecks() {
@@ -3736,7 +3736,7 @@ async function todayChecks() {
 }
 
 /**
- * 030 — Importar contactos (tests/e2e/us-importar.md): un CSV por la API, el
+ * 030 — Importar contactos (tests/e2e/us-import-contacts.md): un CSV por la API, el
  * `.xlsx` de las pruebas y el diálogo a 360 px.
  */
 async function importChecks() {
@@ -3809,7 +3809,7 @@ async function importChecks() {
 
 /**
  * 031 — La IA responde solo fuera del horario de atención
- * (tests/e2e/us-ia-fuera-de-horario.md). Con el ai-mock: un horario que cubre
+ * (tests/e2e/us-ai-after-hours.md). Con el ai-mock: un horario que cubre
  * todo el día deja callada a la IA; sin horario (sin atención) contesta.
  */
 async function attentionChecks() {
@@ -3901,7 +3901,7 @@ async function attentionChecks() {
   await api("/api/agent/profile", { method: "PUT", body: JSON.stringify({ enabled: false, replyMode: "always", attentionHours: before?.profile?.attentionHours ?? {} }) });
 }
 
-/** 1000 — «Acerca de» (tests/e2e/us-acerca-de.md). */
+/** 1000 — «Acerca de» (tests/e2e/us-about.md). */
 async function aboutChecks() {
   console.log("\n== 1000: acerca de ==");
   const health = (await api("/api/health")).json;

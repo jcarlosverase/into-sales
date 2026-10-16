@@ -1,6 +1,6 @@
 /**
  * Self-test E2E de comportamiento — pantalla RESULTADOS (spec 019,
- * tests/e2e/us-resultados.md).
+ * tests/e2e/us-results.md).
  *
  * Siembra por los caminos REALES —el webhook (wa-mock) con y sin `referral`,
  * la API del pipeline, el agente in-process contra el ai-mock, un envío que

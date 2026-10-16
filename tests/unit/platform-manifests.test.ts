@@ -93,7 +93,7 @@ describe.each([
 
   it("no define MEDIA_DIR: la imagen ya trae /data/media dentro del volumen", () => {
     // Definirla en la plataforma es exactamente cómo se mandan los adjuntos
-    // fuera del volumen (INSTALL-IA.md, «Diagnóstico rápido»).
+    // fuera del volumen (INSTALL-AI.md, «Diagnóstico rápido»).
     expect(withoutComments(text)).not.toMatch(/MEDIA_DIR\s*[=:]/);
   });
 
@@ -201,12 +201,12 @@ describe("railway.toml: solo build, healthcheck y reinicio; el resto, con la CLI
 });
 
 describe("la documentación lleva a los manifests", () => {
-  it("el README tiene la sección y enlaza los tres; INSTALL-IA.md apunta a ella", () => {
+  it("el README tiene la sección y enlaza los tres; INSTALL-AI.md apunta a ella", () => {
     const readme = read("README.md");
     expect(readme).toMatch(/^### Otras plataformas/m);
     for (const file of ["render.yaml", "fly.toml", "railway.toml"]) {
       expect(readme).toContain(`](${file})`);
     }
-    expect(read("INSTALL-IA.md")).toMatch(/Otras plataformas/);
+    expect(read("INSTALL-AI.md")).toMatch(/Otras plataformas/);
   });
 });

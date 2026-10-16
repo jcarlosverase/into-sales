@@ -28,7 +28,7 @@ Motivación:
   cliente necesita ver en su CRM qué plan tiene. La spec 028 (latido al
   servicio central) lo hace como conector opcional; la 1.4.0 lo prohibía por
   dos frases. Propuesta por escrito:
-  specs/028-latido-al-central/enmienda-constitucional.md. Pedida por el
+  specs/028-central-heartbeat/constitution-amendment.md. Pedida por el
   responsable el 2026-10-14; el texto espera su revisión antes del commit.
 
 Plantillas dependientes:

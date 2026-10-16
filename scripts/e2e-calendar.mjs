@@ -1,6 +1,6 @@
 /**
  * Self-test E2E de comportamiento — 215: Citas en calendario (Día, Semana,
- * Mes y Lista). Guion: tests/e2e/us-calendario.md
+ * Mes y Lista). Guion: tests/e2e/us-calendar.md
  *
  * Conduce la app real con un navegador en OTRA zona horaria que la del
  * negocio (Tokio contra Lima, 14 h de diferencia) para probar que

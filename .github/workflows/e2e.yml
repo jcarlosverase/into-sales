@@ -1,0 +1,126 @@
+name: E2E
+
+# El recorrido de punta a punta (Definición de Hecho REFORZADA, CLAUDE.md):
+# la app viva con los mocks (wa-mock, ai-mock y los de agenda y central) y
+# `scripts/e2e-selftest.mjs` conduciéndola como un usuario, con Playwright.
+#
+# Corre en las dos configuraciones del CI, por la misma razón: el código que
+# viaja en main tiene que servir con los módulos apagados (`default`) y con
+# todo encendido (`completo`). En `completo` corren además los guiones del
+# calendario, de Resultados y de la ficha del lead, que necesitan la agenda.
+#
+# Es `next dev` y no `next start` a propósito: los mocks responden 404 en
+# producción (src/lib/dev-guard.ts), y sin ellos no hay a quién hablarle.
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# Tres pushes seguidos a un PR no necesitan tres corridas: manda la última.
+# En `main` no se cancela nada — ahí el historial de qué pasó importa.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+# Solo lectura: ninguno de estos pasos escribe en el repo.
+permissions:
+  contents: read
+
+jobs:
+  e2e:
+    name: ${{ matrix.config.name }} · e2e
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+          - name: default
+            channels: ""
+            agenda: ""
+            central: ""
+          - name: completo
+            channels: "whatsapp,instagram,messenger,tiktok"
+            agenda: "on"
+            central: "http://localhost:3000/api/dev/central-mock"
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: vocero_e2e
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    # Solo valores de prueba: nada aquí es un secreto de verdad.
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/vocero_e2e
+      APP_BASE_URL: http://localhost:3000
+      BETTER_AUTH_SECRET: ci-e2e-secret-ci-e2e-secret-ci-e2e-secret
+      ENCRYPTION_KEY: AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=
+      META_WEBHOOK_VERIFY_TOKEN: ci-e2e-webhook-token
+      WA_MOCK_ENABLED: "true"
+      META_GRAPH_BASE_URL: http://localhost:3000/api/dev/wa-mock/graph
+      OPENROUTER_BASE_URL: http://localhost:3000/api/dev/ai-mock
+      OPENROUTER_API_TOKEN: test-token
+      OPENROUTER_MODEL: mock-model
+      BOT_API_KEY: e2e-bot-key-0123456789
+      MEDIA_DIR: ${{ github.workspace }}/.e2e-media
+      CHANNELS: ${{ matrix.config.channels }}
+      AGENDA: ${{ matrix.config.agenda }}
+      INTO_CENTRAL_URL: ${{ matrix.config.central }}
+      ZOOM_BASE_URL: http://localhost:3000/api/dev/zoom-mock
+      ZOOM_OAUTH_BASE_URL: http://localhost:3000/api/dev/zoom-mock
+      GOOGLE_CAL_BASE_URL: http://localhost:3000/api/dev/google-mock
+      GOOGLE_OAUTH_BASE_URL: http://localhost:3000/api/dev/google-mock
+      NEXT_TELEMETRY_DISABLED: "1"
+
+    steps:
+      - uses: actions/checkout@v7
+
+      # Antes que setup-node, porque su caché necesita pnpm ya instalado.
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: install
+        run: pnpm install --frozen-lockfile
+
+      - name: playwright
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: migrate
+        run: pnpm db:migrate
+
+      # La app en segundo plano; el siguiente paso espera a que responda.
+      - name: app
+        run: |
+          pnpm exec next dev --port 3000 > app.log 2>&1 &
+          for i in $(seq 1 90); do curl -sf localhost:3000/api/health > /dev/null && exit 0; sleep 2; done
+          cat app.log; exit 1
+
+      - name: e2e
+        run: node scripts/e2e-selftest.mjs
+
+      - name: e2e · calendario, Resultados y ficha
+        if: ${{ !cancelled() && matrix.config.name == 'completo' }}
+        run: |
+          node scripts/e2e-calendar.mjs
+          node scripts/e2e-results.mjs
+          node scripts/e2e-qualification.mjs
+
+      # Solo si algo falló: el registro de la app dice el porqué.
+      - name: registro de la app
+        if: ${{ failure() }}
+        run: tail -200 app.log

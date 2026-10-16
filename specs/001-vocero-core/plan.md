@@ -127,7 +127,7 @@ tests/
 │                                  # mocks-prod-404, registro cerrado, lab-sandbox, juez
 └── e2e/                           # guiones del self-test (conducidos vía Playwright)
 
-Dockerfile · docker-compose.yml · Caddyfile · INSTALL-IA.md · README.md · .env.example
+Dockerfile · docker-compose.yml · Caddyfile · INSTALL-AI.md · README.md · .env.example
 ```
 
 **Structure Decision**: Monolito Next.js de un solo paquete. Fronteras de modificación

@@ -1,6 +1,6 @@
 /**
  * Self-test E2E de comportamiento — un envío fallido DEBE decir por qué.
- * Guion tests/e2e/us-envio-fallido.md.
+ * Guion tests/e2e/us-send-failure.md.
  *
  * Reproduce un caso real: se manda una plantilla APROBADA y el operador solo
  * ve un triángulo mudo. Meta sí había explicado el motivo (error 130472,

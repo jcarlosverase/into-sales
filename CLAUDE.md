@@ -38,27 +38,27 @@ externas: el trabajo en segundo plano (agente, Laboratorio) es in-process.
 | Las personas o el juez del Laboratorio | `src/server/lab/personas.ts` · `src/server/lab/judge.ts` |
 | El canal WhatsApp (Graph API) | `src/lib/meta/` (cliente único) + `src/server/whatsapp/` |
 | Los canales opcionales (Instagram, Messenger; ADR-001) | `src/lib/channels.ts` (catálogo) · `src/server/channels/` (capacidades y bandera `CHANNELS`) · `src/server/instagram/` · `src/server/messenger/` · `src/server/zernio/` (transporte y firma de la API unificada, compartido) |
-| Campos/tablas | `src/lib/db/schema.ts` → `pnpm db:generate` → migración nueva en `drizzle/` · las fechas siempre `timestamp(..., { withTimezone: true })` (spec [1002](specs/1002-base-en-hora-de-lima/spec.md)) |
+| Campos/tablas | `src/lib/db/schema.ts` → `pnpm db:generate` → migración nueva en `drizzle/` · las fechas siempre `timestamp(..., { withTimezone: true })` (spec [1002](specs/1002-lima-database-timezone/spec.md)) |
 | La ingesta/envío de mensajes | `src/server/inbox/` (ingest idempotente, send con guard de sandbox, ventana 24h) |
 | Cómo se identifica a un contacto | `src/server/inbox/identity.ts` (teléfono normalizado o `bsuid:<id>`) |
 | Conectar TU propio bot en vez del agente | `src/app/api/bot/*` + `src/server/bot/auth.ts` (X-API-Key) · quién responde (agente incluido, cerebro externo, doble respuesta): `src/server/bot/status.ts` + `GET /api/agent/brain-status` |
 | La agenda (horarios, huecos, citas) | `src/server/agenda/` — detrás de la bandera `AGENDA` (`flag.ts`) |
-| Cómo se entrega la reunión (Zoom, Meet…) | `src/server/agenda/connectors/` + catálogo en `src/lib/agenda-connectors.ts` · guía: [docs/agenda-conectores.md](docs/agenda-conectores.md) |
+| Cómo se entrega la reunión (Zoom, Meet…) | `src/server/agenda/connectors/` + catálogo en `src/lib/agenda-connectors.ts` · guía: [docs/agenda-connectors.md](docs/agenda-connectors.md) |
 | De qué anuncio llegó cada conversación (siempre visible) | `src/server/attribution/referral.ts` (normalización) · `creative.ts` (copia de la imagen, solo hosts de Meta) · `store.ts` · tarjeta en `src/components/ad-origin.tsx` |
-| Los números de Resultados (ventas, agente, origen y anuncios, higiene) | `src/server/analytics/` (un módulo por sección; periodo en la zona del negocio en `period.ts`; exclusión del Laboratorio en `shared.ts`) · contratos y tasas en `src/lib/analytics.ts` · UI en `src/components/results/` · spec [019](specs/019-resultados/spec.md) |
-| La atribución de anuncios y el reporte a Meta | `src/server/attribution/` — el `ctwa_clid`, la CAPI y Ajustes → Anuncios detrás de la bandera `ATRIBUCION` (`flag.ts`) + `src/lib/meta/capi.ts` · guía: [docs/atribucion-capi.md](docs/atribucion-capi.md) |
-| «Hoy»: a quién llamar (seguimientos y leads sin primer contacto) | `src/server/leads/today.ts` (consulta, con el alcance de la 022) · `src/lib/today.ts` (fechas y orden) · `GET /api/today` · pantalla `src/components/today/` · próximo contacto en `src/components/pipeline/follow-up-picker.tsx` · spec [029](specs/029-a-quien-llamar-hoy/spec.md) |
-| Importar contactos desde Excel o CSV | `src/lib/import/` (lectura de CSV y `.xlsx` sin dependencias, columnas y teléfonos) · `src/server/contacts-import.ts` · `POST /api/contacts/import[/preview]` · diálogo `src/components/contacts/import-dialog.tsx` · spec [030](specs/030-importar-contactos/spec.md) |
-| Cuándo responde la IA (siempre o solo fuera del horario de atención) | `src/lib/attention.ts` (regla y esquema) · `src/server/ai/attention.ts` (horario efectivo y la puerta) · puerta en `src/server/ai/pipeline.ts` · `/api/agent/profile` · `src/components/agent/attention-hours.tsx` · spec [031](specs/031-ia-fuera-de-horario/spec.md) |
-| El latido al servicio central de into y el plan (opcional) | `src/server/central/` — bandera `INTO_CENTRAL_URL` (`flag.ts`), adaptador del contrato (`client.ts`), llave cifrada (`license.ts`), temporizador (`heartbeat.ts`) · Ajustes → Plan · spec [028](specs/028-latido-al-central/spec.md) |
-| La instalación en un VPS con un comando | `deploy/install.sh` + `deploy/docker-compose.vps.yml` (capa sobre `docker-compose.yml`: apaga su Caddy y usa el compartido `into-edge`) · guía: [docs/instalador-vps.md](docs/instalador-vps.md) · spec [1001](specs/1001-instalador-vps/spec.md) |
+| Los números de Resultados (ventas, agente, origen y anuncios, higiene) | `src/server/analytics/` (un módulo por sección; periodo en la zona del negocio en `period.ts`; exclusión del Laboratorio en `shared.ts`) · contratos y tasas en `src/lib/analytics.ts` · UI en `src/components/results/` · spec [019](specs/019-results/spec.md) |
+| La atribución de anuncios y el reporte a Meta | `src/server/attribution/` — el `ctwa_clid`, la CAPI y Ajustes → Anuncios detrás de la bandera `ATRIBUCION` (`flag.ts`) + `src/lib/meta/capi.ts` · guía: [docs/capi-attribution.md](docs/capi-attribution.md) |
+| «Hoy»: a quién llamar (seguimientos y leads sin primer contacto) | `src/server/leads/today.ts` (consulta, con el alcance de la 022) · `src/lib/today.ts` (fechas y orden) · `GET /api/today` · pantalla `src/components/today/` · próximo contacto en `src/components/pipeline/follow-up-picker.tsx` · spec [029](specs/029-who-to-call-today/spec.md) |
+| Importar contactos desde Excel o CSV | `src/lib/import/` (lectura de CSV y `.xlsx` sin dependencias, columnas y teléfonos) · `src/server/contacts-import.ts` · `POST /api/contacts/import[/preview]` · diálogo `src/components/contacts/import-dialog.tsx` · spec [030](specs/030-import-contacts/spec.md) |
+| Cuándo responde la IA (siempre o solo fuera del horario de atención) | `src/lib/attention.ts` (regla y esquema) · `src/server/ai/attention.ts` (horario efectivo y la puerta) · puerta en `src/server/ai/pipeline.ts` · `/api/agent/profile` · `src/components/agent/attention-hours.tsx` · spec [031](specs/031-ai-after-hours/spec.md) |
+| El latido al servicio central de into y el plan (opcional) | `src/server/central/` — bandera `INTO_CENTRAL_URL` (`flag.ts`), adaptador del contrato (`client.ts`), llave cifrada (`license.ts`), temporizador (`heartbeat.ts`) · Ajustes → Plan · spec [028](specs/028-central-heartbeat/spec.md) |
+| La instalación en un VPS con un comando | `deploy/install.sh` + `deploy/docker-compose.vps.yml` (capa sobre `docker-compose.yml`: apaga su Caddy y usa el compartido `into-edge`) · guía: [docs/vps-installer.md](docs/vps-installer.md) · spec [1001](specs/1001-vps-installer/spec.md) |
 | La página de salud del CRM (base de datos, migraciones, archivos, WhatsApp, IA, cerebro, central) | `src/server/system-health.ts` (reusa los chequeos de `src/server/doctor/checks.ts`) · `src/app/(app)/settings/health/page.tsx` · spec [1004](specs/1004-health-page/spec.md) |
 | UI | `src/components/` + `src/app/(app)/` |
 
 **Idioma (2026-10-16, decisión de Juan Carlos):** de aquí en adelante, todo el
 código va en inglés: identificadores (funciones, variables, tipos, constantes) y
 nombres de archivos y carpetas (`src/`, `scripts/`, `tests/`, `deploy/`, y
-también las carpetas de `specs/` y los guiones de `tests/e2e/` nuevos). Los
+también las carpetas de `specs/`, los guiones de `tests/e2e/`, los archivos de `docs/` y los workflows de `.github/` nuevos). Los
 comentarios pueden ir en español, y la interfaz y el contenido de los `.md`
 siguen en español. El código que ya existía se tradujo el 2026-10-16. No se traducen las claves
 que son datos o contratos: el campo `ficha` de la API del bot y el contrato del
@@ -110,8 +110,8 @@ Ver [.specify/memory/constitution.md](.specify/memory/constitution.md).
 - **Módulos opcionales (015, 016)**: lo que no usa toda instancia va detrás de una
   bandera de despliegue, apagado por defecto, con su superficie en 404 y la
   migración aplicada igual. Nunca en una rama aparte
-  ([ADR-001](docs/adr-001-canales-opcionales.md),
-  [ADR-002](docs/adr-002-conectores-de-agenda.md)).
+  ([ADR-001](docs/adr-001-optional-channels.md),
+  [ADR-002](docs/adr-002-agenda-connectors.md)).
 
 ## Variables de entorno
 

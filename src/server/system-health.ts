@@ -94,7 +94,7 @@ export function mediaRow(probe: MediaDirProbe | null): HealthRow {
         label,
         status: "fail",
         detail: `${probe.dir} no se puede escribir (${probe.code}): no se guardarán adjuntos, logo ni icono`,
-        fix: "Monta un volumen escribible en /data (ver docs/instalador-vps.md).",
+        fix: "Monta un volumen escribible en /data (ver docs/vps-installer.md).",
       };
 }
 

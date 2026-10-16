@@ -87,7 +87,7 @@ empezó y nadie cerró, hasta 7 días) y `lastClosed` (la última cerrada en 7
 días). Con la agenda apagada `booking` **no viene**, ni vacío. Es aditivo: un
 bot que no lo lee no cambia. Las citas de prueba no aparecen nunca. La forma
 completa está en
-[`specs/015-motor-agenda-universal/contracts/agenda.md`](../../specs/015-motor-agenda-universal/contracts/agenda.md);
+[`specs/015-universal-booking-engine/contracts/agenda.md`](../../specs/015-universal-booking-engine/contracts/agenda.md);
 los casos con citas, en [`us-agenda.md`](us-agenda.md).
 
 ## Ficha de calificación

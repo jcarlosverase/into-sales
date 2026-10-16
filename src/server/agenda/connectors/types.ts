@@ -5,7 +5,7 @@ import type { ConnectorId } from "@/lib/agenda-connectors";
  *
  * Deliberadamente pequeño: CUATRO operaciones, medidas del uso real en
  * producción de la integración de Zoom del fork de agencia — ni una más en
- * meses de operación. Ver specs/015-motor-agenda-universal/contracts/conector.md.
+ * meses de operación. Ver specs/015-universal-booking-engine/contracts/connector.md.
  *
  * Lo que NO está aquí y es a propósito: leer disponibilidad ajena (free/busy).
  * La disponibilidad se calcula 100% local, con una query y aritmética; meter al

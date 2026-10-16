@@ -313,7 +313,7 @@ funciona.
 ### User Story 8 - Instalación en 15 minutos (Priority: P1)
 
 Como agencia, instalo Vocero en el VPS de mi cliente en ~15 minutos siguiendo el README:
-por la Ruta A (panel Coolify guiado por un asistente de IA con el archivo INSTALL-IA.md)
+por la Ruta A (panel Coolify guiado por un asistente de IA con el archivo INSTALL-AI.md)
 o por la Ruta B (docker compose con HTTPS automático). Al terminar, el sistema me indica
 explícitamente que la conexión de WhatsApp se hace después, desde Configuración →
 WhatsApp.
@@ -326,7 +326,7 @@ Ruta B literalmente (modo de pruebas interno) hasta ver la bandeja funcionando.
 
 **Acceptance Scenarios**:
 
-1. **Given** un VPS con Coolify y el archivo INSTALL-IA.md, **When** el asistente de IA
+1. **Given** un VPS con Coolify y el archivo INSTALL-AI.md, **When** el asistente de IA
    lo ejecuta con el MCP de Coolify, **Then** despliega la base de datos y la app,
    configura dominio y variables, y verifica el healthcheck — preguntando al usuario
    SOLO: dominio (obligatorio), token de OpenRouter (opcional) y ruta A o B; los secretos
@@ -503,9 +503,9 @@ Ruta B literalmente (modo de pruebas interno) hasta ver la bandeja funcionando.
 
 - **FR-070**: El repositorio MUST desplegar limpio en Coolify como app Docker (imagen
   multi-etapa, migraciones al arrancar, healthcheck en `/api/health`, base de datos como
-  servicio separado), guiado por `INSTALL-IA.md` para un asistente de IA con el MCP de
+  servicio separado), guiado por `INSTALL-AI.md` para un asistente de IA con el MCP de
   Coolify.
-- **FR-071**: `INSTALL-IA.md` MUST preguntar solo dominio (obligatorio), token de
+- **FR-071**: `INSTALL-AI.md` MUST preguntar solo dominio (obligatorio), token de
   OpenRouter (opcional) y ruta A o B; MUST generar los secretos él mismo (incluido el
   token de verificación del webhook que define la ruta); y MUST terminar indicando que la
   conexión de WhatsApp se hace en Configuración → WhatsApp.

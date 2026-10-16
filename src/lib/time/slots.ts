@@ -8,7 +8,7 @@
  * Sin dependencias: todo se resuelve con `Intl` de la plataforma, que ya trae
  * la base de datos de zonas (verificado también en el contenedor Alpine de
  * producción: 418 zonas y formato es-MX correcto). Ver
- * specs/015-motor-agenda-universal/research.md D1.
+ * specs/015-universal-booking-engine/research.md D1.
  */
 
 export type Interval = { start: string; end: string }; // "HH:mm" hora de pared

@@ -102,7 +102,7 @@ async function shoot(path, file, ready) {
   console.log("  ✓", file);
 }
 
-await shoot("/inbox", "bandeja.png", async () => {
+await shoot("/inbox", "inbox.png", async () => {
   await page.getByRole("button", { name: /María Fernanda/ }).first().click();
   await page.getByText("Hola, vi su anuncio del ciclo de verano", { exact: false }).first().waitFor();
   await page.getByText("Etapa del pipeline").waitFor();
@@ -113,7 +113,7 @@ await shoot("/pipeline", "pipeline.png", async () => {
   await page.getByText("María Fernanda López").first().waitFor();
 });
 
-await shoot("/lab", "laboratorio.png", async () => {
+await shoot("/lab", "lab.png", async () => {
   await page.getByText(/Score 83/).first().waitFor();
   // El reporte de la corrida llega en un segundo fetch: se espera a que el
   // hueco "elige una corrida" desaparezca, no un tiempo fijo.
@@ -122,7 +122,7 @@ await shoot("/lab", "laboratorio.png", async () => {
     .waitFor({ state: "hidden", timeout: 20_000 });
 });
 
-await shoot("/settings/branding", "marca.png", async () => {
+await shoot("/settings/branding", "branding.png", async () => {
   await page.getByText("Marca del CRM").waitFor();
   await page.getByText("Logo del negocio").waitFor();
 });

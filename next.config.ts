@@ -9,7 +9,7 @@ const { version } = JSON.parse(
 
 /**
  * Public host of this instance when it is not localhost (for example a
- * Cloudflare tunnel in local development, see docs/tunel-cloudflare.md).
+ * Cloudflare tunnel in local development, see docs/cloudflare-tunnel.md).
  * `next dev` only serves its dev assets to allowed origins; without this the
  * app opened through the tunnel loads its HTML but not its scripts.
  */

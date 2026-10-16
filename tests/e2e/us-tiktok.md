@@ -1,7 +1,7 @@
 # E2E — Canal de TikTok por Zernio (022)
 
 Arnés: `scripts/e2e-tiktok.mjs`. Spec:
-[`specs/022-canal-tiktok/spec.md`](../../specs/022-canal-tiktok/spec.md).
+[`specs/022-tiktok-channel/spec.md`](../../specs/022-tiktok-channel/spec.md).
 
 Precondición: app corriendo (`next dev`) sobre una base migrada, **sin**
 `BRAIN_DISPATCH_URL` (contesta el agente incluido), con `CHANNELS` que incluya

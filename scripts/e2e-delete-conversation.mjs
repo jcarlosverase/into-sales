@@ -18,7 +18,7 @@
  *   - sin ella: el borrado y `agente: "no_aplica"` (no hay a quién avisar).
  * El gate completo son las dos corridas.
  *
- * Sale con código 1 si algún check falla. Guion: tests/e2e/us-eliminar.md.
+ * Sale con código 1 si algún check falla. Guion: tests/e2e/us-delete-conversation.md.
  */
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { existsSync, readdirSync } from "node:fs";

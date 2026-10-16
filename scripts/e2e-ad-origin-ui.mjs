@@ -1,6 +1,6 @@
 /**
  * Self-test E2E de comportamiento — de qué anuncio llegó cada conversación
- * (018), en un navegador de verdad. Guion: tests/e2e/us-atribucion.md.
+ * (018), en un navegador de verdad. Guion: tests/e2e/us-attribution.md.
  *
  * La sección 018 de `e2e-selftest.mjs` prueba que los datos llegan; este prueba
  * que se VEN: la marca en la lista, el filtro, la tarjeta con la imagen cargada

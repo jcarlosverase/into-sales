@@ -1,6 +1,6 @@
 /**
  * Self-test E2E de comportamiento — responsividad (teléfono / tableta / escritorio).
- * Guion: tests/e2e/responsividad.md
+ * Guion: tests/e2e/responsiveness.md
  *
  * Verifica que el CRM se pueda USAR desde el teléfono, no solo que "quepa":
  *  - el lateral se vuelve cajón con hamburguesa y se cierra al navegar;

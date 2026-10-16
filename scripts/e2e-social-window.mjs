@@ -15,7 +15,7 @@
  *      OPENROUTER_MODEL, BOT_API_KEY y AGENT_COALESCE_MS corta (1500).
  *   2) node --env-file=.env scripts/e2e-social-window.mjs
  *
- * Sale con código 1 si algún check falla. Guion: tests/e2e/us-ventana-social.md.
+ * Sale con código 1 si algún check falla. Guion: tests/e2e/us-social-window.md.
  */
 import { createHmac } from "node:crypto";
 

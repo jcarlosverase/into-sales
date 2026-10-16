@@ -19,10 +19,10 @@ servidor, con tus datos.
 la [API de servicio `/api/bot/*`](#-trae-tu-propio-agente): el token de WhatsApp
 nunca sale del CRM.
 
-![Bandeja de IntoSales](docs/screenshots/bandeja.png)
+![Bandeja de IntoSales](docs/screenshots/inbox.png)
 
 <p align="center">
-  <img src="docs/screenshots/laboratorio.png" width="49%" alt="Laboratorio: reporte con score y hallazgos" />
+  <img src="docs/screenshots/lab.png" width="49%" alt="Laboratorio: reporte con score y hallazgos" />
   <img src="docs/screenshots/pipeline.png" width="49%" alt="Pipeline kanban" />
 </p>
 
@@ -143,8 +143,8 @@ copiar ni cola de reenvío que vigilar. Mientras está activo, el agente incluid
 no contesta. Si tu bot no recibe el turno (tres intentos), la conversación
 queda con una persona y el mensaje sigue en la bandeja. El contrato del evento
 y de la firma está en
-[`specs/021-despacho-estandar/contracts/despacho.md`](specs/021-despacho-estandar/contracts/despacho.md)
-y su guion en [`tests/e2e/us-despacho.md`](tests/e2e/us-despacho.md).
+[`specs/021-standard-dispatch/contracts/dispatch.md`](specs/021-standard-dispatch/contracts/dispatch.md)
+y su guion en [`tests/e2e/us-dispatch.md`](tests/e2e/us-dispatch.md).
 
 Si tu bot recibe los webhooks de Meta por un **override de callback de la
 WABA**, guardar la conexión en Configuración → WhatsApp (o rotar el token) lo
@@ -192,7 +192,7 @@ Cómo se entrega la reunión lo eliges tú, con un **conector**:
 
 ¿Usas otra cosa? El contrato son cuatro operaciones y está publicado: escribe
 tu conector en tu fork siguiendo
-[`docs/agenda-conectores.md`](docs/agenda-conectores.md). Y si tu proveedor se
+[`docs/agenda-connectors.md`](docs/agenda-connectors.md). Y si tu proveedor se
 cae, la cita **se agenda igual** con el enlace pendiente de reintentar: un
 tercero caído no te cuesta la conversión.
 
@@ -213,7 +213,7 @@ ganada que ya tienes, y todo se dispara desde la misma puerta que mueve leads,
 así que reporta igual si arrastras la tarjeta tú, el agente incluido o tu propio
 bot. Si Meta se cae, el lead se mueve igual: una conversión jamás vale un
 movimiento bloqueado. Los gotchas de Meta que cuesta descubrir solo están en
-[`docs/atribucion-capi.md`](docs/atribucion-capi.md).
+[`docs/capi-attribution.md`](docs/capi-attribution.md).
 
 Lo que **no** necesita la bandera: saber de qué anuncio llegó cada
 conversación. La bandeja lo marca («Anuncio · titular», con su filtro) y el
@@ -265,7 +265,7 @@ que resuelva.
 ### Ruta A — Coolify guiado por IA (recomendada)
 
 Abre tu asistente de IA (p. ej. Claude Code con el MCP de Coolify), pásale el
-archivo [`INSTALL-IA.md`](INSTALL-IA.md) y responde 3 preguntas (dominio, token
+archivo [`INSTALL-AI.md`](INSTALL-AI.md) y responde 3 preguntas (dominio, token
 de OpenRouter opcional, ruta). El asistente crea la base de datos y una app de
 tipo «Docker Image» con la imagen de la versión, le monta el volumen de
 `/data`, genera los secretos y verifica el healthcheck. La misma guía trae la
@@ -319,7 +319,7 @@ código y deja el CRM con HTTPS. Para actualizar, se vuelve a correr el mismo
 comando, que nunca pisa los secretos. En el mismo VPS caben varios CRMs
 (`--nombre`) y el servicio central de into, detrás de un solo Caddy
 compartido. La guía completa está en
-[docs/instalador-vps.md](docs/instalador-vps.md).
+[docs/vps-installer.md](docs/vps-installer.md).
 
 ### Otras plataformas: Render, Fly y Railway
 
@@ -498,7 +498,7 @@ del cliente se conecta con el **override de callback por WABA**:
 ## Canales opcionales: Instagram, Messenger y TikTok
 
 WhatsApp es el canal por el que existe IntoSales y siempre está encendido. Los
-demás viajan en el mismo código, **apagados por defecto** ([ADR-001](docs/adr-001-canales-opcionales.md)):
+demás viajan en el mismo código, **apagados por defecto** ([ADR-001](docs/adr-001-optional-channels.md)):
 una instancia que no los usa no ve pantallas, webhooks ni variables suyas.
 Se encienden con una variable de despliegue:
 
@@ -612,7 +612,7 @@ publicaciones no. No hay plantillas: pasadas 24 horas del último mensaje del
 cliente ya solo puede contestar una persona, hasta 7 días (etiqueta
 `HUMAN_AGENT`); el agente no. Sin App Review, una
 app propia solo recibe mensajes de perfiles con un rol en la app. El detalle
-del canal está en [`specs/014-canal-instagram`](specs/014-canal-instagram/spec.md).
+del canal está en [`specs/014-instagram-channel`](specs/014-instagram-channel/spec.md).
 
 ### TikTok (mensajes directos de una cuenta de negocio)
 
@@ -636,7 +636,7 @@ mensaje rechazado:
 - Cada mensaje es texto, de hasta 6,000 caracteres. Las imágenes entran (como
   aviso de que llegó una), pero todavía no se envían desde Vocero.
 
-El detalle está en [`specs/022-canal-tiktok`](specs/022-canal-tiktok/spec.md).
+El detalle está en [`specs/022-tiktok-channel`](specs/022-tiktok-channel/spec.md).
 
 ## Configuración de la IA
 
@@ -807,7 +807,7 @@ que dice qué trae cada versión y qué hacer para actualizar. Al crear el tag
 ## Roadmap
 
 Las versiones 1.5 y 2.0 tienen plan propio:
-[docs/plan-1.5-y-2.0.md](docs/plan-1.5-y-2.0.md).
+[docs/plan-1.5-and-2.0.md](docs/plan-1.5-and-2.0.md).
 
 - Adjuntos en Instagram, Messenger y TikTok (hoy esos canales son de texto; en
   WhatsApp ya van y vienen con vista previa).

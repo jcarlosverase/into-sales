@@ -14,7 +14,7 @@ Dockerfile
 docker-compose*.yml
 Caddyfile
 README.md
-INSTALL-IA.md
+INSTALL-AI.md
 # #82: el migrador (drizzle-orm) solo abre meta/_journal.json y los *.sql;
 # los *_snapshot.json de meta/ son de `drizzle-kit generate` y pesan ~1.2 MB.
 drizzle/meta/*

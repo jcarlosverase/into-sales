@@ -26,7 +26,7 @@
  *     contesta dentro de la ventana). No hace falta BOT_API_KEY.
  * El gate completo son las dos corridas.
  *
- * Sale con código 1 si algún check falla. Guion: tests/e2e/us-despacho.md.
+ * Sale con código 1 si algún check falla. Guion: tests/e2e/us-dispatch.md.
  */
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { createServer } from "node:http";
