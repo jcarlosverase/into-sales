@@ -1,0 +1,77 @@
+name: Security (DAST)
+
+# Dynamic analysis (spec 1005): the real Docker image, started with Docker
+# Compose next to its PostgreSQL, and OWASP ZAP in baseline mode crawling the
+# CRM as someone without an account would. Baseline is passive: it looks
+# at headers, cookies, forms and responses; it does not attack.
+#
+# Rules and what blocks live in .zap/rules.tsv. How to read the results:
+# docs/security-scans.md.
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    # Monday 06:30 Lima time: ZAP rules get updated too.
+    - cron: "30 11 * * 1"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  zap:
+    name: zap baseline
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    # Test values only: nothing here is a real secret.
+    env:
+      COMPOSE: docker compose -p sales-dast -f docker-compose.yml -f docker-compose.dast.yml
+      POSTGRES_PASSWORD: dast
+      APP_BASE_URL: http://localhost:3000
+      BETTER_AUTH_SECRET: dast-secret-dast-secret-dast-secret-dast
+      ENCRYPTION_KEY: AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8= # gitleaks:allow (test value, same as E2E)
+      META_WEBHOOK_VERIFY_TOKEN: dast-webhook-token
+
+    steps:
+      - uses: actions/checkout@v7
+
+      # Only app and postgres (no Caddy). `--wait` waits for the Dockerfile
+      # HEALTHCHECK, which covers the startup migrations.
+      - name: start the app
+        run: $COMPOSE up -d --build --wait app
+
+      - name: zap baseline
+        run: |
+          mkdir -p zap && chmod 777 zap
+          cp .zap/rules.tsv zap/
+          set +e
+          docker run --rm --network host -v "$PWD/zap:/zap/wrk:rw" \
+            zaproxy/zap-stable:2.17.0 zap-baseline.py \
+            -t http://localhost:3000 -c rules.tsv -I \
+            -r zap-report.html -J zap-report.json -w zap-report.md
+          status=$?
+          set -e
+          [ -f zap/zap-report.md ] && cat zap/zap-report.md >> "$GITHUB_STEP_SUMMARY"
+          # 0: clean or warnings only (-I); 1: some FAIL rule; 3: ZAP failed.
+          exit $status
+
+      - uses: actions/upload-artifact@v7
+        if: ${{ !cancelled() }}
+        with:
+          name: zap-report
+          path: zap/zap-report.*
+          retention-days: 30
+
+      - name: app logs
+        if: ${{ failure() }}
+        run: $COMPOSE logs --tail 200 app
+
+      - name: shut down
+        if: ${{ always() }}
+        run: $COMPOSE down -v

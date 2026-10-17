@@ -1,0 +1,8 @@
+# DAST scan in CI (spec 1005): the app and its database, without Caddy, with the
+# CRM published on localhost:3000 for OWASP ZAP to crawl. Not for
+# production. Usage (run by .github/workflows/security-dast.yml):
+#   docker compose -p sales-dast -f docker-compose.yml -f docker-compose.dast.yml up -d --build --wait app
+services:
+  app:
+    ports:
+      - "127.0.0.1:3000:3000"

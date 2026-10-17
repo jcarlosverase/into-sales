@@ -1,8 +1,9 @@
 # Instalar en un VPS con un comando
 
 Spec [1001](../specs/1001-vps-installer/spec.md). Sirve para un VPS con
-Ubuntu o Debian. Uno de 2 vCPU y 4 GB alcanza para el central y unos
-cuantos CRMs.
+Ubuntu o Debian (recomendado: Ubuntu 24.04). Uno de 2 vCPU y 4 GB alcanza para
+el central y unos cuantos CRMs. Todas las opciones del instalador:
+`curl -fsSL https://raw.githubusercontent.com/jcarlosverase/into-sales/main/deploy/install.sh | bash -s -- --ayuda`.
 
 ## 1. Apunta los dominios
 
@@ -85,11 +86,20 @@ for d in /opt/into-sales/*/; do n=$(basename $d); (cd $d && sudo git -C src pull
 
 ## Del día a día
 
+Cambia `principal` por el `--nombre` de la instancia.
+
 ```bash
-docker compose -p into-sales-principal logs -f app                 # registro
-docker compose -p into-sales-principal exec -T postgres \
-  pg_dump -U postgres vocero > respaldo.sql                        # respaldo de la base
+sudo docker ps --format "table {{.Names}}\t{{.Status}}"                # qué está corriendo
+sudo docker compose -p into-sales-principal logs -f app                # registro
+sudo docker compose -p into-sales-principal restart app                # reiniciar la app
+sudo docker compose -p into-sales-principal exec -T postgres \
+  pg_dump -U postgres vocero > respaldo-$(date +%F).sql                # respaldo de la base
 ```
 
-Guarda una copia del `.env` de cada instancia. `ENCRYPTION_KEY` cifra los
-tokens de WhatsApp y de la IA: sin ella, hay que volver a pegarlos.
+La salud del CRM (base de datos, migraciones, archivos, WhatsApp, IA, cerebro
+y central) se ve en `https://crm.cliente.com/settings/health`, como
+propietario o administrador.
+
+Guarda una copia del `.env` de cada instancia (`/opt/into-sales/<nombre>/.env`).
+`ENCRYPTION_KEY` cifra los tokens de WhatsApp y de la IA: sin ella, hay que
+volver a pegarlos.
