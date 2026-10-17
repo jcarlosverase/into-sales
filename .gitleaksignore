@@ -1,0 +1,14 @@
+# Hallazgos de Gitleaks revisados (spec 1005). Una huella por línea, como la
+# imprime Gitleaks: commit:archivo:regla:línea. Solo cuentan en el escaneo de
+# todo el historial (semanal); en los PR se miran únicamente sus commits.
+#
+# Valores de prueba y ejemplos revisados el 2026-10-17: llaves de CI, de
+# pruebas unitarias y de la guía de la spec 015. Ninguno es un secreto real.
+ba6e9f78c1d5694336398a491c85d12f33ee4ecc:.github/workflows/e2e.yml:generic-api-key:68
+2410bdd55f929386a2bc0ec90a5e9b39231e9eaa:tests/unit/ai-config.test.ts:generic-api-key:41
+7839bcf7dd36540a9577906270621cbb73a4b50e:tests/unit/init-env.test.ts:generic-api-key:79
+77257e0712d58ec245af36b146f34307786bcf76:tests/unit/brain-status.test.ts:generic-api-key:192
+d02b46bc897900f0c9b820674e0f6cef875703e5:specs/015-motor-agenda-universal/quickstart.md:generic-api-key:16
+a752a85f40a9341aef7e01667c1e9bf0816a0728:tests/unit/reset-password.test.ts:generic-api-key:45
+b2af9ae95195789d383532b3c3eb68def1d4d721:tests/unit/bot-gateway.test.ts:generic-api-key:7
+62955fe1024b7c96d0b2a55a3f935ec71d7e5e2c:tests/unit/bot-profile.test.ts:generic-api-key:110

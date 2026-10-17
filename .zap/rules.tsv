@@ -1,0 +1,71 @@
+# Reglas de OWASP ZAP baseline para el CRM (spec 1005).
+# Formato: id<TAB>acción<TAB>(nombre). Acción: FAIL bloquea el check, WARN
+# sale en el informe sin bloquear, IGNORE no se reporta. Las reglas que no
+# estén aquí quedan en WARN.
+#
+# FAIL: fugas de datos, cookies sin protección, librerías vulnerables, errores
+# con detalle interno. Hoy ninguna aparece: si una sale, es una regresión.
+# WARN «conocido»: lo que ZAP encontró el 2026-10-17 (cabeceras de seguridad
+# que el CRM aún no envía). Se corrige en su propia spec; al corregir
+# cada una, se pasa a FAIL para que no vuelva.
+
+10003	FAIL	(Vulnerable JS Library (Powered by Retire.js))
+10009	FAIL	(In Page Banner Information Leak)
+10010	FAIL	(Cookie No HttpOnly Flag)
+10011	WARN	(Cookie Without Secure Flag)
+10015	WARN	(Re-examine Cache-control Directives)
+10017	FAIL	(Cross-Domain JavaScript Source File Inclusion)
+10019	WARN	(Content-Type Header Missing)
+10020	WARN	(Anti-clickjacking Header)  # conocido
+10021	WARN	(X-Content-Type-Options Header Missing)  # conocido
+10023	FAIL	(Information Disclosure - Debug Error Messages)
+10024	FAIL	(Information Disclosure - Sensitive Information in URL)
+10025	FAIL	(Information Disclosure - Sensitive Information in HTTP Referrer Header)
+10027	WARN	(Information Disclosure - Suspicious Comments)
+10028	FAIL	(Off-site Redirect)
+10029	WARN	(Cookie Poisoning)
+10030	WARN	(User Controllable Charset)
+10031	WARN	(User Controllable HTML Element Attribute (Potential XSS))
+10032	WARN	(Viewstate)
+10033	FAIL	(Directory Browsing)
+10034	WARN	(Heartbleed OpenSSL Vulnerability (Indicative))
+10035	WARN	(Strict-Transport-Security Header)
+10036	WARN	(HTTP Server Response Header)
+10037	WARN	(Server Leaks Information via "X-Powered-By" HTTP Response Header Field(s))  # conocido
+10038	WARN	(Content Security Policy (CSP) Header Not Set)  # conocido
+10039	FAIL	(X-Backend-Server Header Information Leak)
+10040	WARN	(Secure Pages Include Mixed Content)
+10041	WARN	(HTTP to HTTPS Insecure Transition in Form Post)
+10042	WARN	(HTTPS to HTTP Insecure Transition in Form Post)
+10043	FAIL	(User Controllable JavaScript Event (XSS))
+10044	WARN	(Big Redirect Detected (Potential Sensitive Information Leak))  # conocido
+10050	WARN	(Retrieved from Cache)
+10052	FAIL	(X-ChromeLogger-Data (XCOLD) Header Information Leak)
+10054	FAIL	(Cookie without SameSite Attribute)
+10055	WARN	(CSP)
+10056	FAIL	(X-Debug-Token Information Leak)
+10057	FAIL	(Username Hash Found)
+10061	FAIL	(X-AspNet-Version Response Header)
+10062	FAIL	(PII Disclosure)
+10096	WARN	(Timestamp Disclosure)
+10097	FAIL	(Hash Disclosure)
+10098	FAIL	(Cross-Domain Misconfiguration)
+10105	FAIL	(Weak Authentication Method)
+10108	WARN	(Reverse Tabnabbing)
+10109	IGNORE	(Modern Web Application)  # solo dice que es una app moderna (JS)
+10111	IGNORE	(Authentication Request Identified)  # informativa: encontró el formulario de entrada
+10112	IGNORE	(Session Management Response Identified)  # informativa: identificó la sesión
+10113	IGNORE	(Verification Request Identified)  # informativa
+10115	FAIL	(Script Served From Malicious Domain (polyfill))
+10116	IGNORE	(ZAP is Out of Date)  # la versión de ZAP está fijada a propósito en el workflow
+10202	WARN	(Absence of Anti-CSRF Tokens)
+2	FAIL	(Private IP Disclosure)
+3	FAIL	(Session ID in URL Rewrite)
+50001	WARN	(Script Passive Scan Rules)
+90001	WARN	(Insecure JSF ViewState)
+90002	WARN	(Java Serialization Object)
+90003	WARN	(Sub Resource Integrity Attribute Missing)
+90011	WARN	(Charset Mismatch)
+90022	FAIL	(Application Error Disclosure)
+90030	WARN	(WSDL File Detection)
+90033	FAIL	(Loosely Scoped Cookie)

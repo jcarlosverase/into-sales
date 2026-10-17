@@ -1,0 +1,10 @@
+# CodeQL de IntoSales (spec 1005). `security-extended` suma a las consultas por
+# defecto las de menor precisión que siguen siendo de seguridad.
+name: into-sales
+queries:
+  - uses: security-extended
+# Migraciones generadas, pruebas y guiones E2E: no llegan a producción.
+paths-ignore:
+  - drizzle
+  - tests
+  - scripts/e2e-*

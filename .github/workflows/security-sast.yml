@@ -1,0 +1,168 @@
+name: Security (SAST)
+
+# Análisis estático de seguridad (spec 1005), en cada PR, en cada push a main y
+# una vez por semana sobre todo el historial. Tres checks separados, para que
+# cada uno diga de entrada qué falló:
+#
+# - codeql: el código TypeScript y los propios workflows, con las consultas
+#   `security-extended`. Bloquea desde gravedad alta.
+# - gitleaks: secretos en los commits (los del PR, o todo el historial en la
+#   corrida semanal). Bloquea con cualquier hallazgo.
+# - dependencias: `pnpm audit`. Bloquea con vulnerabilidades críticas en las
+#   dependencias de producción; el resto queda en el resumen.
+#
+# Cómo leer los resultados: docs/security-scans.md.
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    # Lunes 06:00 en Lima (11:00 UTC): avisa de CVEs nuevos aunque nadie toque
+    # el código.
+    - cron: "0 11 * * 1"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  codeql:
+    name: codeql
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      actions: read
+      # Para subir el SARIF a la pestaña Security. En un repo privado sin
+      # GitHub Code Security no se sube (ver `upload` abajo) y no se usa.
+      security-events: write
+    steps:
+      - uses: actions/checkout@v7
+
+      # Node 22 corre scripts/sarif-summary.ts sin build (tipos removidos).
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      - uses: github/codeql-action/init@v4
+        with:
+          languages: javascript-typescript, actions
+          config-file: ./.github/codeql/codeql-config.yml
+
+      # into-sales es público: el SARIF sube a Security → Code scanning. Si el
+      # repo pasa a privado sin GitHub Code Security, deja de subirse solo.
+      # El veredicto no depende de la subida: lo da el paso siguiente.
+      - uses: github/codeql-action/analyze@v4
+        with:
+          output: codeql-results
+          upload: ${{ (github.event.repository.private || github.event.pull_request.head.repo.fork) && 'never' || 'always' }}
+
+      # `--accept regla@ruta` quita un hallazgo revisado, solo en esa ruta, con
+      # un comentario aquí que diga por qué (docs/security-scans.md).
+      # Solo informa por ahora (spec 1005, D1): la primera corrida dejó altas y
+      # críticas por revisar. Al resolverlas, se quita `continue-on-error`.
+      - name: resultados
+        if: ${{ !cancelled() }}
+        continue-on-error: true
+        run: >-
+          node scripts/sarif-summary.ts --title "CodeQL" --fail-on high
+          codeql-results/*.sarif
+
+      - uses: actions/upload-artifact@v7
+        if: ${{ !cancelled() }}
+        with:
+          name: codeql-sarif
+          path: codeql-results/
+          retention-days: 30
+
+  gitleaks:
+    name: gitleaks
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # Todo el historial: el rango del PR necesita su base.
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      # Binario oficial con la suma SHA-256 de su release: la acción de
+      # Gitleaks pide licencia a las organizaciones y así no hay sorpresas.
+      - name: instalar gitleaks
+        env:
+          VERSION: 8.28.0
+          SHA256: a65b5253807a68ac0cafa4414031fd740aeb55f54fb7e55f386acb52e6a840eb
+        run: |
+          curl -sSfL -o "$RUNNER_TEMP/gitleaks.tgz" \
+            "https://github.com/gitleaks/gitleaks/releases/download/v${VERSION}/gitleaks_${VERSION}_linux_x64.tar.gz"
+          echo "$SHA256  $RUNNER_TEMP/gitleaks.tgz" | sha256sum -c -
+          tar -xzf "$RUNNER_TEMP/gitleaks.tgz" -C "$RUNNER_TEMP" gitleaks
+
+      # En un PR, solo sus commits; en un push, los que llegaron; en la
+      # corrida semanal o a mano, todo el historial (con .gitleaksignore).
+      - name: gitleaks
+        env:
+          EVENT: ${{ github.event_name }}
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD: ${{ github.event.pull_request.head.sha }}
+          PUSH_BEFORE: ${{ github.event.before }}
+          PUSH_AFTER: ${{ github.sha }}
+        run: |
+          range=""
+          case "$EVENT" in
+            pull_request) range="$PR_BASE..$PR_HEAD" ;;
+            push) [ -n "$PUSH_BEFORE" ] && [ "$PUSH_BEFORE" != "0000000000000000000000000000000000000000" ] \
+                    && range="$PUSH_BEFORE..$PUSH_AFTER" ;;
+          esac
+          echo "Rango: ${range:-todo el historial}"
+          "$RUNNER_TEMP/gitleaks" git . --redact --no-banner --verbose \
+            --report-format sarif --report-path gitleaks.sarif \
+            ${range:+--log-opts="$range"}
+
+      # El veredicto lo da gitleaks arriba; esto pone la tabla en el resumen.
+      - name: resultados
+        if: ${{ !cancelled() && hashFiles('gitleaks.sarif') != '' }}
+        run: node scripts/sarif-summary.ts --title "Gitleaks" --fail-on note gitleaks.sarif
+
+  dependencies:
+    name: dependencias
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      # Informe completo (producción y desarrollo, desde moderada) en el
+      # resumen del job. No bloquea: es para leer y planear las subidas.
+      - name: informe
+        run: |
+          pnpm audit --json > audit.json || true
+          {
+            echo "### pnpm audit"
+            echo
+            jq -r '.metadata.vulnerabilities | "critical: \(.critical) · high: \(.high) · moderate: \(.moderate) · low: \(.low)"' audit.json
+            echo
+            echo "| Gravedad | Paquete | Vulnerable | Corregido en | Camino | Aviso |"
+            echo "|---|---|---|---|---|---|"
+            jq -r '.advisories[] | "| \(.severity) | \(.module_name) | `\(.vulnerable_versions)` | `\(.patched_versions)` | \(.findings[0].paths[0]) | \(.url) |"' audit.json \
+              | sort -t'|' -k2,2
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # El corte: críticas en lo que corre en producción.
+      # Solo informa por ahora (spec 1005, D1): `shell-quote` vía
+      # better-auth › drizzle-kit › gel. Al resolverlo, se quita.
+      - name: pnpm audit (producción, críticas)
+        continue-on-error: true
+        run: pnpm audit --prod --audit-level critical
