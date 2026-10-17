@@ -116,7 +116,13 @@ describe("markdownSummary", () => {
     expect(md).toContain("SQL \\| injection");
   });
 
-  it("sin hallazgos lo dice", () => {
+  it("escapa también las barras invertidas antes que las verticales", () => {
+    const [finding] = findingsOf(gitleaks);
+    const md = markdownSummary("Gitleaks", [{ ...finding!, message: "a\\|b" }], "note");
+    expect(md).toContain("a\\\\\\|b");
+  });
+
+    it("sin hallazgos lo dice", () => {
     expect(markdownSummary("Gitleaks", [], "note")).toContain("Sin hallazgos.");
   });
 });

@@ -115,7 +115,8 @@ export function markdownSummary(title: string, findings: Finding[], failOn: Seve
     .filter(([, n]) => n > 0)
     .map(([s, n]) => `${n} ${s}`)
     .join(" · ");
-  const cell = (text: string) => text.replace(/\|/g, "\\|");
+  // Primero las barras invertidas: si no, un `\|` del texto anularía el escape.
+  const cell = (text: string) => text.replace(/\\/g, "\\\\").replace(/\|/g, "\\|");
   const rows = findings.map(
     (f) => `| ${f.severity} | ${cell(f.tool)} | \`${cell(f.ruleId)}\` | ${cell(f.location)} | ${cell(f.message)} |`
   );
