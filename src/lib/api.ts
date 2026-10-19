@@ -1,5 +1,8 @@
 import { z } from "zod";
 import { requireSession, UnauthorizedError, type SessionContext } from "@/lib/auth/session";
+import { logger } from "@/lib/observability/logger";
+import { metrics } from "@/lib/observability/metrics";
+import { requestIdOf } from "@/lib/observability/request-id";
 
 /** Respuesta de error estándar de la API interna (contrato api.md). */
 export function apiError(
@@ -30,7 +33,14 @@ export function withAuth<Args extends unknown[]>(
     try {
       return await handler(session, ...args);
     } catch (err) {
-      console.error("[api] error no controlado:", err);
+      // Spec 1006: the route answered 500, so Next never sees the error; it
+      // is logged and counted here, with the request ID when there is one.
+      const req = args[0] instanceof Request ? args[0] : null;
+      metrics.requestErrors.inc({ route_type: "route" });
+      logger.error(
+        { err, requestId: req ? requestIdOf(req.headers) : undefined, method: req?.method },
+        "[api] error no controlado"
+      );
       return apiError(500, "internal", "Error interno");
     }
   };

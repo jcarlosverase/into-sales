@@ -37,7 +37,7 @@ const EXAMPLE = readFileSync(path.join(ROOT, ".env.example"), "utf8");
 
 const VALID = {
   APP_BASE_URL: "https://localhost",
-  DATABASE_URL: "postgresql://postgres:pw-secreta-xyz@postgres:5432/vocero",
+  DATABASE_URL: "postgresql://postgres:pw-secreta-xyz@postgres:5432/into_sales",
   BETTER_AUTH_SECRET: "secreto-de-sesiones-" + "s".repeat(24),
   ENCRYPTION_KEY: Buffer.alloc(32, 7).toString("base64"),
   META_WEBHOOK_VERIFY_TOKEN: "token-verificacion-" + "t".repeat(45),
@@ -125,7 +125,7 @@ describe("evaluateEnv", () => {
     expect(text).not.toContain(VALID.BETTER_AUTH_SECRET);
     expect(text).not.toContain(VALID.ENCRYPTION_KEY);
     expect(text).not.toContain(VALID.META_WEBHOOK_VERIFY_TOKEN);
-    expect(text).toContain("postgresql://postgres:***@postgres:5432/vocero");
+    expect(text).toContain("postgresql://postgres:***@postgres:5432/into_sales");
     expect(text).toContain("definida (44 caracteres)");
 
     const broken = output(
@@ -188,7 +188,7 @@ describe("checkDatabase", () => {
   it("otro host sin resolver sí es ✗", () => {
     const r = describeDbError(
       Object.assign(new Error("ENOTFOUND"), { code: "ENOTFOUND" }),
-      "postgresql://postgres:x@bd.interna:5432/vocero"
+      "postgresql://postgres:x@bd.interna:5432/into_sales"
     );
     expect(r.status).toBe("fail");
   });

@@ -53,7 +53,7 @@ dentro: README → «Instalación» → «Otras plataformas».
 | Variable | Valor |
 |---|---|
 | `APP_BASE_URL` | `https://<dominio>` |
-| `DATABASE_URL` | `postgresql://postgres:<POSTGRES_PASSWORD>@<host-postgres>:5432/vocero` |
+| `DATABASE_URL` | `postgresql://postgres:<POSTGRES_PASSWORD>@<host-postgres>:5432/into_sales` |
 | `POSTGRES_PASSWORD` | generado (es la de la base; la app no la lee, solo va dentro de `DATABASE_URL`) |
 | `BETTER_AUTH_SECRET` | generado |
 | `ENCRYPTION_KEY` | generado (base64, 44 caracteres) |

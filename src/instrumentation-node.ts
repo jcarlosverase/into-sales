@@ -1,3 +1,4 @@
+import type { Instrumentation } from "next";
 import { eq } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db";
 import { mediaDirStatus } from "@/server/media-dir";
@@ -5,6 +6,44 @@ import { readConfigDispatch } from "@/server/brains/config";
 import { startWorker, batch } from "@/server/dispatch/worker";
 import { readConfigCentral } from "@/server/central/flag";
 import { startHeartbeats } from "@/server/central/heartbeat";
+import { logger, routeConsoleToLogger } from "@/lib/observability/logger";
+import { metrics } from "@/lib/observability/metrics";
+import { safePath } from "@/lib/observability/safe-path";
+
+/**
+ * Spec 1006: from here on, console output (ours, Next's and the libraries')
+ * comes out as one JSON line per event, like the rest of the logs.
+ */
+export function startLogging(): void {
+  routeConsoleToLogger();
+}
+
+type OnRequestError = Instrumentation.onRequestError;
+
+/**
+ * Spec 1006: every uncaught error of a page, route or server action ends up
+ * as one JSON line with its request ID, and in the error counter. The path
+ * goes without its query string, and webhook paths without their token.
+ */
+export function logRequestError(
+  error: unknown,
+  request: Parameters<OnRequestError>[1],
+  context: Parameters<OnRequestError>[2],
+): void {
+  const requestId = request.headers["x-request-id"];
+  metrics.requestErrors.inc({ route_type: context.routeType });
+  logger.error(
+    {
+      err: error,
+      requestId: typeof requestId === "string" ? requestId : undefined,
+      method: request.method,
+      path: safePath(request.path),
+      route: context.routePath,
+      routeType: context.routeType,
+    },
+    "Request failed",
+  );
+}
 
 /**
  * 008 — Aviso al arranque si MEDIA_DIR no es escribible. Sin esto, el primer

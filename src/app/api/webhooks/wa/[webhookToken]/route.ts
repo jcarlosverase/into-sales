@@ -1,5 +1,6 @@
 import { after } from "next/server";
 import { getEnv } from "@/lib/env";
+import { countWebhook } from "@/lib/observability/webhooks";
 import {
   isValidSignature,
   isValidWebhookToken,
@@ -37,7 +38,7 @@ export async function GET(req: Request, { params }: Params) {
   return new Response(null, { status: 403 });
 }
 
-export async function POST(req: Request, { params }: Params) {
+async function handlePost(req: Request, { params }: Params) {
   const { webhookToken } = await params;
   const env = getEnv();
   if (!isValidWebhookToken(webhookToken, env.META_WEBHOOK_VERIFY_TOKEN)) {
@@ -69,6 +70,9 @@ export async function POST(req: Request, { params }: Params) {
 
   return Response.json({ received: true });
 }
+
+// Spec 1006: each delivery counted by channel and result.
+export const POST = countWebhook("whatsapp", handlePost);
 
 async function processPayload(payload: WebhookPayload): Promise<void> {
   for (const entry of payload.entry ?? []) {

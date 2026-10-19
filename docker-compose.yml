@@ -19,6 +19,15 @@
 # nombre tuyo): sin él, Compose puede correr la imagen oficial en vez de tus
 # cambios. Otra versión publicada: VOCERO_CRM_VERSION=X.Y.Z en tu .env.
 # ============================================================
+
+# Spec 1006: Docker keeps each container's log in a file that, by default,
+# never stops growing. Three files of 10 MB per container at most.
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 services:
   app:
     image: ghcr.io/jcarlosverase/into-sales:${VOCERO_CRM_VERSION:-1.5.0}
@@ -26,7 +35,7 @@ services:
     restart: unless-stopped
     environment:
       APP_BASE_URL: ${APP_BASE_URL}
-      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/vocero
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/into_sales
       BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET}
       ENCRYPTION_KEY: ${ENCRYPTION_KEY}
       META_WEBHOOK_VERIFY_TOKEN: ${META_WEBHOOK_VERIFY_TOKEN}
@@ -44,8 +53,15 @@ services:
       ATRIBUCION: ${ATRIBUCION:-}
       BOT_API_KEY: ${BOT_API_KEY:-}
       BRAIN_HEALTH_URL: ${BRAIN_HEALTH_URL:-}
+      BRAIN_DISPATCH_URL: ${BRAIN_DISPATCH_URL:-}
+      TRUSTED_ORIGINS: ${TRUSTED_ORIGINS:-}
       # Latido al servicio central de into (spec 028); vacía = apagado.
       INTO_CENTRAL_URL: ${INTO_CENTRAL_URL:-}
+      # Observability (spec 1006): level of the JSON logs and token of
+      # /api/metrics (blank = the route does not exist).
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      METRICS_TOKEN: ${METRICS_TOKEN:-}
+    logging: *logging
     volumes:
       # Adjuntos, logo e icono (la imagen ya trae MEDIA_DIR=/data/media): sin
       # este volumen se pierden al recrear el contenedor.
@@ -61,15 +77,16 @@ services:
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: vocero
+      POSTGRES_DB: into_sales
       # Hora de Lima (UTC-5) para el servidor y quien abra la base; las fechas son
       # timestamptz y guardan el instante, así que esto solo cambia cómo se ven.
       TZ: America/Lima
       PGTZ: America/Lima
     volumes:
       - vocero_pg:/var/lib/postgresql/data
+    logging: *logging
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d vocero"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d into_sales"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -86,6 +103,7 @@ services:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - vocero_caddy_data:/data
       - vocero_caddy_config:/config
+    logging: *logging
     depends_on:
       - app
     healthcheck:

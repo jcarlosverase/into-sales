@@ -54,6 +54,7 @@ externas: el trabajo en segundo plano (agente, Laboratorio) es in-process.
 | La instalación en un VPS con un comando | `deploy/install.sh` + `deploy/docker-compose.vps.yml` (capa sobre `docker-compose.yml`: apaga su Caddy y usa el compartido `into-edge`) · guía: [docs/vps-installer.md](docs/vps-installer.md) · spec [1001](specs/1001-vps-installer/spec.md) |
 | La página de salud del CRM (base de datos, migraciones, archivos, WhatsApp, IA, cerebro, central) | `src/server/system-health.ts` (reusa los chequeos de `src/server/doctor/checks.ts`) · `src/app/(app)/settings/health/page.tsx` · spec [1004](specs/1004-health-page/spec.md) |
 | Las pruebas de seguridad del CI (SAST y DAST) | `.github/workflows/security-sast.yml` y `security-dast.yml` · reglas de ZAP en `.zap/rules.tsv` · `.gitleaksignore` · resumen de SARIF en `scripts/sarif-summary.ts` · guía: [docs/security-scans.md](docs/security-scans.md) · spec [1005](specs/1005-security-scans/spec.md) |
+| Los registros y las métricas | `src/lib/observability/` (logger, métricas, id de pedido, rutas sin secretos) · `src/middleware.ts` (id de pedido) · `src/app/api/metrics` · el monitoreo del VPS vive en into-central (`deploy/monitoring/`) · spec [1006](specs/1006-observability/spec.md) |
 | UI | `src/components/` + `src/app/(app)/` |
 
 **Idioma (2026-10-16, decisión de Juan Carlos):** de aquí en adelante, todo el

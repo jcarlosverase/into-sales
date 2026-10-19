@@ -79,7 +79,7 @@ describe("renderInitEnv sobre el .env.example real", () => {
     const secrets = { ...generateSecrets(), POSTGRES_PASSWORD: "abc123def456" };
     const vars = parseEnv(renderInitEnv(EXAMPLE, { secrets }).content);
     expect(vars.POSTGRES_PASSWORD).toBe("abc123def456");
-    expect(vars.DATABASE_URL).toBe("postgresql://postgres:abc123def456@postgres:5432/vocero");
+    expect(vars.DATABASE_URL).toBe("postgresql://postgres:abc123def456@postgres:5432/into_sales");
   });
 
   it("--domain fija DOMAIN y APP_BASE_URL con https", () => {

@@ -76,9 +76,9 @@ console.log(`
 Hash verificado. Pega este comando en la terminal del contenedor de Postgres
 (en Coolify: el recurso de la base → pestaña Terminal):
 
-psql -U postgres -d vocero -c "${sql.replace(/"/g, '\\"')}"
+psql -U postgres -d into_sales -c "${sql.replace(/"/g, '\\"')}"
 
 Debe responder: UPDATE 1
 Si responde UPDATE 0, el correo no coincide. Míralos con:
-psql -U postgres -d vocero -c 'SELECT email FROM "user";'
+psql -U postgres -d into_sales -c 'SELECT email FROM "user";'
 `);

@@ -28,6 +28,7 @@ import {
 import { agendaEnabled } from "@/server/agenda/flag";
 import { bookSlot, offerSlots } from "@/server/agenda/agent";
 import { getOffers, slotsMapForModel } from "@/server/agenda/offers";
+import { metrics } from "@/lib/observability/metrics";
 
 /**
  * Turno del agente (FR-021..FR-025).
@@ -103,11 +104,16 @@ async function executeTurn(conversationId: string): Promise<void> {
   const fromThisTurn = [...entry.owed];
   entry.owed = new Set();
   let read: TurnRead | undefined;
+  // Spec 1006: every turn counted and timed, whatever happens inside.
+  const endTimer = metrics.agentTurnSeconds.startTimer();
   try {
     read = await runAgentTurn(conversationId, { owed: fromThisTurn });
+    metrics.agentTurns.inc({ result: "ok" });
   } catch (err) {
+    metrics.agentTurns.inc({ result: "error" });
     console.error("[agente] turno falló:", err);
   } finally {
+    endTimer();
     entry.running = false;
     // Si el turno no llegó a leer (falló, o se calló antes de abrir el
     // historial), lo que traía se sigue debiendo.

@@ -1,6 +1,18 @@
 # HTTPS automático con el dominio de la variable DOMAIN.
 # Para pruebas locales usa DOMAIN=localhost (certificado interno).
+#
+# Spec 1006: JSON access log without secrets (Caddy leaves Authorization and
+# Cookie out; the filter hides the webhook token and every query string), and
+# an X-Request-Id per request that the app logs too. /api/metrics is only for
+# the monitoring stack inside the Docker network.
 {$DOMAIN} {
+	log {
+		format filter {
+			request>uri regexp "^(/api/webhooks/[^/?]+/)[^/?]+.*$|\?.*$" "${1}[redacted]"
+		}
+	}
+	request_header X-Request-Id {http.request.uuid}
+	respond /api/metrics 404
 	reverse_proxy app:3000 {
 		# SSE: sin buffering ni timeouts cortos en el proxy
 		flush_interval -1

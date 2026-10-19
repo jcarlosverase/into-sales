@@ -74,6 +74,14 @@ export const envSchema = z.object({
   // escrita, el latido queda inactivo y lo dicen el arranque y el doctor
   // (server/central/flag.ts).
   INTO_CENTRAL_URL: z.string().optional(),
+  // Observability (spec 1006). Bearer token of GET /api/metrics (blank: the
+  // route answers 404); the VPS installer shares one with the monitoring
+  // stack. LOG_LEVEL is read by the logger straight from process.env.
+  METRICS_TOKEN: z.string().min(32).optional(),
+  LOG_LEVEL: z
+    .string()
+    .regex(/^(fatal|error|warn|info|debug|trace|silent)$/i)
+    .optional(),
   // 008: volumen local de adjuntos (constitución II: sin S3/R2).
   MEDIA_DIR: z.string().default("./.dev-media"),
   NODE_ENV: z.string().default("development"),

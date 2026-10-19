@@ -63,7 +63,7 @@ const FIX: Record<string, string> = {
   APP_BASE_URL:
     "en .env: APP_BASE_URL=https://crm.tudominio.com (con docker compose en esta máquina: https://localhost)",
   DATABASE_URL:
-    "en .env: DATABASE_URL=postgresql://postgres:<POSTGRES_PASSWORD>@postgres:5432/vocero (docker compose) o ...@localhost:5433/vocero (docker-compose.dev.yml)",
+    "en .env: DATABASE_URL=postgresql://postgres:<POSTGRES_PASSWORD>@postgres:5432/into_sales (docker compose) o ...@localhost:5433/into_sales (docker-compose.dev.yml)",
   DOMAIN:
     "en .env: DOMAIN=crm.tudominio.com (o localhost para probar aquí); solo lo usa docker compose para el HTTPS de Caddy",
 };
@@ -307,7 +307,7 @@ export function describeDbError(err: unknown, url: string): CheckResult {
         status: "fail",
         label,
         detail: `la base de datos no existe (${where})`,
-        fix: "créala (CREATE DATABASE vocero) o deja que docker compose la cree con POSTGRES_DB=vocero",
+        fix: "créala (CREATE DATABASE into_sales) o deja que docker compose la cree con POSTGRES_DB=into_sales; si la base es de antes de 2026-10-17 se llama vocero: renómbrala con ALTER DATABASE vocero RENAME TO into_sales (o vuelve a correr deploy/install.sh, que lo hace solo)",
       };
     default:
       return {

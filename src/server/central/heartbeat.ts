@@ -8,6 +8,7 @@ import {
 } from "@/server/central/client";
 import { readConfigCentral } from "@/server/central/flag";
 import { noteResult, getKey, organizationsWithKey } from "@/server/central/license";
+import { metrics } from "@/lib/observability/metrics";
 
 /**
  * 028 — El latido al servicio central. Corre fuera de cualquier petición de
@@ -45,6 +46,7 @@ export async function beatNow(organizationId: string, now: () => Date = () => ne
     body: await buildBody(organizationId),
   });
   await noteResult(organizationId, result, now());
+  metrics.centralHeartbeats.inc({ result: result.ok ? "ok" : result.result });
   const request = result.ok ? result.response.next_heartbeat_seconds : saved.interval;
   return { done: true, result: result, nextSeconds: nextInterval(request) };
 }

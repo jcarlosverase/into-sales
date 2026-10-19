@@ -10,7 +10,7 @@ services:
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
-      POSTGRES_DB: vocero
+      POSTGRES_DB: into_sales
       # Hora de Lima (UTC-5) para el servidor y quien abra la base; las fechas son
       # timestamptz y guardan el instante, así que esto solo cambia cómo se ven.
       TZ: America/Lima
@@ -20,7 +20,7 @@ services:
     volumes:
       - vocero_dev_pg:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d vocero"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d into_sales"]
       interval: 5s
       timeout: 3s
       retries: 10

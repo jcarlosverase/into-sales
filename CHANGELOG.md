@@ -7,6 +7,23 @@ imagen `ghcr.io/kevinrivm/vocero-crm:X.Y.Z`.
 
 ## Sin publicar — IntoSales
 
+- **La base se llama `into_sales`** (antes `vocero`), con el mismo patrón que
+  la del central (`into_central`). El instalador del VPS la renombra solo la
+  primera vez que lo vuelves a correr. En la Ruta B (docker compose a mano),
+  antes de `docker compose up -d`:
+  `docker compose stop app && docker compose exec postgres psql -U postgres -d postgres -c 'ALTER DATABASE vocero RENAME TO into_sales'`.
+  En desarrollo, tu `.env` sigue apuntando a `vocero` y funciona igual; solo un
+  volumen nuevo crea `into_sales`.
+- **Instalador del VPS en inglés, con actualizar y desinstalar** (spec 1001):
+  las opciones ahora son `--client`, `--domain`, `--central`, `--no-central`,
+  `--branch`, `--help` (y `--no-system`, `--base`, `--ports`, `--source` para
+  pruebas); las de antes en español ya no existen. Nuevas: `--update
+  --client acme` actualiza sin reinstalar paquetes y conserva dominio y
+  central; `--env CLAVE=valor` fija variables opcionales como `AGENDA=on`;
+  `--uninstall --client acme` respalda base, archivos y `.env` en
+  `/opt/into-backups` y quita al cliente por completo.
+- **`BRAIN_DISPATCH_URL` y `TRUSTED_ORIGINS` llegan a la app en docker
+  compose**: antes el `docker-compose.yml` no se las pasaba.
 - **Datos de ejemplo por rubro** (spec 023): `pnpm seed:academy`,
   `pnpm seed:realestate` y `pnpm seed:fashion` cargan contactos con
   conversación y lead, plantillas de WhatsApp en borrador y la configuración

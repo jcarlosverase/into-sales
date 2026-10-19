@@ -1,5 +1,6 @@
 import { after } from "next/server";
 import { getEnv } from "@/lib/env";
+import { countWebhook } from "@/lib/observability/webhooks";
 import { isValidWebhookToken } from "@/server/inbox/webhook";
 import {
   channelDisabledResponse,
@@ -34,7 +35,7 @@ export async function GET(_req: Request, { params }: Params) {
   return Response.json({ ok: true });
 }
 
-export async function POST(req: Request, { params }: Params) {
+async function handlePost(req: Request, { params }: Params) {
   if (!isChannelEnabled("tiktok")) return channelDisabledResponse();
   const { webhookToken } = await params;
   if (!isValidWebhookToken(webhookToken, getEnv().META_WEBHOOK_VERIFY_TOKEN)) {
@@ -70,3 +71,6 @@ export async function POST(req: Request, { params }: Params) {
 
   return Response.json({ received: true });
 }
+
+// Spec 1006: each delivery counted by channel and result.
+export const POST = countWebhook("tiktok", handlePost);

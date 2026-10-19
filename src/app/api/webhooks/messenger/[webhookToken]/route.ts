@@ -1,5 +1,6 @@
 import { after } from "next/server";
 import { getEnv } from "@/lib/env";
+import { countWebhook } from "@/lib/observability/webhooks";
 import { isValidSignature, isValidWebhookToken } from "@/server/inbox/webhook";
 import { processMetaPagePayload } from "@/server/messenger/ingest";
 import {
@@ -42,7 +43,7 @@ export async function GET(req: Request, { params }: Params) {
   return new Response(null, { status: 403 });
 }
 
-export async function POST(req: Request, { params }: Params) {
+async function handlePost(req: Request, { params }: Params) {
   if (!isChannelEnabled("messenger")) return channelDisabledResponse();
   const { webhookToken } = await params;
   const env = getEnv();
@@ -99,3 +100,6 @@ export async function POST(req: Request, { params }: Params) {
 
   return Response.json({ received: true });
 }
+
+// Spec 1006: each delivery counted by channel and result.
+export const POST = countWebhook("messenger", handlePost);

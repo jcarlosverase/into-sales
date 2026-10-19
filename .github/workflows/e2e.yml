@@ -51,7 +51,7 @@ jobs:
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: vocero_e2e
+          POSTGRES_DB: into_sales_e2e
         ports:
           - 5432:5432
         options: >-
@@ -62,7 +62,7 @@ jobs:
 
     # Solo valores de prueba: nada aquí es un secreto de verdad.
     env:
-      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/vocero_e2e
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/into_sales_e2e
       APP_BASE_URL: http://localhost:3000
       BETTER_AUTH_SECRET: ci-e2e-secret-ci-e2e-secret-ci-e2e-secret
       ENCRYPTION_KEY: AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=
