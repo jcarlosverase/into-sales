@@ -1,5 +1,5 @@
 # ============================================================
-# Vocero CRM — Ruta B: app + Postgres + Caddy (HTTPS automático)
+# IntoSales — Ruta B: app + Postgres + Caddy (HTTPS automático)
 # Uso:        pnpm init-env --domain tu.dominio  →  pnpm doctor  →  docker compose up -d
 #             (sin Node: cp .env.example .env y rellenar a mano)
 # Actualizar: git pull  →  docker compose up -d
@@ -17,7 +17,7 @@
 # Lo que construyes queda en tu máquina con este mismo nombre de imagen. En un
 # fork con cambios propios usa siempre --build (o cambia `image:` por un
 # nombre tuyo): sin él, Compose puede correr la imagen oficial en vez de tus
-# cambios. Otra versión publicada: VOCERO_CRM_VERSION=X.Y.Z en tu .env.
+# cambios. Otra versión publicada: INTO_SALES_VERSION=X.Y.Z en tu .env.
 # ============================================================
 
 # Spec 1006: Docker keeps each container's log in a file that, by default,
@@ -30,7 +30,7 @@ x-logging: &logging
 
 services:
   app:
-    image: ghcr.io/jcarlosverase/into-sales:${VOCERO_CRM_VERSION:-1.5.0}
+    image: ghcr.io/jcarlosverase/into-sales:${INTO_SALES_VERSION:-1.5.0}
     build: .
     restart: unless-stopped
     environment:
@@ -65,7 +65,7 @@ services:
     volumes:
       # Adjuntos, logo e icono (la imagen ya trae MEDIA_DIR=/data/media): sin
       # este volumen se pierden al recrear el contenedor.
-      - vocero_app_data:/data
+      - sales_app_data:/data
     depends_on:
       postgres:
         condition: service_healthy
@@ -83,7 +83,7 @@ services:
       TZ: America/Lima
       PGTZ: America/Lima
     volumes:
-      - vocero_pg:/var/lib/postgresql/data
+      - sales_pg:/var/lib/postgresql/data
     logging: *logging
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d into_sales"]
@@ -101,8 +101,8 @@ services:
       DOMAIN: ${DOMAIN}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
-      - vocero_caddy_data:/data
-      - vocero_caddy_config:/config
+      - sales_caddy_data:/data
+      - sales_caddy_config:/config
     logging: *logging
     depends_on:
       - app
@@ -113,7 +113,7 @@ services:
       retries: 5
 
 volumes:
-  vocero_pg:
-  vocero_app_data:
-  vocero_caddy_data:
-  vocero_caddy_config:
+  sales_pg:
+  sales_app_data:
+  sales_caddy_data:
+  sales_caddy_config:

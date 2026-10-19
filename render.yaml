@@ -1,5 +1,5 @@
 # ============================================================
-# Vocero CRM — Blueprint de Render (render.com/docs/blueprint-spec)
+# IntoSales — Blueprint de Render (render.com/docs/blueprint-spec)
 #
 # Un servicio web desde la imagen publicada (sin build en Render), una base
 # Postgres gestionada y un disco persistente en /data. Se aplica desde el
@@ -29,7 +29,7 @@
 # ============================================================
 services:
   - type: web
-    name: vocero
+    name: into-sales
     runtime: image
     image:
       # Pública: sin `creds`. Es linux/amd64, lo único que corre Render.
@@ -39,7 +39,7 @@ services:
     # region: oregon   # ohio · virginia · frankfurt · singapore
     healthCheckPath: /api/health
     disk:
-      name: vocero-data
+      name: sales-data
       mountPath: /data
       sizeGB: 1
     envVars:
@@ -50,11 +50,11 @@ services:
         # cámbiala en el panel: de ella sale la URL del webhook.
         fromService:
           type: web
-          name: vocero
+          name: into-sales
           envVarKey: RENDER_EXTERNAL_URL
       - key: DATABASE_URL
         fromDatabase:
-          name: vocero-db
+          name: into-sales-db
           property: connectionString
       - key: BETTER_AUTH_SECRET
         generateValue: true
@@ -80,9 +80,9 @@ services:
       #   value: "on"
 
 databases:
-  - name: vocero-db
-    databaseName: vocero
-    user: vocero
+  - name: into-sales-db
+    databaseName: into_sales
+    user: sales
     plan: basic-256mb
     postgresMajorVersion: "16"
     # region: oregon   # la misma que el servicio

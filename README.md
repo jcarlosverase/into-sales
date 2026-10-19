@@ -296,7 +296,7 @@ dice qué pasa: intenta primero descargar la imagen y solo la construye desde el
 código si no la encuentra ni en el registro ni en tu máquina. Así que:
 
 - `docker compose up -d` corre la imagen publicada de la versión que fija el
-  compose. Para otra versión publicada, `VOCERO_CRM_VERSION=X.Y.Z` en tu
+  compose. Para otra versión publicada, `INTO_SALES_VERSION=X.Y.Z` en tu
   `.env`.
 - `docker compose up -d --build` la construye desde tu copia del código. Es lo
   que necesitas en un VPS ARM y en un fork con cambios propios; en el fork,
@@ -798,7 +798,7 @@ SemVer sobre lo que le importa a quien opera una instancia:
 | **Parche** (`1.1.1`) | Arreglos y ajustes. Actualizar es redesplegar. |
 
 La versión vive en `package.json` y se sube en el PR que publica el cambio,
-junto con el default de `VOCERO_CRM_VERSION` en `docker-compose.yml` y la
+junto con el default de `INTO_SALES_VERSION` en `docker-compose.yml` y la
 etiqueta de la imagen en `render.yaml`, `fly.toml` y `railway.toml` (dos
 pruebas exigen que coincidan) y su entrada en [`CHANGELOG.md`](CHANGELOG.md),
 que dice qué trae cada versión y qué hacer para actualizar. Al crear el tag

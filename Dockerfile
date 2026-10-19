@@ -1,5 +1,5 @@
 # ============================================================
-# Vocero CRM — imagen multi-etapa (Next.js standalone + Node 22)
+# IntoSales — imagen multi-etapa (Next.js standalone + Node 22)
 # Los secretos NO se necesitan en build: llegan en runtime.
 # ============================================================
 
@@ -40,29 +40,29 @@ ENV NEXT_TELEMETRY_DISABLED=1
 # desarrollo local. No se define en la plataforma: basta montar /data.
 ENV MEDIA_DIR=/data/media
 # su-exec: el entrypoint arranca como root SOLO para dejar /data escribible y
-# baja a `vocero` antes de correr la app (idea de #40).
+# baja a `sales` antes de correr la app (idea de #40).
 RUN apk add --no-cache su-exec
-RUN addgroup -S vocero && adduser -S vocero -G vocero
-# El punto de montaje nace de `vocero`: un volumen nombrado nuevo hereda ese
+RUN addgroup -S sales && adduser -S sales -G sales
+# El punto de montaje nace de `sales`: un volumen nombrado nuevo hereda ese
 # dueño al montarse vacío. Los que llegan como root (Coolify, Railway, un bind
-# mount) los arregla vocero-entrypoint.sh en cada arranque.
-RUN mkdir -p /data/media && chown -R vocero:vocero /data
+# mount) los arregla sales-entrypoint.sh en cada arranque.
+RUN mkdir -p /data/media && chown -R sales:sales /data
 
-COPY --from=builder --chown=vocero:vocero /app/.next/standalone ./
-COPY --from=builder --chown=vocero:vocero /app/.next/static ./.next/static
-COPY --from=builder --chown=vocero:vocero /app/public ./public
-COPY --from=builder --chown=vocero:vocero /app/migrate.bundle.mjs ./migrate.mjs
-COPY --from=builder --chown=vocero:vocero /app/seed-demo.bundle.mjs ./seed-demo.mjs
-COPY --from=builder --chown=vocero:vocero /app/drizzle ./drizzle
+COPY --from=builder --chown=sales:sales /app/.next/standalone ./
+COPY --from=builder --chown=sales:sales /app/.next/static ./.next/static
+COPY --from=builder --chown=sales:sales /app/public ./public
+COPY --from=builder --chown=sales:sales /app/migrate.bundle.mjs ./migrate.mjs
+COPY --from=builder --chown=sales:sales /app/seed-demo.bundle.mjs ./seed-demo.mjs
+COPY --from=builder --chown=sales:sales /app/drizzle ./drizzle
 # Nombre propio a propósito: la imagen de node ya trae su docker-entrypoint.sh
 # (antepone `node` si el primer argumento no es un comando) y el nuestro le
 # pasa la posta en vez de pisarlo.
-COPY vocero-entrypoint.sh /usr/local/bin/vocero-entrypoint.sh
+COPY sales-entrypoint.sh /usr/local/bin/sales-entrypoint.sh
 # sed: un checkout de Windows con autocrlf lo deja en CRLF y `sh` no lo corre.
-RUN sed -i 's/\r$//' /usr/local/bin/vocero-entrypoint.sh \
-    && chmod 755 /usr/local/bin/vocero-entrypoint.sh
+RUN sed -i 's/\r$//' /usr/local/bin/sales-entrypoint.sh \
+    && chmod 755 /usr/local/bin/sales-entrypoint.sh
 
-# Sin `USER vocero`: el entrypoint baja a `vocero` con su-exec. Arrancado con
+# Sin `USER sales`: el entrypoint baja a `sales` con su-exec. Arrancado con
 # `--user`, también funciona (y avisa si /data no es escribible).
 EXPOSE 3000
 ENV PORT=3000
@@ -72,6 +72,6 @@ ENV HOSTNAME=0.0.0.0
 HEALTHCHECK --interval=15s --timeout=5s --start-period=40s --retries=5 \
   CMD wget -q -O /dev/null http://127.0.0.1:3000/api/health || exit 1
 
-ENTRYPOINT ["vocero-entrypoint.sh"]
+ENTRYPOINT ["sales-entrypoint.sh"]
 # Migrar al BOOT del contenedor nuevo y arrancar el server standalone
 CMD ["sh", "-c", "node migrate.mjs && node server.js"]

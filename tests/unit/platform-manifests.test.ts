@@ -82,7 +82,7 @@ describe.each([
     // manifest instala la versión anterior mientras el CHANGELOG habla de
     // la nueva.
     expect(text).toContain(IMAGE);
-    expect(text).not.toMatch(/vocero-crm:latest/);
+    expect(text).not.toMatch(/into-sales:latest/);
   });
 
   it("apunta al healthcheck, al volumen de /data y al puerto de la imagen", () => {
@@ -127,8 +127,8 @@ describe("render.yaml: el Blueprint declara todo lo que Render deja declarar", (
   });
 
   it("DATABASE_URL viene de la base del Blueprint y APP_BASE_URL de la URL del servicio", () => {
-    expect(blockRender("DATABASE_URL")).toMatch(/fromDatabase:[\s\S]*name: vocero-db[\s\S]*property: connectionString/);
-    expect(isActive).toMatch(/^databases:\n\s*- name: vocero-db$/m);
+    expect(blockRender("DATABASE_URL")).toMatch(/fromDatabase:[\s\S]*name: into-sales-db[\s\S]*property: connectionString/);
+    expect(isActive).toMatch(/^databases:\n\s*- name: into-sales-db$/m);
     expect(blockRender("APP_BASE_URL")).toMatch(/fromService:[\s\S]*envVarKey: RENDER_EXTERNAL_URL/);
   });
 
@@ -174,8 +174,8 @@ describe("fly.toml: lo que cabe en el archivo y los comandos de lo que no", () =
       // Y no en [env], que es visible en el fly.toml del repo.
       expect(isActive, key).not.toMatch(new RegExp(`^\\s*${key} =`, "m"));
     }
-    expect(fly).toMatch(/fly postgres attach vocero-db --app vocero-crm/);
-    expect(fly).toMatch(/fly volumes create vocero_data --app vocero-crm/);
+    expect(fly).toMatch(/fly postgres attach into-sales-db --app into-sales/);
+    expect(fly).toMatch(/fly volumes create sales_data --app into-sales/);
   });
 });
 

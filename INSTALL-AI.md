@@ -139,7 +139,7 @@ docker compose up -d
   `docker-compose.yml`. En un VPS ARM o en un fork con cambios propios, usa
   `docker compose up -d --build`: la construye desde el código.
 - Caddy emite el certificado HTTPS automáticamente con `DOMAIN`.
-- El compose ya monta el volumen `vocero_app_data` en `/data` (adjuntos, logo
+- El compose ya monta el volumen `sales_app_data` en `/data` (adjuntos, logo
   e icono): no hay que definir `MEDIA_DIR`.
 - Verifica: `docker compose ps` (tres servicios healthy) y
   `https://<dominio>/api/health` → `{"ok":true,"version":"1.5.1",…}` (`"mediaWritable":true` confirma el volumen).

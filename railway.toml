@@ -1,5 +1,5 @@
 # ============================================================
-# Vocero CRM — railway.toml (docs.railway.com/reference/config-as-code)
+# IntoSales — railway.toml (docs.railway.com/reference/config-as-code)
 #
 # Railway lo lee al construir desde el código (GitHub o `railway up`) y de él
 # toma el builder, el healthcheck y la política de reinicio. Es TODO lo que
@@ -10,7 +10,7 @@
 #
 #   railway init                               # proyecto nuevo (pregunta el nombre)
 #   railway add --database postgres            # servicio «Postgres»
-#   railway add --service vocero               # servicio de la app, enlazado a esta carpeta
+#   railway add --service into-sales               # servicio de la app, enlazado a esta carpeta
 #   railway volume add --mount-path /data      # adjuntos, logo e icono
 #   railway domain --port 3000                 # dominio *.up.railway.app → puerto 3000 de la imagen
 #   railway variable set --skip-deploys \

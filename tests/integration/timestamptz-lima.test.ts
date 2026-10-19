@@ -81,7 +81,7 @@ describe.skipIf(!TEST_DATABASE_URL)("1002 — timestamptz and Lima database time
 
 /** AC1 y AC5 — la migración sobre una base que ya tenía datos en el esquema viejo. */
 describe.skipIf(!TEST_DATABASE_URL)("1002 — migrating a database with data", () => {
-  const name = `vocero_test_${randomBytes(5).toString("hex")}`;
+  const name = `into_sales_test_${randomBytes(5).toString("hex")}`;
   let admin: ReturnType<typeof postgres>;
   let url: string;
   let previous: string;

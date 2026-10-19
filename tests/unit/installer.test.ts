@@ -57,6 +57,20 @@ describe("deploy/install.sh (spec 1001)", () => {
     expect(compose).not.toMatch(/5432\/vocero|POSTGRES_DB: vocero/);
   });
 
+  it("nothing the server runs is named vocero: container user, entrypoint, volumes", () => {
+    for (const file of ["Dockerfile", "sales-entrypoint.sh", "docker-compose.yml", "docker-compose.dev.yml", "deploy/docker-compose.vps.yml"]) {
+      expect(readFileSync(file, "utf8").toLowerCase(), file).not.toContain("vocero");
+    }
+    expect(readFileSync("Dockerfile", "utf8")).toContain("adduser -S sales -G sales");
+    expect(readFileSync("docker-compose.yml", "utf8")).toMatch(/sales_pg:[\s\S]*sales_app_data:/);
+  });
+
+  it("an update moves the old vocero_* volumes to their new names", () => {
+    const script = readFileSync(SCRIPT, "utf8");
+    expect(script).toContain("vocero_pg:sales_pg vocero_app_data:sales_app_data");
+    expect(script).toMatch(/migrate_volumes\n\s*rename_database/);
+  });
+
   // Spec 1006.
   it("logs each site without the webhook token, with a request id, and closes /api/metrics", () => {
     for (const file of ["Caddyfile", "deploy/install.sh"]) {

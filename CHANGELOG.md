@@ -14,6 +14,17 @@ imagen `ghcr.io/kevinrivm/vocero-crm:X.Y.Z`.
   `docker compose stop app && docker compose exec postgres psql -U postgres -d postgres -c 'ALTER DATABASE vocero RENAME TO into_sales'`.
   En desarrollo, tu `.env` sigue apuntando a `vocero` y funciona igual; solo un
   volumen nuevo crea `into_sales`.
+- **Nada de «vocero» en lo que se instala**: el usuario del contenedor es
+  `sales` (antes `vocero`), el entrypoint `sales-entrypoint.sh`, los
+  volúmenes `sales_pg`, `sales_app_data`, `sales_caddy_data` y
+  `sales_caddy_config` (antes `vocero_*`) y la variable de versión
+  `INTO_SALES_VERSION` (antes `VOCERO_CRM_VERSION`). El instalador del VPS
+  copia los volúmenes viejos a los nuevos la primera vez que corres
+  `--update` y borra los viejos cuando la app queda sana. En la Ruta B a mano,
+  antes de `docker compose up -d`, copia cada volumen
+  (`docker run --rm -v <proyecto>_vocero_pg:/from -v <proyecto>_sales_pg:/to postgres:16-alpine sh -c 'cp -a /from/. /to/'`,
+  igual con `app_data`) o tu instancia arrancará vacía. Fly, Render y Railway
+  usan los nombres nuevos solo en instalaciones nuevas.
 - **Instalador del VPS en inglés, con actualizar y desinstalar** (spec 1001):
   las opciones ahora son `--client`, `--domain`, `--central`, `--no-central`,
   `--branch`, `--help` (y `--no-system`, `--base`, `--ports`, `--source` para

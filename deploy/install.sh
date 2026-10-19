@@ -445,6 +445,35 @@ rename_database() {
   fi
 }
 
+# Until 2026-10-19 the volumes were named vocero_pg and vocero_app_data. On a
+# server that still has them, copies each one once into its new name (with
+# the containers stopped) and removes the old one once the app is healthy.
+OLD_VOLUMES=""
+migrate_volumes() {
+  for pair in vocero_pg:sales_pg vocero_app_data:sales_app_data; do
+    old="${PROJECT}_${pair%%:*}"
+    new="${PROJECT}_${pair#*:}"
+    docker volume inspect "$old" > /dev/null 2>&1 || continue
+    if ! docker volume inspect "$new" > /dev/null 2>&1; then
+      log "Pasando el volumen $old a $new"
+      dc stop > /dev/null 2>&1 || true
+      docker volume create \
+        --label "com.docker.compose.project=$PROJECT" \
+        --label "com.docker.compose.volume=${pair#*:}" "$new" > /dev/null
+      # La imagen de Postgres ya está en el servidor: sirve para copiar.
+      docker run --rm -v "$old:/from:ro" -v "$new:/to" postgres:16-alpine \
+        sh -c 'cp -a /from/. /to/' || die "no pude copiar $old a $new; no borré nada"
+    fi
+    OLD_VOLUMES="$OLD_VOLUMES $old"
+  done
+}
+
+remove_old_volumes() {
+  for v in $OLD_VOLUMES; do
+    docker volume rm "$v" > /dev/null 2>&1 || warn "no pude quitar el volumen viejo $v; bórralo con: docker volume rm $v"
+  done
+}
+
 wait_https() {
   for _ in $(seq 1 30); do
     curl -fsk --max-time 5 --resolve "$DOMAIN:$HTTPS_PORT:127.0.0.1" "$URL/api/health" > /dev/null 2>&1 && return 0
@@ -474,7 +503,7 @@ backup_client() {
   start_postgres
   dc exec -T postgres pg_dump -U postgres "$DB_NAME" > "$dest/$DB_NAME.sql" ||
     die "no pude respaldar la base; no borré nada"
-  volume=$(docker volume ls -q --filter "label=com.docker.compose.project=$PROJECT" | grep '_app_data$' || true)
+  volume=$(docker volume ls -q --filter "label=com.docker.compose.project=$PROJECT" | grep '_app_data$' | sort | head -1 || true)
   if [ -n "$volume" ]; then
     # La imagen de Postgres ya está en el servidor: sirve para leer el volumen.
     docker run --rm -v "$volume:/data:ro" postgres:16-alpine tar -C /data -czf - . > "$dest/app-data.tar.gz" ||
@@ -494,6 +523,8 @@ uninstall() {
     warn "falta el código en $DIR/src: quito los contenedores sin respaldar la base"
     docker compose -p "$PROJECT" down -v --remove-orphans > /dev/null 2>&1 || true
   fi
+  # Anything left with this project's label (e.g. a volume from an older name).
+  docker volume ls -q --filter "label=com.docker.compose.project=$PROJECT" | xargs -r docker volume rm > /dev/null 2>&1 || true
   docker image rm "$APP:$CLIENT" > /dev/null 2>&1 || true
   rm -f "$EDGE/sites/$PROJECT.caddy" "$MON/targets/$PROJECT.json"
   rm -rf "$DIR"
@@ -528,10 +559,12 @@ main() {
 
   log "Construyendo la imagen (la primera vez tarda varios minutos)"
   dc build --build-arg "SOURCE_COMMIT=$COMMIT" app
+  migrate_volumes
   rename_database
   log "Arrancando $PROJECT"
   dc up -d --remove-orphans
   wait_healthy
+  remove_old_volumes
 
   cat > "$EDGE/sites/$PROJECT.caddy" <<EOF
 # $PROJECT — lo escribe el instalador de into-sales.

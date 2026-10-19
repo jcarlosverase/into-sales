@@ -24,7 +24,7 @@ export const TEST_DATABASE_URL = process.env.TEST_DATABASE_URL;
  */
 export async function useTestDatabase(): Promise<{ drop: () => Promise<void> }> {
   if (!TEST_DATABASE_URL) throw new Error("TEST_DATABASE_URL is required for integration tests");
-  const name = `vocero_test_${randomBytes(5).toString("hex")}`;
+  const name = `into_sales_test_${randomBytes(5).toString("hex")}`;
   const admin = postgres(TEST_DATABASE_URL, { max: 1, ...PG_CONNECTION_OPTIONS });
   await admin.unsafe(`create database "${name}"`);
   const url = new URL(TEST_DATABASE_URL);

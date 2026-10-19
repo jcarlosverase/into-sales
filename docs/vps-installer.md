@@ -83,7 +83,7 @@ curl -fsSL https://raw.githubusercontent.com/jcarlosverase/into-sales/main/deplo
 |---|---|---|
 | Proyecto de compose | `into-sales-acme` | `into-central` |
 | Base de datos | `into_sales`, en su propio Postgres | `into_central` |
-| Volúmenes | `into-sales-acme_vocero_pg` y `into-sales-acme_vocero_app_data` | `into-central_central_pg` |
+| Volúmenes | `into-sales-acme_sales_pg` y `into-sales-acme_sales_app_data` | `into-central_central_pg` |
 
 Todas las apps comparten la red `into_edge` con el Caddy, así que ningún
 cliente necesita puertos propios. Las bases de antes de 2026-10-17 se

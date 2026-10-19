@@ -1,15 +1,15 @@
 #!/bin/sh
 # ============================================================
-# Vocero CRM — entrypoint del contenedor
+# IntoSales — entrypoint del contenedor
 #
 # Adjuntos, logo e icono se guardan en MEDIA_DIR (/data/media en la imagen) y
-# la app corre como `vocero`. Las plataformas montan el volumen de /data con
+# la app corre como `sales`. Las plataformas montan el volumen de /data con
 # el dueño que quieren —Coolify y Railway, como root—, y entonces todo
 # guardado fallaba con EACCES.
 #
-# - Arrancando como root (el default): crea MEDIA_DIR, le da a `vocero` SOLO
+# - Arrancando como root (el default): crea MEDIA_DIR, le da a `sales` SOLO
 #   lo que todavía no es suyo —un volumen grande no se re-chownea entero en
-#   cada arranque— y baja a `vocero` con su-exec antes de correr la app.
+#   cada arranque— y baja a `sales` con su-exec antes de correr la app.
 # - Arrancando sin root (`--user`, o una plataforma que fuerza el uid): no se
 #   pueden cambiar dueños. Se arranca igual y, si MEDIA_DIR no es escribible,
 #   se avisa qué hacer. Esto nunca tumba el contenedor: el resto del CRM
@@ -21,7 +21,7 @@
 # ============================================================
 set -u
 
-APP_USER=vocero
+APP_USER=sales
 
 # Vacía cuenta como ausente, igual que en la app (src/lib/env.ts): un panel que
 # inyecta MEDIA_DIR="" no debe mandar los archivos fuera del volumen.

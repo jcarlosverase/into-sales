@@ -1,7 +1,7 @@
 # Postgres local para desarrollo en el puerto 5433 (el 5432 queda para
 # into-central). Uso: docker compose -f docker-compose.dev.yml up -d
 # `name` propio: evita colisionar con el proyecto del docker-compose.yml (Ruta B).
-name: vocero-dev
+name: into-sales-dev
 
 services:
   postgres:
@@ -18,7 +18,7 @@ services:
     ports:
       - "5433:5432"
     volumes:
-      - vocero_dev_pg:/var/lib/postgresql/data
+      - sales_dev_pg:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d into_sales"]
       interval: 5s
@@ -26,4 +26,4 @@ services:
       retries: 10
 
 volumes:
-  vocero_dev_pg:
+  sales_dev_pg:

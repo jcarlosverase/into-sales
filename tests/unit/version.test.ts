@@ -51,7 +51,7 @@ describe("versión de la app", () => {
     // corre la versión anterior mientras el código y el CHANGELOG hablan de
     // la nueva.
     const compose = readFileSync(path.join(ROOT, "docker-compose.yml"), "utf8");
-    const image = compose.match(/image:\s*\S+:\$\{VOCERO_CRM_VERSION:-([^}\s]+)\}/);
+    const image = compose.match(/image:\s*\S+:\$\{INTO_SALES_VERSION:-([^}\s]+)\}/);
     expect(image?.[1]).toBe(pkg.version);
   });
 
