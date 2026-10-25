@@ -3,7 +3,7 @@
 # into-sales — instalador en un comando para un VPS (spec 1001)
 #
 #   curl -fsSL https://raw.githubusercontent.com/jcarlosverase/into-sales/main/deploy/install.sh \
-#     | sudo bash -s -- --client acme --domain crm.acme.com
+#     | sudo bash -s -- --client demo --domain demo.crm.into.center
 #
 # Deja el CRM del cliente corriendo con HTTPS en ese dominio. Con --update lo
 # actualiza (basta con --client: el dominio y lo demás se conservan) y con
@@ -48,9 +48,9 @@ Instala, actualiza o desinstala el CRM de un cliente (into-sales) en este
 servidor, con HTTPS automático.
 
 Uso:
-  sudo bash install.sh --client acme --domain crm.acme.com [opciones]   instalar
-  sudo bash install.sh --update --client acme [opciones]                actualizar
-  sudo bash install.sh --uninstall --client acme                        desinstalar
+  sudo bash install.sh --client demo --domain demo.crm.into.center [opciones]   instalar
+  sudo bash install.sh --update --client demo [opciones]                         actualizar
+  sudo bash install.sh --uninstall --client demo                                 desinstalar
 
   --client C      Cliente (minúsculas, números y guiones; hasta 31). Cada
                   cliente tiene su carpeta, su base y sus volúmenes en el
@@ -167,7 +167,7 @@ if [ "$MODE" != uninstall ]; then
   if [ -z "$DOMAIN" ] && [ -f "$DIR/.env" ]; then
     DOMAIN=$(grep '^DOMAIN=' "$DIR/.env" | cut -d= -f2- || true)
   fi
-  [ -n "$DOMAIN" ] || die "falta --domain (por ejemplo: --client acme --domain crm.acme.com)"
+  [ -n "$DOMAIN" ] || die "falta --domain (por ejemplo: --client demo --domain demo.crm.into.center)"
   printf '%s' "$DOMAIN" | grep -Eq '^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]([a-z0-9-]{0,61}[a-z0-9])?$' ||
     die "dominio inválido: $DOMAIN"
 fi

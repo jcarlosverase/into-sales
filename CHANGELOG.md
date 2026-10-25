@@ -7,6 +7,11 @@ imagen `ghcr.io/kevinrivm/vocero-crm:X.Y.Z`.
 
 ## Sin publicar — IntoSales
 
+- **La moneda del negocio por defecto es el sol peruano (PEN)** (spec 1007).
+  Si ya guardaste otra en Ajustes → Marca, se conserva.
+- **Guardar la conexión de WhatsApp vuelve a registrar el webhook** (spec
+  1008) cuando otra app suscrita a tu cuenta de WhatsApp tiene su propio
+  override: antes el CRM lo tomaba por un cerebro externo y no registraba nada.
 - **La base se llama `into_sales`** (antes `vocero`), con el mismo patrón que
   la del central (`into_central`). El instalador del VPS la renombra solo la
   primera vez que lo vuelves a correr. En la Ruta B (docker compose a mano),

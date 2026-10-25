@@ -311,12 +311,12 @@ Caddy emite el certificado HTTPS solo. Verifica con
 En un Ubuntu o Debian recién creado, con el dominio ya apuntando al servidor:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/jcarlosverase/into-sales/main/deploy/install.sh | sudo bash -s -- --client acme --domain crm.acme.com
+curl -fsSL https://raw.githubusercontent.com/jcarlosverase/into-sales/main/deploy/install.sh | sudo bash -s -- --client demo --domain demo.crm.into.center
 ```
 
 Instala Docker si falta, genera los secretos, construye la imagen desde el
-código y deja el CRM con HTTPS. Para actualizar, `--update --client acme`, que
-nunca pisa los secretos; para quitarlo, `--uninstall --client acme`, que
+código y deja el CRM con HTTPS. Para actualizar, `--update --client demo`, que
+nunca pisa los secretos; para quitarlo, `--uninstall --client demo`, que
 respalda antes. En el mismo VPS caben un CRM por cliente (`--client`) y el
 servicio central de into, detrás de un solo Caddy compartido. La guía completa está en
 [docs/vps-installer.md](docs/vps-installer.md).

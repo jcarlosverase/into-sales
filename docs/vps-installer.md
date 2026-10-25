@@ -12,9 +12,16 @@ cada dominio:
 
 | Dominio | Para qué |
 |---|---|
-| `crm.cliente.com` | Un CRM (uno por cliente) |
+| `<cliente>.crm.into.center` | Un CRM (uno por cliente): `into.crm.into.center` es el de into y `demo.crm.into.center` el de las demos |
 | `central.into.center` | El panel del servicio central |
 | `api.into.center` | La API del central para los CRMs |
+
+Para los CRMs basta un solo registro comodín, **A `*.crm.into.center` → IP del
+VPS**: cada cliente nuevo se instala sin tocar el DNS, y ningún CRM puede
+chocar con `central`, `api` ni otro servicio de into. El nombre de la
+cliente (`--client`) es el mismo del subdominio (`demo` →
+`demo.crm.into.center`); el CRM de into es el cliente `principal`, en
+`into.crm.into.center`.
 
 Si el DNS todavía no llega, el instalador avisa y sigue igual. Caddy saca el
 certificado solo cuando el dominio apunte al servidor.
@@ -32,7 +39,13 @@ comparten el Caddy (los puertos 80 y 443) y cada uno tiene su carpeta, su
 proyecto de compose, su Postgres y sus volúmenes.
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/jcarlosverase/into-sales/main/deploy/install.sh | sudo bash -s -- --client acme --domain crm.acme.com --central https://api.into.center
+curl -fsSL https://raw.githubusercontent.com/jcarlosverase/into-sales/main/deploy/install.sh | sudo bash -s -- --client demo --domain demo.crm.into.center --central https://api.into.center
+```
+
+El CRM de into es el cliente `principal`:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/jcarlosverase/into-sales/main/deploy/install.sh | sudo bash -s -- --client principal --domain into.crm.into.center --central https://api.into.center
 ```
 
 | Opción | Qué hace |
@@ -50,7 +63,7 @@ curl -fsSL https://raw.githubusercontent.com/jcarlosverase/into-sales/main/deplo
 
 Al terminar, el instalador dice qué sigue:
 
-1. Abrir `https://crm.acme.com/register` y crear la cuenta del negocio.
+1. Abrir `https://demo.crm.into.center/register` y crear la cuenta del negocio.
 2. Conectar WhatsApp y la IA en Ajustes.
 3. En Ajustes → Plan, pegar la llave de licencia que da el central.
 
@@ -58,32 +71,32 @@ Al terminar, el instalador dice qué sigue:
 otro `--domain`.
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/jcarlosverase/into-sales/main/deploy/install.sh | sudo bash -s -- --client beta --domain crm.beta.com --central https://api.into.center
+curl -fsSL https://raw.githubusercontent.com/jcarlosverase/into-sales/main/deploy/install.sh | sudo bash -s -- --client beta --domain beta.crm.into.center --central https://api.into.center
 ```
 
 **Con módulos opcionales desde el inicio:**
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/jcarlosverase/into-sales/main/deploy/install.sh | sudo bash -s -- --client gamma --domain crm.gamma.com --central https://api.into.center --env AGENDA=on --env CHANNELS=whatsapp,instagram
+curl -fsSL https://raw.githubusercontent.com/jcarlosverase/into-sales/main/deploy/install.sh | sudo bash -s -- --client gamma --domain gamma.crm.into.center --central https://api.into.center --env AGENDA=on --env CHANNELS=whatsapp,instagram
 ```
 
 ## Cómo queda el servidor
 
 ```text
 /opt/into-edge/              Caddy compartido: HTTPS de todos los dominios
-  sites/into-sales-acme.caddy
-  sites/into-sales-beta.caddy
+  sites/into-sales-principal.caddy
+  sites/into-sales-demo.caddy
   sites/into-central.caddy
-/opt/into-sales/acme/        .env (secretos, 600) y src/ (el código)
-/opt/into-sales/beta/
+/opt/into-sales/principal/   .env (secretos, 600) y src/ (el código)
+/opt/into-sales/demo/
 /opt/into-central/
 ```
 
-| | Un cliente (`acme`) | El central |
+| | Un cliente (`demo`) | El central |
 |---|---|---|
-| Proyecto de compose | `into-sales-acme` | `into-central` |
+| Proyecto de compose | `into-sales-demo` | `into-central` |
 | Base de datos | `into_sales`, en su propio Postgres | `into_central` |
-| Volúmenes | `into-sales-acme_sales_pg` y `into-sales-acme_sales_app_data` | `into-central_central_pg` |
+| Volúmenes | `into-sales-demo_sales_pg` y `into-sales-demo_sales_app_data` | `into-central_central_pg` |
 
 Todas las apps comparten la red `into_edge` con el Caddy, así que ningún
 cliente necesita puertos propios. Las bases de antes de 2026-10-17 se
@@ -97,7 +110,7 @@ migraciones corren al arrancar. Los secretos nunca se pisan, y lo que no
 repitas (`--domain`, `--central`, las variables de `--env`) se conserva.
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/jcarlosverase/into-sales/main/deploy/install.sh | sudo bash -s -- --update --client acme
+curl -fsSL https://raw.githubusercontent.com/jcarlosverase/into-sales/main/deploy/install.sh | sudo bash -s -- --update --client demo
 ```
 
 Todos los clientes del VPS:
@@ -109,23 +122,23 @@ for c in $(ls /opt/into-sales); do curl -fsSL https://raw.githubusercontent.com/
 Con cambios:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/jcarlosverase/into-sales/main/deploy/install.sh | sudo bash -s -- --update --client acme --domain ventas.acme.com   # otro dominio
-curl -fsSL https://raw.githubusercontent.com/jcarlosverase/into-sales/main/deploy/install.sh | sudo bash -s -- --update --client acme --env AGENDA=on            # enciende la agenda
-curl -fsSL https://raw.githubusercontent.com/jcarlosverase/into-sales/main/deploy/install.sh | sudo bash -s -- --update --client acme --env AGENDA=              # la apaga
-curl -fsSL https://raw.githubusercontent.com/jcarlosverase/into-sales/main/deploy/install.sh | sudo bash -s -- --update --client acme --no-central               # apaga el latido
+curl -fsSL https://raw.githubusercontent.com/jcarlosverase/into-sales/main/deploy/install.sh | sudo bash -s -- --update --client demo --domain crm.demo.pe       # otro dominio
+curl -fsSL https://raw.githubusercontent.com/jcarlosverase/into-sales/main/deploy/install.sh | sudo bash -s -- --update --client demo --env AGENDA=on            # enciende la agenda
+curl -fsSL https://raw.githubusercontent.com/jcarlosverase/into-sales/main/deploy/install.sh | sudo bash -s -- --update --client demo --env AGENDA=              # la apaga
+curl -fsSL https://raw.githubusercontent.com/jcarlosverase/into-sales/main/deploy/install.sh | sudo bash -s -- --update --client demo --no-central               # apaga el latido
 ```
 
 ## Desinstalar
 
 Pide escribir el nombre del cliente para confirmar. Antes de borrar, respalda
-en `/opt/into-backups/into-sales-acme-<fecha>/` la base (`into_sales.sql`),
+en `/opt/into-backups/into-sales-demo-<fecha>/` la base (`into_sales.sql`),
 los archivos subidos (`app-data.tar.gz`) y el `.env`; si el respaldo falla, no
 borra nada. Después quita contenedores, volúmenes, imagen, su sitio de Caddy y
-`/opt/into-sales/acme`. Si ya no queda ninguna app, también quita el Caddy
+`/opt/into-sales/demo`. Si ya no queda ninguna app, también quita el Caddy
 compartido.
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/jcarlosverase/into-sales/main/deploy/install.sh | sudo bash -s -- --uninstall --client acme
+curl -fsSL https://raw.githubusercontent.com/jcarlosverase/into-sales/main/deploy/install.sh | sudo bash -s -- --uninstall --client demo
 ```
 
 Sin confirmación: `--yes`. Sin respaldo (los datos se pierden): `--no-backup`.
@@ -165,7 +178,7 @@ instalador solo acepta las que el `docker-compose.yml` le pasa a la app:
 | `ATRIBUCION` | Reporte de ventas a Meta (Conversions API) | Vacía: apagada | `--env ATRIBUCION=on` |
 | `ALLOW_SIGNUP` | Reabrir el registro después de la primera cuenta | Vacía: cerrado tras la primera cuenta | `--env ALLOW_SIGNUP=true` |
 | `AGENT_COALESCE_MS` | Cuánto espera el agente para juntar mensajes | `6000` | `--env AGENT_COALESCE_MS=8000` |
-| `TRUSTED_ORIGINS` | Dominios extra para iniciar sesión | Vacía: solo el dominio del CRM | `--env TRUSTED_ORIGINS=https://ventas.acme.com` |
+| `TRUSTED_ORIGINS` | Dominios extra para iniciar sesión | Vacía: solo el dominio del CRM | `--env TRUSTED_ORIGINS=https://crm.demo.pe` |
 | `META_APP_SECRET` | Firma de los webhooks (developers.facebook.com → tu app → Configuración → Básica) | Vacía: no se valida la firma | `--env META_APP_SECRET=…` |
 | `META_GRAPH_API_VERSION` | Versión de la API de Meta | `v25.0` | `--env META_GRAPH_API_VERSION=v25.0` |
 | `BOT_API_KEY` | API para un cerebro externo (`openssl rand -base64 32`) | Vacía: `/api/bot/*` responde 401 | `--env BOT_API_KEY=…` |
@@ -182,7 +195,7 @@ de la terminal; bórralo con `history -c` si era secreto.
 Primero di de qué cliente se trata (`ls /opt/into-sales` los lista):
 
 ```bash
-CLIENT=acme
+CLIENT=demo
 sudo docker ps --format "table {{.Names}}\t{{.Status}}"                # qué está corriendo
 sudo docker compose -p into-sales-$CLIENT logs -f app                  # registro
 sudo docker compose -p into-sales-$CLIENT restart app                  # reiniciar la app
@@ -191,7 +204,7 @@ sudo docker compose -p into-sales-$CLIENT exec -T postgres \
 ```
 
 La salud del CRM (base de datos, migraciones, archivos, WhatsApp, IA, cerebro
-y central) se ve en `https://crm.acme.com/settings/health`, como
+y central) se ve en `https://demo.crm.into.center/settings/health`, como
 propietario o administrador.
 
 Guarda una copia del `.env` de cada cliente (`/opt/into-sales/<cliente>/.env`).

@@ -15,7 +15,7 @@ import {
 } from "@dnd-kit/core";
 import { MessageSquareText, Settings2, Trophy, XCircle } from "lucide-react";
 import type { LossReason, PriorityValue, StageDto } from "@/lib/types";
-import { formatMoneyCents, summable } from "@/lib/money";
+import { DEFAULT_CURRENCY, formatMoneyCents, summable } from "@/lib/money";
 import { cn, initials } from "@/lib/utils";
 import { ContactAvatar } from "@/components/avatar";
 import { Button } from "@/components/ui/button";
@@ -48,7 +48,7 @@ export type TeamMember = { id: string; name: string };
 
 export function PipelineClient() {
   const [stages, setStages] = useState<StageDto[]>([]);
-  const [currency, setCurrency] = useState("MXN");
+  const [currency, setCurrency] = useState<string>(DEFAULT_CURRENCY);
   const [leads, setLeads] = useState<BoardLead[]>([]);
   // 022 — only supervisors can reassign; `team` is who they can pick.
   const [canAssign, setCanAssign] = useState(false);
