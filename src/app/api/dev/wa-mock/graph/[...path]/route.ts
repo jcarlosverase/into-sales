@@ -167,6 +167,11 @@ export async function GET(req: Request, ctx: Params) {
     });
   }
 
+  // GET /app → la app de Meta a la que pertenece el token.
+  if (path.length === 1 && path[0] === "app") {
+    return Response.json(MOCK_APP);
+  }
+
   // GET {wabaId}/subscribed_apps → la app suscrita y, si lo hay, su override
   // de callback. Misma forma que Meta; sin suscripción, `data` vacío.
   if (path.length === 2 && path[1] === "subscribed_apps") {

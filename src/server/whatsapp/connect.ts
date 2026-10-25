@@ -74,7 +74,7 @@ type WebhookConfiguration = {
     /** Override vigente a nivel del número. */
     phone_number?: string;
     /** Override vigente a nivel de la WABA. */
-    waba?: string;
+    whatsapp_business_account?: string;
     /** La callback URL del panel de la app. */
     application?: string;
   };
@@ -119,8 +119,8 @@ export type WebhookRegistration =
  *
  * Tres pasos, por la API de Graph y con el token del propio negocio:
  *
- *   1. `GET /{waba}/subscribed_apps`: si alguna app ya enruta la WABA a un
- *      override AJENO, aquí termina (`skipped`): el override del número tiene
+ *   1. `GET /app` + `GET /{waba}/subscribed_apps`: si NUESTRA app (la del
+ *      token) ya enruta la WABA a un override AJENO, aquí termina (`skipped`): el override del número tiene
  *      prioridad sobre el de la WABA y dejaría sordo a quien lo puso. Y si un
  *      guardado anterior había dejado el nuestro en el número, se quita.
  *      Sin override, `POST /{waba}/subscribed_apps` sin cuerpo: Meta lo
@@ -144,7 +144,7 @@ export async function registerWebhookForNumber(opts: {
   const { wabaId, phoneNumberId, token, webhookUrl, verifyToken } = opts;
   const ownPath = pathOf(webhookUrl);
 
-  const override = await wabaOverride(wabaId, token);
+  const override = await wabaOverride(wabaId, token, await tokenAppId(token));
   if (override && !sameWebhookPath(override, ownPath)) {
     const host = hostOf(override);
     console.log(
@@ -243,12 +243,21 @@ export async function unregisterWebhookForNumber(opts: {
  * en cada "Guardar" —o al rotar el token— lo desconectaba en silencio. Por eso
  * se consulta antes de tocar nada.
  *
+ * Solo cuenta el override de NUESTRA app (la del token; spec 1008). En Meta los
+ * overrides son por app: el de otra app suscrita a la misma WABA (un BSP
+ * anterior, Zernio, la plataforma de una agencia) solo redirige lo que recibe
+ * esa app y no compite con el nuestro. Antes se tomaba el de cualquier app, y
+ * bastaba una segunda app con override para que «Guardar» no registrara nada
+ * —y hasta quitara el webhook del número—. Si no se sabe cuál es nuestra app
+ * (`appId` null), se cae al criterio de antes: cualquier override se respeta.
+ *
  * `null` = ninguna app tiene override; `undefined` = no se pudo consultar (se
  * suscribe como siempre, best-effort).
  */
 async function wabaOverride(
   wabaId: string,
-  token: string
+  token: string,
+  appId: string | null
 ): Promise<string | null | undefined> {
   try {
     const res = await graphRequest<SubscribedApps | null>(
@@ -257,6 +266,7 @@ async function wabaOverride(
     );
     return (
       (Array.isArray(res?.data) ? res.data : [])
+        .filter((app) => !appId || app?.whatsapp_business_api_data?.id === appId)
         .map((app) => app?.override_callback_uri)
         .find(
           (uri): uri is string => typeof uri === "string" && uri.trim() !== ""
@@ -268,6 +278,23 @@ async function wabaOverride(
       err instanceof Error ? err.message : err
     );
     return undefined;
+  }
+}
+
+/**
+ * El id de la app de Meta a la que pertenece el token (`GET /app`). `null` si
+ * Meta no lo dice: best-effort, como la consulta de `subscribed_apps`.
+ */
+async function tokenAppId(token: string): Promise<string | null> {
+  try {
+    const res = await graphRequest<{ id?: unknown } | null>("app", { token });
+    return typeof res?.id === "string" && res.id ? res.id : null;
+  } catch (err) {
+    console.warn(
+      "[connect] no se pudo saber la app del token; se mira el override de cualquier app:",
+      err instanceof MetaApiError ? `${err.status} ${err.code ?? ""}` : "sin respuesta"
+    );
+    return null;
   }
 }
 

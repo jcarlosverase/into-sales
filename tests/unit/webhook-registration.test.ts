@@ -72,7 +72,11 @@ describe("registro automático del webhook en Meta", () => {
     vi.restoreAllMocks();
   });
 
-  const withoutOverride = () => respond({ data: [{ whatsapp_business_api_data: { id: "app-1" } }] });
+  /** `GET /app` (la app del token) y `GET {WABA}/subscribed_apps` sin override. */
+  const withoutOverride = () => {
+    respond({ id: "app-1", name: "Mi app" });
+    respond({ data: [{ whatsapp_business_api_data: { id: "app-1" } }] });
+  };
   const confirmed = (application = "https://app-de-meta.test/webhook") =>
     respond({ webhook_configuration: { phone_number: OWN_URL, application }, id: "222" });
 
@@ -87,20 +91,26 @@ describe("registro automático del webhook en Meta", () => {
       appWithoutWebhook: false,
     });
 
+    // 0 · De qué app es el token: solo cuenta el override de esa app.
     expect(call(0)).toMatchObject({
+      url: "https://graph.facebook.com/v25.0/app",
+      method: "GET",
+      auth: "Bearer EAAG-token",
+    });
+    expect(call(1)).toMatchObject({
       url: "https://graph.facebook.com/v25.0/111/subscribed_apps",
       method: "GET",
       auth: "Bearer EAAG-token",
     });
     // 1 · Suscripción sin cuerpo, como la documenta Meta.
-    expect(call(1)).toMatchObject({
+    expect(call(2)).toMatchObject({
       url: "https://graph.facebook.com/v25.0/111/subscribed_apps",
       method: "POST",
       body: undefined,
     });
     // 2 · Override del número, con el verify token que comprueba la ruta del
     // webhook en el handshake.
-    expect(call(2)).toMatchObject({
+    expect(call(3)).toMatchObject({
       url: "https://graph.facebook.com/v25.0/222",
       method: "POST",
       body: {
@@ -111,11 +121,11 @@ describe("registro automático del webhook en Meta", () => {
       },
     });
     // 3 · Confirmación.
-    expect(call(3)).toMatchObject({
+    expect(call(4)).toMatchObject({
       url: "https://graph.facebook.com/v25.0/222?fields=webhook_configuration",
       method: "GET",
     });
-    expect(fetchMock).toHaveBeenCalledTimes(4);
+    expect(fetchMock).toHaveBeenCalledTimes(5);
   });
 
   it("avisa si la app de Meta no tiene webhook propio", async () => {
@@ -158,7 +168,7 @@ describe("registro automático del webhook en Meta", () => {
     const res = await registerWebhookForNumber(opts);
     expect(res).toMatchObject({ ok: false, code: "missing_permission" });
     expect(!res.ok && res.message).toContain("whatsapp_business_management");
-    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
   });
 
   it("si Meta no puede verificar la URL (2200), devuelve su motivo", async () => {
@@ -168,7 +178,7 @@ describe("registro automático del webhook en Meta", () => {
     const res = await registerWebhookForNumber(opts);
     expect(res).toMatchObject({ ok: false, code: "meta_error" });
     expect(!res.ok && res.message).toContain("Callback verification failed");
-    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(fetchMock).toHaveBeenCalledTimes(4);
   });
 
   it("no da por bueno un override que Meta no confirma", async () => {
@@ -183,6 +193,7 @@ describe("registro automático del webhook en Meta", () => {
   });
 
   it("token inválido y Meta caída tienen su propio código, y ninguno lanza", async () => {
+    metaError(401, 190, "Invalid OAuth access token");
     metaError(401, 190, "Invalid OAuth access token");
     metaError(401, 190, "Invalid OAuth access token");
     expect(await registerWebhookForNumber(opts)).toMatchObject({

@@ -46,10 +46,18 @@ const subscriptions = () =>
  * Una «Meta» mínima: responde según la ruta, y recuerda el override del
  * número para que la confirmación lo devuelva tal cual lo pusieron.
  */
-function fakeMeta(subscribedApps: unknown, phoneOverride: string | null = null) {
+function fakeMeta(
+  subscribedApps: unknown,
+  phoneOverride: string | null = null,
+  tokenApp: unknown = APP
+) {
   let override = phoneOverride;
   graphRequest.mockImplementation(async (path: string, o: Call[1]) => {
     const method = o.method ?? "GET";
+    if (path === "app" && method === "GET") {
+      if (tokenApp instanceof Error) throw tokenApp;
+      return tokenApp;
+    }
     if (path === `${WABA}/subscribed_apps` && method === "GET") {
       if (subscribedApps instanceof Error) throw subscribedApps;
       return subscribedApps;
@@ -106,7 +114,7 @@ describe("registerWebhookForNumber — la WABA ya enruta a un override ajeno", (
       host: "nea.ejemplo.com",
     });
 
-    const [path, o] = calls()[0]!;
+    const [path, o] = calls().find(([p]) => p === `${WABA}/subscribed_apps`)!;
     expect(path).toBe(`${WABA}/subscribed_apps`);
     expect(o.method ?? "GET").toBe("GET");
     expect(o.token).toBe(TOKEN);
@@ -163,6 +171,40 @@ describe("registerWebhookForNumber — la WABA ya enruta a un override ajeno", (
 
     await expect(registerWebhookForNumber(opts)).resolves.toMatchObject({ skipped: "waba_override" });
     expect(subscriptions()).toHaveLength(0);
+  });
+});
+
+describe("registerWebhookForNumber — el override es de OTRA app suscrita a la WABA", () => {
+  it("no se respeta: los overrides son por app, así que se registra el número igual", async () => {
+    const meta = fakeMeta({
+      data: [
+        { whatsapp_business_api_data: { id: "999", name: "Otra app" }, override_callback_uri: OVERRIDE },
+        { whatsapp_business_api_data: APP },
+      ],
+    });
+
+    await expect(registerWebhookForNumber(opts)).resolves.toEqual({
+      ok: true,
+      appWithoutWebhook: false,
+    });
+    expect(subscriptions()).toHaveLength(1);
+    expect(meta.override).toBe(OWN_URL);
+  });
+
+  it("si Meta no dice de qué app es el token, se respeta cualquier override (criterio de antes)", async () => {
+    const meta = fakeMeta(
+      {
+        data: [
+          { whatsapp_business_api_data: { id: "999", name: "Otra app" }, override_callback_uri: OVERRIDE },
+        ],
+      },
+      null,
+      new MetaApiError("(#200) Permissions error", { status: 403, code: 200 })
+    );
+
+    await expect(registerWebhookForNumber(opts)).resolves.toMatchObject({ skipped: "waba_override" });
+    expect(meta.override).toBeNull();
+    expect(consoleText()).not.toContain(TOKEN);
   });
 });
 
@@ -237,6 +279,7 @@ describe("registerWebhookForNumber — la consulta falla", () => {
 
   it("si también falla la suscripción, lo dice y NO lanza (guardar sigue)", async () => {
     graphRequest
+      .mockRejectedValueOnce(new MetaApiError("No se pudo contactar la API de Meta", { status: 0 }))
       .mockRejectedValueOnce(new MetaApiError("No se pudo contactar la API de Meta", { status: 0 }))
       .mockRejectedValueOnce(new MetaApiError("No se pudo contactar la API de Meta", { status: 0 }));
 

@@ -65,7 +65,8 @@ export const CURRENCIES = CURRENCY_OPTIONS.map((c) => c.code) as [
   ...Currency[],
 ];
 
-export const DEFAULT_CURRENCY: Currency = "MXN";
+/** Spec 1007: la de un negocio que todavía no eligió la suya (Perú, sol). */
+export const DEFAULT_CURRENCY: Currency = "PEN";
 
 export function isCurrency(v: unknown): v is Currency {
   return typeof v === "string" && (CURRENCIES as readonly string[]).includes(v);

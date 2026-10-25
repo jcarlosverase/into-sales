@@ -98,6 +98,10 @@ describe("catálogo de monedas", () => {
     expect(new Set(CURRENCIES).size).toBe(CURRENCIES.length);
   });
 
+  it("la predeterminada es el sol peruano (spec 1007)", () => {
+    expect(DEFAULT_CURRENCY).toBe("PEN");
+  });
+
   it("la predeterminada existe y ningún grupo del selector queda vacío", () => {
     expect(isCurrency(DEFAULT_CURRENCY)).toBe(true);
     for (const g of CURRENCY_GROUPS) {
