@@ -34,6 +34,7 @@ producto** — y saberlo antes de leerla ahorra una confusión.
 | `1006-observability` | Ligero | spec (registros JSON con id de pedido, `/api/metrics` con token y alta automática en el monitoreo de into del VPS; gemela de la 009 del central) |
 | `1007-default-currency-pen` | Ligero | spec (la moneda del negocio por defecto pasa a ser el sol peruano, PEN; sin migración) |
 | `1008-whatsapp-webhook-own-app` | Ligero | spec (guardar la conexión de WhatsApp registra el webhook aunque otra app suscrita a la WABA tenga override: solo cuenta el de la app del token) |
+| `1009-installable-app` | Ligero | spec (el CRM se instala como app en iOS y Android con el nombre y el icono de la marca de la instancia; gemela de la 011 del central) |
 | `031-ai-after-hours` | Ciclo completo | spec, plan, tasks («Cuándo responde la IA»: siempre o solo fuera del horario de atención del equipo, con su horario semanal y zona; el Laboratorio lo ignora; migración aditiva `0022`) |
 | `030-import-contacts` | Ciclo completo | spec, plan, tasks (Contactos → «Importar» desde `.xlsx` o CSV con vista previa, código de país, sin duplicar ni pisar, leads por turno; sin migración ni dependencias nuevas) |
 | `029-who-to-call-today` | Ciclo completo | spec, plan, tasks (pantalla «Hoy»: seguimientos vencidos, de hoy y leads sin primer contacto, por vendedor; próximo contacto en el cajón del trato; migración aditiva `0021`) |

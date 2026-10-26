@@ -7,6 +7,9 @@ imagen `ghcr.io/kevinrivm/vocero-crm:X.Y.Z`.
 
 ## Sin publicar — IntoSales
 
+- **El CRM se instala como app en el teléfono** (spec 1009): «Añadir a
+  pantalla de inicio» en iOS e «Instalar app» en Android, con el nombre y el
+  icono de tu marca. Si ya lo habías agregado, bórralo y agrégalo de nuevo.
 - **La moneda del negocio por defecto es el sol peruano (PEN)** (spec 1007).
   Si ya guardaste otra en Ajustes → Marca, se conserva.
 - **Guardar la conexión de WhatsApp vuelve a registrar el webhook** (spec
