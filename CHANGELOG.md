@@ -7,6 +7,13 @@ imagen `ghcr.io/kevinrivm/vocero-crm:X.Y.Z`.
 
 ## Sin publicar — IntoSales
 
+- **Instagram (modo Meta) guarda el ID de cuenta correcto** (spec 1011): el
+  ID ahora sale del token y el campo es opcional. Si conectaste Instagram con
+  tu propia app y no te llegan mensajes, vuelve a guardar la conexión.
+- **Messenger (modo Meta): guardar la conexión suscribe la página a tu app**
+  (spec 1010). Sin ese paso no llegaba ningún mensaje. El token de la página
+  necesita ahora también el permiso `pages_manage_metadata`; vuelve a pulsar
+  «Probar y guardar».
 - **El CRM se instala como app en el teléfono** (spec 1009): «Añadir a
   pantalla de inicio» en iOS e «Instalar app» en Android, con el nombre y el
   icono de tu marca. Si ya lo habías agregado, bórralo y agrégalo de nuevo.

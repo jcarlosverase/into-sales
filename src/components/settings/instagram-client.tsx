@@ -56,7 +56,7 @@ const HELP: Record<Source, { title: string; items: string[] }> = {
     title: "Crea una app en developers.facebook.com con el producto Instagram",
     items: [
       "La cuenta tiene que estar en modo profesional (Empresa o Creador).",
-      "Genera el token con los permisos instagram_business_basic e instagram_business_manage_messages.",
+      "En tu app: Instagram → Configuración de la API con inicio de sesión de Instagram → «Generar token» junto a la cuenta. Necesita los permisos instagram_business_basic e instagram_business_manage_messages. El ID de la cuenta sale del token.",
       "Sin App Review, la cuenta solo recibe mensajes de perfiles con un rol en la app (administradores, desarrolladores, testers).",
     ],
   },
@@ -103,7 +103,7 @@ export function InstagramClient() {
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
         source: "meta",
-        igUserId: igUserId.trim(),
+        igUserId: igUserId.trim() || null,
         token: token.trim(),
       }),
     }).catch(() => null);
@@ -134,7 +134,8 @@ export function InstagramClient() {
   if (!loaded) return <p className="text-sm text-muted-foreground">Cargando…</p>;
 
   const help = HELP[source];
-  const canSaveMeta = token.trim().length > 0 && igUserId.trim().length > 0;
+  // Spec 1011: el ID de la cuenta sale del token; el campo es opcional.
+  const canSaveMeta = token.trim().length > 0;
 
   return (
     <div className="max-w-3xl space-y-6">
@@ -225,12 +226,12 @@ export function InstagramClient() {
             <>
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-1.5">
-                  <Label htmlFor="ig-user-id">ID de la cuenta de Instagram</Label>
+                  <Label htmlFor="ig-user-id">ID de la cuenta de Instagram (opcional)</Label>
                   <Input
                     id="ig-user-id"
                     value={igUserId}
                     onChange={(e) => setIgUserId(e.target.value)}
-                    placeholder="17841400000000000"
+                    placeholder="Se toma del token"
                     autoComplete="off"
                   />
                 </div>

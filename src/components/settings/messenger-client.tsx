@@ -59,7 +59,7 @@ const HELP: Record<Source, { title: string; items: string[] }> = {
     title: "Crea una app en developers.facebook.com con el producto Messenger",
     items: [
       "El ID de la página está en la sección «Información» de la página, o en Messenger → Configuración → Tokens de acceso.",
-      "Genera ahí el token de la página con el permiso pages_messaging. Uno de larga duración evita reconectar cada dos meses.",
+      "Genera ahí el token de la página con los permisos pages_messaging y pages_manage_metadata (este último deja suscribir la página a tu app). Uno de larga duración evita reconectar cada dos meses.",
       "Sin App Review, la página solo recibe mensajes de cuentas con un rol en la app (administradores, desarrolladores, testers).",
     ],
   },
@@ -119,9 +119,19 @@ export function MessengerClient() {
       setError(data?.error?.message ?? "No se pudo conectar la página");
       return;
     }
-    const data = (await res.json()) as { pageName?: string | null };
+    const data = (await res.json()) as {
+      pageName?: string | null;
+      subscription?: { ok: true } | { ok: false; message: string };
+    };
     setToken("");
     setSaved(data.pageName ? `Página conectada: ${data.pageName}` : "Conexión guardada");
+    // Spec 1010: guardar suscribe la página a la app; si Meta no lo acepta,
+    // la conexión quedó guardada pero no llegarán mensajes hasta resolverlo.
+    if (data.subscription && !data.subscription.ok) {
+      setError(
+        `La conexión se guardó, pero no llegarán mensajes: ${data.subscription.message} Después vuelve a pulsar «Probar y guardar».`
+      );
+    }
     void refetch();
   }
 
@@ -280,7 +290,8 @@ export function MessengerClient() {
               <CardDescription>
                 En tu app de Meta: Messenger → Configuración → Webhooks. Objeto{" "}
                 <code>page</code>, campo <code>messages</code>. Pega esta URL y
-                este token de verificación, y suscribe la página a la app.
+                este token de verificación. La página la suscribe IntoSales a tu
+                app al guardar la conexión.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
