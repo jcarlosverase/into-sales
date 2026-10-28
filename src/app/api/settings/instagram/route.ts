@@ -94,14 +94,8 @@ export const PUT = withAuth(async (session, req: Request) => {
     });
   }
 
-  if (!data.igUserId) {
-    return apiError(
-      422,
-      "invalid_body",
-      "Con una app propia de Meta hace falta el ID de la cuenta de Instagram"
-    );
-  }
-  const check = await verify({ token: data.token, igUserId: data.igUserId });
+  // Spec 1011: el ID es opcional; si no viene, se toma del token.
+  const check = await verify({ token: data.token, igUserId: data.igUserId ?? null });
   if (!check.ok) {
     return apiError(check.status, check.code, check.message);
   }
@@ -109,7 +103,7 @@ export const PUT = withAuth(async (session, req: Request) => {
   await saveInstagramCredentials({
     organizationId: session.organizationId,
     source: "meta",
-    igUserId: data.igUserId,
+    igUserId: check.igUserId,
     accountRef: null,
     username: check.username ?? data.username ?? null,
     token: data.token,
@@ -120,14 +114,24 @@ export const PUT = withAuth(async (session, req: Request) => {
 });
 
 type Check =
-  | { ok: true; username: string | null }
+  | { ok: true; igUserId: string; username: string | null }
   | { ok: false; status: number; code: string; message: string };
 
-/** Fuente Meta: el token tiene que ser de ESA cuenta de Instagram. */
-async function verify(data: { token: string; igUserId: string }): Promise<Check> {
+/**
+ * Fuente Meta: el token tiene que ser de ESA cuenta de Instagram.
+ *
+ * Spec 1011: con el inicio de sesión de Instagram, `/me` devuelve dos IDs.
+ * `id` es el de la persona dentro de la app (app-scoped) y `user_id` es el de
+ * la cuenta profesional (IG_ID): el que llega en `entry[].id` de cada webhook
+ * y con el que se envía. Antes se comparaba y se guardaba `id`, así que quien
+ * pegaba el IG_ID del panel recibía «el IG_ID del token es…» y quien pegaba
+ * ese otro número quedaba conectado sin que le llegara ningún mensaje.
+ * `id` solo se usa si Meta no manda `user_id`.
+ */
+async function verify(data: { token: string; igUserId: string | null }): Promise<Check> {
   const url = `${process.env.IG_GRAPH_BASE_URL ?? "https://graph.instagram.com"}/${
     process.env.META_GRAPH_API_VERSION ?? "v25.0"
-  }/me?fields=id,username`;
+  }/me?fields=user_id,username`;
 
   let res: Response;
   try {
@@ -153,16 +157,30 @@ async function verify(data: { token: string; igUserId: string }): Promise<Check>
   }
 
   const json = (await res.json().catch(() => null)) as {
-    id?: string;
+    id?: string | number;
+    user_id?: string | number;
     username?: string;
   } | null;
-  if (json?.id && json.id !== data.igUserId) {
+  const tokenIgId = String(json?.user_id ?? json?.id ?? "") || null;
+  const igUserId = tokenIgId ?? data.igUserId;
+  if (!igUserId) {
+    return {
+      ok: false,
+      status: 422,
+      code: "invalid_body",
+      message: "Meta no devolvió el ID de la cuenta: pégalo junto al token",
+    };
+  }
+  // Se acepta también el `id` app-scoped que pedía la versión anterior: es
+  // la misma cuenta, y se guarda igual el IG_ID.
+  const appScopedId = json?.id === undefined ? null : String(json.id);
+  if (data.igUserId && tokenIgId && data.igUserId !== tokenIgId && data.igUserId !== appScopedId) {
     return {
       ok: false,
       status: 422,
       code: "id_mismatch",
-      message: `El IG_ID del token es ${json.id}, no ${data.igUserId}`,
+      message: `El token es de la cuenta ${tokenIgId}, no de ${data.igUserId}`,
     };
   }
-  return { ok: true, username: json?.username ?? null };
+  return { ok: true, igUserId, username: json?.username ?? null };
 }

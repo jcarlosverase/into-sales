@@ -13,6 +13,7 @@ import {
 import { ensureWebhookForOrg } from "@/server/zernio/connections";
 import { accountHealth, zernioAccountName } from "@/server/zernio/accounts";
 import { resolveZernioAccount } from "@/server/zernio/save-connection";
+import { subscribePageToApp } from "@/server/messenger/subscribe";
 
 export const dynamic = "force-dynamic";
 
@@ -115,7 +116,11 @@ export const PUT = withAuth(async (session, req: Request) => {
     webhookSecret,
   });
 
-  return Response.json({ ok: true, pageName: check.pageName });
+  // Spec 1010: sin la página suscrita a la app, Meta no entrega nada. Si
+  // falla, la conexión ya está guardada (envía) y la pantalla dice qué falta.
+  const subscription = await subscribePageToApp(data.pageId!, data.token);
+
+  return Response.json({ ok: true, pageName: check.pageName, subscription });
 });
 
 type Check =
