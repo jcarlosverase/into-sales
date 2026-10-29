@@ -149,7 +149,7 @@ const ad = (f, r) => f.ads.ads.find((a) => a.sourceId === r.source_id);
 
 async function main() {
   console.log(`== Setup (AGENDA ${AGENDA ? "encendida" : "apagada"}) ==`);
-  const email = "e2e@vocero.test";
+  const email = "e2e@intosales.test";
   const password = "password-e2e-123";
   let su = await api("/api/auth/sign-up/email", {
     method: "POST",

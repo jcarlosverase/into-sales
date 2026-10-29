@@ -73,7 +73,7 @@ console.log("== Setup ==");
 let r = await req.post(`${BASE}/api/auth/sign-up/email`, {
   headers: { origin: BASE },
   data: {
-    email: "e2e@vocero.test",
+    email: "e2e@intosales.test",
     password: "password-e2e-123",
     name: "Operador E2E",
   },
@@ -81,7 +81,7 @@ let r = await req.post(`${BASE}/api/auth/sign-up/email`, {
 if (!r.ok())
   r = await req.post(`${BASE}/api/auth/sign-in/email`, {
     headers: { origin: BASE },
-    data: { email: "e2e@vocero.test", password: "password-e2e-123" },
+    data: { email: "e2e@intosales.test", password: "password-e2e-123" },
   });
 ok("login", r.ok());
 await req.put(`${BASE}/api/settings/whatsapp`, {
@@ -432,7 +432,7 @@ const contrast = (a, b) => {
   const [x, y] = [luminance(a), luminance(b)].sort((p, q) => q - p);
   return (x + 0.05) / (y + 0.05);
 };
-await ctx.addCookies([{ name: "vocero-theme", value: "dark", url: BASE }]);
+await ctx.addCookies([{ name: "intosales-theme", value: "dark", url: BASE }]);
 await desk.goto(`${BASE}/contacts`, { waitUntil: "domcontentloaded" });
 const newOne = desk.getByRole("button", { name: /Nuevo contacto/ });
 const dialog = desk.locator('[role="dialog"][aria-label="Nuevo contacto"]');

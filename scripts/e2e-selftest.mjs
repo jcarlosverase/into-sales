@@ -86,7 +86,7 @@ async function main() {
   }
 
   console.log("== Setup: registro/login + conexión WhatsApp ==");
-  const email = "e2e@vocero.test";
+  const email = "e2e@intosales.test";
   const password = "password-e2e-123";
   let su = await api("/api/auth/sign-up/email", {
     method: "POST",

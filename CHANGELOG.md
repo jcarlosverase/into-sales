@@ -7,6 +7,18 @@ imagen `ghcr.io/kevinrivm/vocero-crm:X.Y.Z`.
 
 ## Sin publicar — IntoSales
 
+- **Adiós a «Vocero» en pantallas, código y documentación** (spec 1013). Se
+  conservan los créditos de Vocero CRM que exige su licencia MIT.
+  - **Cerebro externo:** las cabeceras del despacho ahora se llaman
+    `X-IntoSales-Signature`, `X-IntoSales-Dispatch-Id`,
+    `X-IntoSales-Organization` y `X-IntoSales-Event` (antes `X-Vocero-*`). Si
+    tienes un cerebro conectado con `BRAIN_DISPATCH_URL`, actualízalo antes.
+  - La cookie del tema y las preferencias del navegador cambian de nombre; se
+    migran solas, nadie pierde su tema ni sus vistas.
+- **Messenger (modo Meta) acepta el token de la página que genera Meta**
+  (spec 1012): antes lo rechazaba como «no válido» si no traía el permiso para
+  leer el nombre de la página. Si Meta lo rechaza, el aviso dice ahora el
+  motivo.
 - **Instagram (modo Meta) guarda el ID de cuenta correcto** (spec 1011): el
   ID ahora sale del token y el campo es opcional. Si conectaste Instagram con
   tu propia app y no te llegan mensajes, vuelve a guardar la conexión.

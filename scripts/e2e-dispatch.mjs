@@ -13,7 +13,7 @@
  *      WA_MOCK_ENABLED=true, META_GRAPH_BASE_URL → wa-mock,
  *      OPENROUTER_BASE_URL → ai-mock + OPENROUTER_API_TOKEN + OPENROUTER_MODEL,
  *      BOT_API_KEY, AGENT_COALESCE_MS corta (1500) y
- *      BRAIN_DISPATCH_URL=http://127.0.0.1:<puerto libre>/vocero/dispatch.
+ *      BRAIN_DISPATCH_URL=http://127.0.0.1:<puerto libre>/intosales/dispatch.
  *      Con CHANNELS=whatsapp,instagram,messenger,tiktok corre también esos
  *      canales (Instagram y TikTok entran por Zernio: ZERNIO_BASE_URL →
  *      zernio-mock).
@@ -141,11 +141,11 @@ async function startBrain(url) {
         mode: statusValue.mode,
         raw: raw.toString("utf8"),
         event: event,
-        signatureOk: signatureOk(raw, req.headers["x-vocero-signature"]),
+        signatureOk: signatureOk(raw, req.headers["x-intosales-signature"]),
         headers: {
-          dispatch: req.headers["x-vocero-dispatch-id"] ?? null,
-          org: req.headers["x-vocero-organization"] ?? null,
-          event: req.headers["x-vocero-event"] ?? null,
+          dispatch: req.headers["x-intosales-dispatch-id"] ?? null,
+          org: req.headers["x-intosales-organization"] ?? null,
+          event: req.headers["x-intosales-event"] ?? null,
           kind: req.headers["content-type"] ?? null,
         },
       });
@@ -274,7 +274,7 @@ async function main() {
   } catch {
     console.error(
       "Falta BRAIN_DISPATCH_URL. Arranca la app con algo como\n" +
-        "  BRAIN_DISPATCH_URL=http://127.0.0.1:3190/vocero/dispatch\n" +
+        "  BRAIN_DISPATCH_URL=http://127.0.0.1:3190/intosales/dispatch\n" +
         "y corre este guion con el mismo entorno."
     );
     process.exit(1);
@@ -299,7 +299,7 @@ async function main() {
 
 /** Operador, WhatsApp por el wa-mock y el interruptor del agente encendido. */
 async function prepare() {
-  const email = "e2e@vocero.test";
+  const email = "e2e@intosales.test";
   const password = "password-e2e-123";
   let su = await api("/api/auth/sign-up/email", {
     method: "POST",

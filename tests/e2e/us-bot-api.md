@@ -6,7 +6,7 @@ guardada y `BOT_API_KEY` configurada (≥16 caracteres).
 
 Esta superficie NO la usa el navegador: la usa un bot propio del operador que
 quiere conducir la conversación sin que el token de WhatsApp salga del CRM. El
-agente in-process de Vocero puede quedar apagado.
+agente in-process de IntoSales puede quedar apagado.
 
 ## Autorización
 
@@ -58,7 +58,7 @@ edita el dueño (Agente y su knowledge base). Este endpoint es el contrato.
     la cadena canónica `(knowledge base vacío)`, no `null`: el bot puede
     inyectarla en su prompt sin ramificar.
 16. `profile.enabled` NO viene, ni con la IA in-process encendida ni apagada:
-    ese flag gobierna el agente de Vocero, no al cerebro externo, que se pausa
+    ese flag gobierna el agente de IntoSales, no al cerebro externo, que se pausa
     por conversación (`aiEnabled` y los handoffs).
 17. Editar el tono en la pantalla Agente y volver a pedir el perfil → el cambio
     ya está: la respuesta no se cachea.

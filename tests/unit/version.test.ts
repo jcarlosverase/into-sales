@@ -28,7 +28,7 @@ describe("versión de la app", () => {
   });
 
   it("la insignia no cablea el nombre del producto", () => {
-    // Esto es white-label: una instancia rebautizada que dice "Vocero" en el
+    // Esto es white-label: una instancia rebautizada que dice "IntoSales" en el
     // tooltip delata el producto de debajo justo donde el operador la mira
     // todos los días.
     const nav = readFileSync(
@@ -42,7 +42,7 @@ describe("versión de la app", () => {
     expect(call).toBeGreaterThan(0);
     const badge = nav.slice(call - 600, call + 300);
     expect(badge).toContain("branding.name");
-    expect(badge).not.toMatch(/`Vocero \$\{/);
+    expect(badge).not.toMatch(/`IntoSales \$\{/);
   });
 
   it("docker compose arranca por defecto la imagen de esta misma versión", () => {
@@ -140,7 +140,7 @@ describe("un commit que no salió del build se presenta como NO verificado", () 
     expect(title).toContain("build arg SOURCE_COMMIT");
     // White-label también aquí: el nombre es el de la marca.
     expect(title.startsWith("Clínica Sur 1.3.0")).toBe(true);
-    expect(title).not.toContain("Vocero");
+    expect(title).not.toContain("IntoSales");
   });
 
   it("el verificado no lleva advertencia; sin commit, solo nombre y versión", async () => {

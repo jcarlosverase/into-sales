@@ -7,7 +7,7 @@ Precondición: app corriendo (`next dev`) sobre una base migrada, con mocks
 (`WA_MOCK_ENABLED=true`, `META_GRAPH_BASE_URL` → wa-mock, `OPENROUTER_BASE_URL`
 → ai-mock con `OPENROUTER_API_TOKEN` y `OPENROUTER_MODEL`), `BOT_API_KEY`
 (≥16), `AGENT_COALESCE_MS=1500` y
-`BRAIN_DISPATCH_URL=http://127.0.0.1:<puerto libre>/vocero/dispatch`. Para los
+`BRAIN_DISPATCH_URL=http://127.0.0.1:<puerto libre>/intosales/dispatch`. Para los
 otros canales, `CHANNELS=whatsapp,instagram,messenger` y `ZERNIO_BASE_URL` →
 zernio-mock.
 
@@ -36,9 +36,9 @@ arrancada en su modo.
 ## Historia 1 — Un mensaje llega al cerebro
 
 4. **AC1** Un WhatsApp entrante aparece en la bandeja y, pasada la ventana, el
-   cerebro recibe **un** `POST`: firma `x-vocero-signature` válida sobre el
-   cuerpo crudo con `BOT_API_KEY`; cabeceras `x-vocero-dispatch-id` (igual al
-   `dispatchId`, `dsp_…`) y `x-vocero-organization`; sin `x-vocero-event`; las
+   cerebro recibe **un** `POST`: firma `x-intosales-signature` válida sobre el
+   cuerpo crudo con `BOT_API_KEY`; cabeceras `x-intosales-dispatch-id` (igual al
+   `dispatchId`, `dsp_…`) y `x-intosales-organization`; sin `x-intosales-event`; las
    claves del evento en el orden del contrato; `conversation.id` es la de la
    bandeja, `channel = whatsapp`, ventana abierta; un mensaje de texto sin
    adjunto. El cuerpo no lleva el token de WhatsApp ni la llave.

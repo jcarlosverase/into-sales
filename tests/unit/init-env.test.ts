@@ -127,7 +127,7 @@ describe("runInitEnv", () => {
   let dir: string;
 
   beforeEach(async () => {
-    dir = await mkdtemp(path.join(os.tmpdir(), "vocero-init-env-"));
+    dir = await mkdtemp(path.join(os.tmpdir(), "intosales-init-env-"));
     await writeFile(path.join(dir, ".env.example"), EXAMPLE);
   });
 

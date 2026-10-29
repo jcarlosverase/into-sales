@@ -41,7 +41,7 @@ que un mismo cerebro sirva a las dos ediciones. Las diferencias están marcadas.
   atendido y no se te despacha nada.
 - **No todo lo que llega a esta URL es un turno** (026). Un cuerpo con `type`
   es un evento, no un despacho: hoy, `conversation.deleted`. Mira `type` (o
-  la cabecera `x-vocero-event`) antes de buscar `messages`. Ver «Eventos que
+  la cabecera `x-intosales-event`) antes de buscar `messages`. Ver «Eventos que
   no son un turno».
 - **Un `conversation.id` nuevo para una identidad que ya conocías es una
   conversación nueva** (026). El negocio pudo haber eliminado la anterior:
@@ -63,15 +63,20 @@ Mientras el despacho está activo, el agente incluido no contesta.
 ```
 POST {BRAIN_DISPATCH_URL}
 Content-Type: application/json
-X-Vocero-Signature: sha256=<hex>
-X-Vocero-Dispatch-Id: dsp_…
-X-Vocero-Organization: <slug, o el id si no hay slug>
+X-IntoSales-Signature: sha256=<hex>
+X-IntoSales-Dispatch-Id: dsp_…
+X-IntoSales-Organization: <slug, o el id si no hay slug>
 ```
 
-`X-Vocero-Signature` = `HMAC-SHA256(cuerpo_crudo, BOT_API_KEY)` en hex, con el
+> **Cambio de nombre (spec 1013, 2026-10-29).** Hasta esa fecha las cabeceras
+> se llamaban `X-Vocero-Signature`, `X-Vocero-Dispatch-Id`,
+> `X-Vocero-Organization` y `X-Vocero-Event`, con los mismos valores. Un
+> cerebro escrito contra los nombres viejos tiene que leer los nuevos.
+
+`X-IntoSales-Signature` = `HMAC-SHA256(cuerpo_crudo, BOT_API_KEY)` en hex, con el
 prefijo `sha256=`. Compárala en tiempo constante.
 
-`X-Vocero-Event` queda reservada para eventos que no son un turno. La raíz no
+`X-IntoSales-Event` queda reservada para eventos que no son un turno. La raíz no
 manda ninguno todavía; un cuerpo con `type` no es un despacho.
 
 ### Cuerpo
@@ -178,11 +183,11 @@ Llega por `POST` a la **misma URL** y con la **misma firma** que un despacho.
 
 | Cabecera | Valor |
 |---|---|
-| `x-vocero-signature` | `sha256=<hmac del cuerpo crudo>`, con `BOT_API_KEY`, igual que un turno |
-| `x-vocero-event` | `conversation.deleted` |
-| `x-vocero-organization` | El `slug` de la organización, o su `id` si no tiene |
+| `x-intosales-signature` | `sha256=<hmac del cuerpo crudo>`, con `BOT_API_KEY`, igual que un turno |
+| `x-intosales-event` | `conversation.deleted` |
+| `x-intosales-organization` | El `slug` de la organización, o su `id` si no tiene |
 
-No lleva `x-vocero-dispatch-id`: no es un despacho.
+No lleva `x-intosales-dispatch-id`: no es un despacho.
 
 ```json
 {

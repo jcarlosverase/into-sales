@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { cookies, headers } from "next/headers";
 import { getAuth } from "@/lib/auth";
 import { getSessionOrNull } from "@/lib/auth/session";
-import { normalizeThemePreference, THEME_COOKIE } from "@/lib/theme";
+import { normalizeThemePreference, themeCookieValue } from "@/lib/theme";
 import { getBranding } from "@/server/branding";
 import { AppShell } from "@/components/app-shell";
 import { resolveCommit } from "@/lib/version";
@@ -20,7 +20,7 @@ export default async function AppLayout({
     headers: await headers(),
   });
   const theme = normalizeThemePreference(
-    (await cookies()).get(THEME_COOKIE)?.value
+    themeCookieValue(await cookies())
   );
   // El agente encendido y sin con qué pensar se ve desde fuera igual que un
   // bot roto. Se resuelve en el servidor y en el layout para que se vea desde

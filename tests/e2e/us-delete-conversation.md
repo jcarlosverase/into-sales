@@ -8,7 +8,7 @@ Precondición: app corriendo (`next dev`) sobre una base migrada, con
 
 Dos modos, según cómo arrancó la app; el gate completo son las dos corridas:
 
-- **Con cerebro**: `BRAIN_DISPATCH_URL=http://127.0.0.1:<puerto>/vocero/dispatch`
+- **Con cerebro**: `BRAIN_DISPATCH_URL=http://127.0.0.1:<puerto>/intosales/dispatch`
   y `BOT_API_KEY`. El arnés levanta ese cerebro en su propio proceso, verifica
   la firma sobre el cuerpo crudo y guarda lo que recibe.
 - **Sin despacho**: no hay a quién avisar (`agente: "no_aplica"`).
@@ -42,8 +42,8 @@ node --env-file=.env scripts/e2e-delete-conversation.mjs
 ## El aviso al cerebro (AC7, con cerebro)
 
 10. Llega **un** `conversation.deleted`, firmado como un turno, con
-    `x-vocero-event: conversation.deleted`, `x-vocero-organization` y sin
-    `x-vocero-dispatch-id`. Las claves van en el orden del contrato; dice la
+    `x-intosales-event: conversation.deleted`, `x-intosales-organization` y sin
+    `x-intosales-dispatch-id`. Las claves van en el orden del contrato; dice la
     conversación, el canal, el contacto y su identidad, con un `eventId`
     propio y la hora. No lleva nada de lo borrado.
 

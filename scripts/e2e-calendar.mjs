@@ -131,12 +131,12 @@ async function main() {
   console.log("== Setup: login ==");
   let su = await api("/api/auth/sign-up/email", {
     method: "POST",
-    body: { email: "e2e@vocero.test", password: "password-e2e-123", name: "Operador E2E" },
+    body: { email: "e2e@intosales.test", password: "password-e2e-123", name: "Operador E2E" },
   });
   if (su.status >= 400) {
     su = await api("/api/auth/sign-in/email", {
       method: "POST",
-      body: { email: "e2e@vocero.test", password: "password-e2e-123" },
+      body: { email: "e2e@intosales.test", password: "password-e2e-123" },
     });
   }
   ok("registro o login del operador", su.status < 400, `status=${su.status}`);

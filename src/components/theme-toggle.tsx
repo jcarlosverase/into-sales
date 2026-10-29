@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Moon, Sun } from "lucide-react";
 import {
+  LEGACY_THEME_COOKIE,
   nextThemePreference,
   THEME_COOKIE,
   THEME_COOKIE_MAX_AGE,
@@ -28,6 +29,8 @@ export function ThemeToggle({
     setPref(value);
     document.documentElement.setAttribute("data-theme", value);
     document.cookie = `${THEME_COOKIE}=${value};path=/;max-age=${THEME_COOKIE_MAX_AGE};samesite=lax`;
+    // Spec 1013: la cookie de antes ya no hace falta.
+    document.cookie = `${LEGACY_THEME_COOKIE}=;path=/;max-age=0;samesite=lax`;
   }
 
   const Icon = ICONS[pref];

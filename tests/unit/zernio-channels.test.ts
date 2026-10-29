@@ -192,7 +192,7 @@ describe("zernio · el webhook hacia esta instancia", () => {
   const here = `https://crm.ejemplo.com/api/webhooks/ig/${SEGMENT}`;
   const w = (over: Partial<ZernioWebhook> = {}): ZernioWebhook => ({
     _id: "w1",
-    name: "vocero-crm.ejemplo.com",
+    name: "intosales-crm.ejemplo.com",
     url: here,
     secret: "s",
     events: ["message.received"],

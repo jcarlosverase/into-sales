@@ -53,7 +53,7 @@ con un `curl`. Responde "¿ya se desplegó mi cambio?" sin entrar al servidor.
 
 13. **Abajo en la barra lateral**: `v1.2.0 · 8e62d0b`.
     ✅ El nombre del tooltip sale de la **marca**, no cableado: una instancia
-    rebautizada no debe decir "Vocero" justo ahí.
+    rebautizada no debe decir "IntoSales" justo ahí.
     ✅ Contraste ≥ 4.5:1 en claro y en oscuro — discreta, no ilegible.
 14. **También en `/api/health`**, para confirmar un despliegue desde un script o
     desde la plataforma de hosting, sin abrir la app ni iniciar sesión.
@@ -106,7 +106,7 @@ cambiaba la pestaña, y la barra lateral seguía con la inicial.
     (`?v=u<versión>`): al cambiarlo, la barra no se queda con el anterior.
     ✅ El login también lo muestra, sin sesión.
     ✅ Quitarlo devuelve la inicial en la barra, sin imagen rota.
-    ✅ Gana aunque la instancia se llame Vocero: quien sube un archivo quiere
+    ✅ Gana aunque la instancia se llame IntoSales: quien sube un archivo quiere
     verlo en lugar de la "v".
     ✅ La vista previa de Ajustes → Marca lo sigue al subir y al quitar, sin
     recargar (la marca llega por prop del servidor, que se refresca).

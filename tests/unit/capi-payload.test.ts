@@ -47,7 +47,7 @@ describe("buildEventPayload", () => {
       whatsapp_business_account_id: "WABA-1",
     });
     // Quién integró el evento: el proyecto, no el negocio ni una agencia.
-    expect(body.partner_agent).toBe("vocero-crm");
+    expect(body.partner_agent).toBe("intosales");
   });
 
   it("hacia Meta no viaja NADA personal del contacto", () => {

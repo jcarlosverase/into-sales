@@ -11,7 +11,12 @@
  * y un cambio automático al anochecer sorprende en mitad de una conversación.
  */
 
-export const THEME_COOKIE = "vocero-theme";
+export const THEME_COOKIE = "intosales-theme";
+/**
+ * Spec 1013: el nombre de antes. Se sigue leyendo para que nadie pierda su
+ * tema al actualizar, y el selector lo borra la próxima vez que se usa.
+ */
+export const LEGACY_THEME_COOKIE = "vocero-theme";
 export const THEME_COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
 
 export type ThemePreference = "light" | "dark";
@@ -39,4 +44,11 @@ export function normalizeThemePreference(
 /** Siguiente valor del botón: Claro ⇄ Oscuro. */
 export function nextThemePreference(current: ThemePreference): ThemePreference {
   return current === "dark" ? "light" : "dark";
+}
+
+/** La preferencia guardada, con la cookie nueva o, si aún no existe, la vieja. */
+export function themeCookieValue(store: {
+  get(name: string): { value: string } | undefined;
+}): string | undefined {
+  return store.get(THEME_COOKIE)?.value ?? store.get(LEGACY_THEME_COOKIE)?.value;
 }

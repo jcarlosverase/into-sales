@@ -1,7 +1,7 @@
 /**
  * Restablecer la contraseña de un usuario SIN correo.
  *
- * Vocero no tiene flujo de "olvidé mi contraseña" —sería una dependencia
+ * IntoSales no tiene flujo de "olvidé mi contraseña" —sería una dependencia
  * externa, y la constitución las prohíbe en v1— y el registro público se cierra
  * en cuanto existe la primera organización. Cuando la contraseña se pierde, la
  * única salida es reescribir el hash en la base.

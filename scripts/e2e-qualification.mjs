@@ -61,7 +61,7 @@ if (!BOT_KEY) {
   console.log("  ✗ falta BOT_API_KEY en el entorno");
   process.exit(1);
 }
-const email = "e2e@vocero.test";
+const email = "e2e@intosales.test";
 const password = "password-e2e-123";
 let su = await api("/api/auth/sign-up/email", {
   method: "POST",

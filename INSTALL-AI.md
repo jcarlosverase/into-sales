@@ -1,4 +1,4 @@
-# INSTALL-AI.md — Instalación de Vocero CRM guiada por IA
+# INSTALL-AI.md — Instalación de IntoSales guiada por IA
 
 > **Para el asistente de IA** (Claude Code u otro agente con acceso a
 > herramientas): este archivo ES tu guion de instalación. Síguelo de arriba a
@@ -73,7 +73,7 @@ cada uno está en `.env.example`): `META_APP_SECRET`, `BOT_API_KEY` y
 ## Ruta A — Coolify (con el MCP de Coolify)
 
 1. **Base de datos**: crea un servicio PostgreSQL 16 en el proyecto
-   (`database` tipo `postgresql`), con la contraseña generada y base `vocero`.
+   (`database` tipo `postgresql`), con la contraseña generada y base `into_sales`.
    Anota su host interno (algo como `<uuid>:5432`).
 2. **Aplicación**: en el mismo proyecto, crea una app de tipo **Docker Image**
    con la imagen `ghcr.io/jcarlosverase/into-sales`, la etiqueta `1.5.0`, puerto
@@ -88,7 +88,7 @@ cada uno está en `.env.example`): `META_APP_SECRET`, `BOT_API_KEY` y
    variables.
 3. **Almacenamiento persistente**: agrega a la app un volumen montado en
    **`/data`** (MCP: `storages` con `resource: application`, el `uuid` de la
-   app, `action: create`, `type: persistent`, `name: vocero-data`,
+   app, `action: create`, `type: persistent`, `name: sales-data`,
    `mount_path: /data`). Ahí viven los adjuntos, el logo y el icono; la imagen
    ya trae `MEDIA_DIR=/data/media`, así que **no definas `MEDIA_DIR`**. Que
    Coolify monte el volumen como root no importa: el contenedor arranca como
@@ -127,7 +127,7 @@ migraciones corren solas al arrancar.
 ## Ruta B — docker compose (VPS con Docker)
 
 ```bash
-git clone https://github.com/jcarlosverase/into-sales.git vocero && cd vocero
+git clone https://github.com/jcarlosverase/into-sales.git into-sales && cd into-sales
 pnpm install && pnpm init-env --domain <dominio>   # .env con los secretos generados (Node 22 + pnpm)
 pnpm doctor                                         # cada ✗ dice cómo arreglarla; sale con 1 si algo falla
 docker compose up -d
@@ -146,14 +146,14 @@ docker compose up -d
 
 ## Cierre (obligatorio decirlo al usuario)
 
-> ✅ Vocero quedó instalado en `https://<dominio>`.
+> ✅ IntoSales quedó instalado en `https://<dominio>`.
 >
 > 1. Entra y **regístrate**: el primer registro crea tu organización (después
 >    el registro público se cierra solo).
 > 2. Pulsa **"Cargar datos de demostración"** si quieres explorar con la
 >    Ferretería El Martillo.
 > 3. Para conectar tu WhatsApp entra a **Configuración → WhatsApp**: ahí está
->    el wizard; al guardar, Vocero registra el webhook en Meta por sí solo (la
+>    el wizard; al guardar, IntoSales registra el webhook en Meta por sí solo (la
 >    URL exacta sigue a la vista por si tu agencia enruta desde su backend o
 >    hay que pegarla a mano). La conexión del número NO es parte de esta
 >    instalación.

@@ -219,7 +219,7 @@ async function main() {
   }
 
   console.log("== Setup ==");
-  const email = "e2e@vocero.test";
+  const email = "e2e@intosales.test";
   const password = "password-e2e-123";
   let su = await api("/api/auth/sign-up/email", {
     method: "POST",
@@ -356,7 +356,7 @@ async function resolveAccount() {
 
 async function ownerOnly() {
   console.log("\n== D7: solo el propietario conecta ==");
-  const emailValue = `equipo-${RUN}@vocero.test`;
+  const emailValue = `equipo-${RUN}@intosales.test`;
   const key = "password-equipo-123";
   const high = await api("/api/settings/team", {
     method: "POST",

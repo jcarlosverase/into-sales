@@ -205,7 +205,7 @@ describe("checkDatabase", () => {
 describe("checkMediaDir", () => {
   let tmp: string;
   beforeEach(async () => {
-    tmp = await mkdtemp(path.join(os.tmpdir(), "vocero-doctor-media-"));
+    tmp = await mkdtemp(path.join(os.tmpdir(), "intosales-doctor-media-"));
   });
   afterEach(async () => {
     await rm(tmp, { recursive: true, force: true });

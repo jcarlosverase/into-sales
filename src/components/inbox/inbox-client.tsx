@@ -13,6 +13,9 @@ import { ConversationList } from "./conversation-list";
 import { MessageThread } from "./message-thread";
 import { Composer } from "./composer";
 import { ContactPanel } from "./contact-panel";
+import { readLocalPref, writeLocalPref } from "@/lib/local-prefs";
+
+const PANEL_OPEN_KEY = "intosales.panelOpen";
 
 /**
  * Texto que ya salió del compositor pero cuyo POST todavía viaja. Existe solo
@@ -60,14 +63,15 @@ export function InboxClient({
 
   useEffect(() => {
     if (!isWideEnoughForPanel()) return;
-    setPanelOpen(localStorage.getItem("vocero.panelOpen") !== "false");
+    // Spec 1013: con la clave de antes como respaldo.
+    setPanelOpen(readLocalPref(PANEL_OPEN_KEY, "vocero.panelOpen") !== "false");
   }, []);
   const togglePanel = useCallback((open: boolean) => {
     setPanelOpen(open);
     // La preferencia es de escritorio: abrir el cajón en el teléfono no debe
     // reescribir cómo queda la Bandeja en la computadora.
     if (isWideEnoughForPanel()) {
-      localStorage.setItem("vocero.panelOpen", String(open));
+      writeLocalPref(PANEL_OPEN_KEY, String(open));
     }
   }, []);
   const selectedIdRef = useRef<string | null>(null);

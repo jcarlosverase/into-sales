@@ -28,12 +28,12 @@ describe("readConfigDispatch", () => {
 
   it("URL interna + llave: activo, y es válida aunque no sea pública", () => {
     const c = readConfigDispatch({
-      BRAIN_DISPATCH_URL: "http://nea:8000/vocero/dispatch",
+      BRAIN_DISPATCH_URL: "http://nea:8000/intosales/dispatch",
       BOT_API_KEY: KEY,
     });
     expect(c).toEqual({
       active: true,
-      url: "http://nea:8000/vocero/dispatch",
+      url: "http://nea:8000/intosales/dispatch",
       host: "nea:8000",
       secret: KEY,
     });
@@ -41,14 +41,14 @@ describe("readConfigDispatch", () => {
 
   it("https público también", () => {
     const c = readConfigDispatch({
-      BRAIN_DISPATCH_URL: " https://nea.ejemplo.com/vocero/dispatch ",
+      BRAIN_DISPATCH_URL: " https://nea.ejemplo.com/intosales/dispatch ",
       BOT_API_KEY: KEY,
     });
     expect(c.active).toBe(true);
     expect(c.host).toBe("nea.ejemplo.com");
   });
 
-  it.each(["nea:8000/vocero/dispatch", "no es una url", "ftp://nea/vocero", "file:///etc/passwd"])(
+  it.each(["nea:8000/intosales/dispatch", "no es una url", "ftp://nea/intosales", "file:///etc/passwd"])(
     "%s → problema de URL, inactivo",
     (url) => {
       const c = readConfigDispatch({ BRAIN_DISPATCH_URL: url, BOT_API_KEY: KEY });
@@ -58,7 +58,7 @@ describe("readConfigDispatch", () => {
 
   it("usuario y clave en la URL → problema de URL (el despacho ya va firmado)", () => {
     const c = readConfigDispatch({
-      BRAIN_DISPATCH_URL: "https://user:secreto@nea.ejemplo.com/vocero/dispatch",
+      BRAIN_DISPATCH_URL: "https://user:secreto@nea.ejemplo.com/intosales/dispatch",
       BOT_API_KEY: KEY,
     });
     expect(c).toEqual({ active: false, host: "nea.ejemplo.com", problem: "url" });
@@ -66,10 +66,10 @@ describe("readConfigDispatch", () => {
   });
 
   it("sin BOT_API_KEY, o corta → sin_llave, inactivo, y solo sale el host", () => {
-    const sin = readConfigDispatch({ BRAIN_DISPATCH_URL: "http://nea:8000/vocero/dispatch?t=abc" });
+    const sin = readConfigDispatch({ BRAIN_DISPATCH_URL: "http://nea:8000/intosales/dispatch?t=abc" });
     expect(sin).toEqual({ active: false, host: "nea:8000", problem: "sin_llave" });
     const short = readConfigDispatch({
-      BRAIN_DISPATCH_URL: "http://nea:8000/vocero/dispatch",
+      BRAIN_DISPATCH_URL: "http://nea:8000/intosales/dispatch",
       BOT_API_KEY: "corta",
     });
     expect(short).toMatchObject({ active: false, problem: "sin_llave" });
@@ -78,7 +78,7 @@ describe("readConfigDispatch", () => {
 
 describe("dispatchDto — lo que ve la tarjeta", () => {
   const isActive = readConfigDispatch({
-    BRAIN_DISPATCH_URL: "http://nea:8000/vocero/dispatch",
+    BRAIN_DISPATCH_URL: "http://nea:8000/intosales/dispatch",
     BOT_API_KEY: KEY,
   });
   const noFacts = { lastDeliveredAt: null, lastFailure: null, pending: 0 };
@@ -102,7 +102,7 @@ describe("dispatchDto — lo que ve la tarjeta", () => {
       pending: 2,
     });
     expect(JSON.stringify(dto)).not.toContain(KEY);
-    expect(JSON.stringify(dto)).not.toContain("/vocero/dispatch");
+    expect(JSON.stringify(dto)).not.toContain("/intosales/dispatch");
   });
 
   it("mal configurado: el problema viaja y active es false", () => {
@@ -189,7 +189,7 @@ describe("pnpm doctor — la línea del despacho", () => {
 
   it("activo: ✓ con el host, sin la ruta ni la llave", () => {
     const r = checkDispatch({
-      BRAIN_DISPATCH_URL: "http://nea:8000/vocero/dispatch?t=secreto",
+      BRAIN_DISPATCH_URL: "http://nea:8000/intosales/dispatch?t=secreto",
       BOT_API_KEY: KEY,
     });
     expect(r.status).toBe("ok");
@@ -202,7 +202,7 @@ describe("pnpm doctor — la línea del despacho", () => {
     const url = checkDispatch({ BRAIN_DISPATCH_URL: "nea:8000", BOT_API_KEY: KEY });
     expect(url.status).toBe("warn");
     expect(url.fix).toContain("BRAIN_DISPATCH_URL=");
-    const key = checkDispatch({ BRAIN_DISPATCH_URL: "http://nea:8000/vocero/dispatch" });
+    const key = checkDispatch({ BRAIN_DISPATCH_URL: "http://nea:8000/intosales/dispatch" });
     expect(key.status).toBe("warn");
     expect(key.fix).toContain("BOT_API_KEY=");
   });

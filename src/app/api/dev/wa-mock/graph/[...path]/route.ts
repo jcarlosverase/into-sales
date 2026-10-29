@@ -37,7 +37,7 @@ const CAPI_EVENT_NAMES = new Set([
 /** La app de Meta "dueña" del token en el mock (la que queda suscrita). */
 const MOCK_APP = {
   id: "mock-app",
-  name: "App de prueba Vocero",
+  name: "App de prueba IntoSales",
   link: "https://www.facebook.com/games/?app_id=mock-app",
 };
 
@@ -228,16 +228,24 @@ export async function GET(req: Request, ctx: Params) {
     });
   }
 
+  // Spec 1012 — GET /me con un token de página: la página dueña del token.
+  // El mock no sabe de qué página es un token, así que lo lee del propio
+  // token cuando viene como `page-<id>`.
+  if (path.length === 1 && path[0] === "me") {
+    const id = token.startsWith("page-") ? token.slice("page-".length) : "mock-page";
+    return Response.json({ id, name: "Página de prueba IntoSales" });
+  }
+
   // 017 — GET {pageId}?fields=id,name → validación de la página de Facebook
   if (path.length === 1 && /(^|,)name(,|$)/.test(fields)) {
-    return Response.json({ id: path[0], name: "Página de prueba Vocero" });
+    return Response.json({ id: path[0], name: "Página de prueba IntoSales" });
   }
 
   // GET {phoneNumberId}?fields=... → validación del wizard
   if (path.length === 1) {
     return Response.json({
       display_phone_number: "+52 55 0000 0000",
-      verified_name: "Número de prueba Vocero",
+      verified_name: "Número de prueba IntoSales",
       id: path[0],
     });
   }
