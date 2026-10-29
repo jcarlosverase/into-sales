@@ -7,6 +7,9 @@ imagen `ghcr.io/kevinrivm/vocero-crm:X.Y.Z`.
 
 ## Sin publicar — IntoSales
 
+- **Messenger acepta el token de la página aunque no traiga
+  `pages_read_engagement`** (spec 1016): si Meta no deja leer la página, el CRM
+  comprueba el token suscribiendo la página a tu app antes de guardar.
 - **Instagram muestra el nombre de quien escribe** (spec 1015), no «Contacto
   de Instagram». Los contactos de Instagram y Messenger que ya quedaron con ese
   nombre de respaldo se corrigen solos con su siguiente mensaje.

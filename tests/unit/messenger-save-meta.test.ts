@@ -84,4 +84,33 @@ describe("PUT /api/settings/messenger — modo Meta", () => {
     expect(res.status).toBe(422);
     expect((await res.json()).error.message).toContain("Session has expired");
   });
+
+  it("spec 1016: sin permiso para leer /me, la suscripción confirma y se guarda", async () => {
+    const READ =
+      "(#100) Object does not exist, cannot be loaded due to missing permission or reviewable feature, or does not support this operation. This endpoint requires the 'pages_read_engagement' permission";
+    graphRequest.mockImplementation(async (path: string) => {
+      if (path.startsWith("me?")) throw new MetaApiError(READ, { status: 400, code: 100 });
+      if (path === `${PAGE}/subscribed_apps`) return { success: true };
+      throw new Error(`ruta inesperada: ${path}`);
+    });
+    const res = await put();
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({ ok: true, pageName: null, subscription: { ok: true } });
+    expect(save).toHaveBeenCalledTimes(1);
+    // Una sola suscripción: la que sirvió de prueba.
+    expect(graphRequest.mock.calls.filter(([p]) => p === `${PAGE}/subscribed_apps`)).toHaveLength(1);
+  });
+
+  it("spec 1016: sin permiso para leer /me y sin poder suscribir, no se guarda", async () => {
+    graphRequest.mockImplementation(async (path: string) => {
+      if (path.startsWith("me?")) {
+        throw new MetaApiError("(#100) requires the 'pages_read_engagement' permission", { status: 400, code: 100 });
+      }
+      throw new MetaApiError("(#200) Permissions error", { status: 403, code: 200 });
+    });
+    const res = await put();
+    expect(res.status).toBe(422);
+    expect((await res.json()).error.message).toContain("pages_manage_metadata");
+    expect(save).not.toHaveBeenCalled();
+  });
 });
