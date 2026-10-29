@@ -7,6 +7,9 @@ imagen `ghcr.io/kevinrivm/vocero-crm:X.Y.Z`.
 
 ## Sin publicar — IntoSales
 
+- **Instagram muestra el nombre de quien escribe** (spec 1015), no «Contacto
+  de Instagram». Los contactos de Instagram y Messenger que ya quedaron con ese
+  nombre de respaldo se corrigen solos con su siguiente mensaje.
 - **Instagram con app propia: nueva variable opcional `INSTAGRAM_APP_SECRET`**
   (spec 1014), la clave secreta de la app de Instagram. Si los mensajes de
   Instagram no llegan y el log dice que la firma no coincide, ponla con
