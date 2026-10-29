@@ -106,6 +106,18 @@ export const PUT = withAuth(async (session, req: Request) => {
   const check = await verify(data);
   if (!check.ok) return apiError(check.status, check.code, check.message);
 
+  // Spec 1016: si Meta no dejó leer `/me`, la suscripción de la página es la
+  // prueba de que el token sirve para ESA página, y va antes de guardar: un
+  // token que no puede ni suscribirla no llega a la base.
+  let subscription = check.verified ? null : await subscribePageToApp(data.pageId!, data.token);
+  if (subscription && !subscription.ok) {
+    return apiError(
+      subscription.code === "meta_unavailable" ? 503 : 422,
+      "invalid_token",
+      `No se pudo comprobar que el token sea de la página ${data.pageId}: ${subscription.message}`
+    );
+  }
+
   await saveMessengerCredentials({
     organizationId: session.organizationId,
     source: "meta",
@@ -118,13 +130,18 @@ export const PUT = withAuth(async (session, req: Request) => {
 
   // Spec 1010: sin la página suscrita a la app, Meta no entrega nada. Si
   // falla, la conexión ya está guardada (envía) y la pantalla dice qué falta.
-  const subscription = await subscribePageToApp(data.pageId!, data.token);
+  subscription ??= await subscribePageToApp(data.pageId!, data.token);
 
   return Response.json({ ok: true, pageName: check.pageName, subscription });
 });
 
 type Check =
-  | { ok: true; pageName: string | null }
+  | {
+      ok: true;
+      pageName: string | null;
+      /** false: Meta no dejó leer `/me` (spec 1016); lo confirma la suscripción. */
+      verified: boolean;
+    }
   | { ok: false; status: number; code: string; message: string };
 
 type VerifyInput = Omit<z.infer<typeof putSchema>, "source"> & {
@@ -148,6 +165,11 @@ async function verify(data: VerifyInput): Promise<Check> {
   try {
     tokenOwner = (await graphRequest<{ id?: string }>("me?fields=id", { token: data.token })).id;
   } catch (err) {
+    // Spec 1016: hay páginas en las que Meta exige `pages_read_engagement`
+    // hasta para leer el id de `/me`, y el token del caso de uso de Messenger
+    // no lo trae. Eso no dice que el token no sirva: se sigue sin poder
+    // comprobar el dueño y lo confirma la suscripción de la página.
+    if (isMissingReadPermission(err)) return { ok: true, pageName: null, verified: false };
     return translate(err, "El token de la página no es válido");
   }
   if (tokenOwner !== data.pageId) {
@@ -168,7 +190,21 @@ async function verify(data: VerifyInput): Promise<Check> {
   } catch {
     // Sin permiso para leer el nombre: la conexión sirve igual.
   }
-  return { ok: true, pageName };
+  return { ok: true, pageName, verified: true };
+}
+
+/**
+ * El error de permisos de lectura de Meta (código 100, 10 o 200 que pide
+ * `pages_read_engagement` o una función de acceso público), distinto de un
+ * token vencido o inválido (190 / 401).
+ */
+function isMissingReadPermission(err: unknown): boolean {
+  if (!(err instanceof MetaApiError) || err.isAuthError) return false;
+  if (err.status === 0 || err.status >= 500) return false;
+  return (
+    [10, 100, 200].includes(err.code ?? -1) &&
+    /pages_read_engagement|Page Public (Content|Metadata) Access|missing permission/i.test(err.message)
+  );
 }
 
 function translate(err: unknown, invalidMessage: string): Check {

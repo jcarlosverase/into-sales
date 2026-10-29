@@ -205,12 +205,26 @@ export async function getOrCreateContactByIdentity(
       .limit(1);
     const existingIg = found[0];
     if (existingIg) {
-      if (existingIg.archivedAt) {
+      const patch: Partial<typeof schema.contact.$inferInsert> = {};
+      if (existingIg.archivedAt) patch.archivedAt = null;
+      // Spec 1015: un contacto que quedó con el nombre de respaldo («Contacto
+      // de Instagram») toma el del perfil en cuanto se conoce. Uno que tiene
+      // nombre propio, o que una persona renombró, no se toca.
+      const fromProfile = resolved.profileName?.trim();
+      if (
+        fromProfile &&
+        existingIg.nameSource === "perfil" &&
+        existingIg.name === channelFallback(channel)
+      ) {
+        patch.name = fromProfile;
+      }
+      if (Object.keys(patch).length > 0) {
+        patch.updatedAt = new Date();
         await db
           .update(schema.contact)
-          .set({ archivedAt: null, updatedAt: new Date() })
+          .set(patch)
           .where(eq(schema.contact.id, existingIg.id));
-        existingIg.archivedAt = null;
+        Object.assign(existingIg, patch);
       }
       return { contact: existingIg, isNew: false };
     }
@@ -320,6 +334,33 @@ export async function getOrCreateContactByIdentity(
   const contact = raced[0];
   if (!contact) throw new Error("contacto no encontrado tras upsert");
   return { contact, isNew: false };
+}
+
+/**
+ * Spec 1015: ¿hay que pedirle al proveedor el nombre de quien escribe por un
+ * canal social? Solo si el contacto todavía no existe o quedó con el nombre de
+ * respaldo y nadie lo renombró: consultar el perfil en cada mensaje sería un
+ * viaje al proveedor por renglón.
+ */
+export async function socialContactNeedsName(
+  organizationId: string,
+  channel: Channel,
+  identity: string
+): Promise<boolean> {
+  const rows = await getDb()
+    .select({ name: schema.contact.name, nameSource: schema.contact.nameSource })
+    .from(schema.contact)
+    .where(
+      and(
+        eq(schema.contact.organizationId, organizationId),
+        eq(schema.contact.channel, channel),
+        eq(schema.contact.waIdentity, identity)
+      )
+    )
+    .limit(1);
+  const contact = rows[0];
+  if (!contact) return true;
+  return contact.nameSource === "perfil" && contact.name === channelFallback(channel);
 }
 
 /** Nombre de respaldo cuando no hay nombre de perfil: nunca el BSUID crudo. */

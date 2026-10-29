@@ -1,4 +1,5 @@
-import { IG_PREFIX } from "@/server/inbox/identity";
+import { IG_PREFIX, socialContactNeedsName } from "@/server/inbox/identity";
+import { fetchInstagramProfileName } from "@/server/instagram/send";
 import { ingestInboundMessage } from "@/server/inbox/ingest";
 import {
   getInstagramCredentialsByAccountRef,
@@ -147,16 +148,22 @@ export async function processMetaInstagramPayload(
       if (!igsid || !mid) continue;
       if (typeof m.message?.text !== "string") continue; // solo texto (014)
 
+      const identity = `${IG_PREFIX}${igsid}`;
+      // Meta no manda nombre ni usuario en el webhook: se consulta el perfil
+      // mientras el contacto no exista o siga con el nombre de respaldo
+      // (spec 1015).
+      const profileName = (await socialContactNeedsName(creds.organizationId, "instagram", identity))
+        ? await fetchInstagramProfileName(creds, igsid)
+        : null;
+
       await ingestInboundMessage({
         organizationId: creds.organizationId,
         identity: {
-          identity: `${IG_PREFIX}${igsid}`,
+          identity,
           channel: "instagram",
           phone: null,
           waUserId: null,
-          // Meta no manda nombre ni usuario en el webhook: queda el respaldo
-          // hasta que alguien edite el contacto.
-          profileName: null,
+          profileName,
         },
         waMessageId: `ig_${mid}`,
         type: "text",

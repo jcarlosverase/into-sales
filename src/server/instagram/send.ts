@@ -163,3 +163,30 @@ async function fetchJson(
   }
   return json;
 }
+
+/**
+ * Spec 1015: nombre visible de quien escribe por Instagram (app propia de
+ * Meta). El webhook de Meta solo trae el IGSID, y la bandeja quedaba llena de
+ * «Contacto de Instagram». Se consulta el perfil (`name`, si no `@username`)
+ * con el token de la cuenta; si Meta no lo da, null y la ingesta cae al
+ * nombre de respaldo: nunca se bloquea un mensaje por un nombre. Con Zernio no
+ * hace falta: el evento ya trae el nombre.
+ */
+export async function fetchInstagramProfileName(
+  credentials: InstagramCredentials,
+  igsid: string
+): Promise<string | null> {
+  if (credentials.source !== "meta") return null;
+  try {
+    const res = (await fetchJson(
+      `${IG_GRAPH_BASE}/${IG_GRAPH_VERSION}/${igsid}?fields=name,username`,
+      { headers: { Authorization: `Bearer ${credentials.token}` } }
+    )) as { name?: string; username?: string } | null;
+    const name = res?.name?.trim();
+    if (name) return name;
+    const username = res?.username?.trim().replace(/^@/, "");
+    return username ? `@${username}` : null;
+  } catch {
+    return null;
+  }
+}

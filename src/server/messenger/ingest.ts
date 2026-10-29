@@ -1,6 +1,4 @@
-import { and, eq } from "drizzle-orm";
-import { getDb, schema } from "@/lib/db";
-import { FB_PREFIX } from "@/server/inbox/identity";
+import { FB_PREFIX, socialContactNeedsName } from "@/server/inbox/identity";
 import { ingestInboundMessage } from "@/server/inbox/ingest";
 import {
   getMessengerCredentialsByAccountRef,
@@ -185,23 +183,6 @@ function resolveType(
   return ATTACHMENT_TYPE[attachment.type ?? ""] ?? "unsupported";
 }
 
-async function contactExists(
-  organizationId: string,
-  identity: string
-): Promise<boolean> {
-  const rows = await getDb()
-    .select({ id: schema.contact.id })
-    .from(schema.contact)
-    .where(
-      and(
-        eq(schema.contact.organizationId, organizationId),
-        eq(schema.contact.channel, "messenger"),
-        eq(schema.contact.waIdentity, identity)
-      )
-    )
-    .limit(1);
-  return rows.length > 0;
-}
 
 export async function processMetaPagePayload(payload: unknown): Promise<void> {
   await ingestAll(normalizeMetaPagePayload(payload), "meta");
@@ -242,15 +223,15 @@ async function ingestAll(
     }
 
     const identity = `${FB_PREFIX}${evt.psid}`;
-    // El nombre se resuelve UNA vez, la primera que se ve al PSID: después el
-    // contacto ya existe y el nombre que tenga (o el que editó el operador)
-    // manda. Consultarlo en cada mensaje sería un viaje al proveedor por
-    // renglón.
+    // El nombre se resuelve mientras el contacto no exista o siga con el
+    // nombre de respaldo (spec 1015); después manda el que tenga (o el que
+    // editó el operador). Consultarlo en cada mensaje sería un viaje al
+    // proveedor por renglón.
     const profileName =
       evt.profileName ??
-      ((await contactExists(creds.organizationId, identity))
-        ? null
-        : await fetchMessengerProfileName(creds, evt.psid));
+      ((await socialContactNeedsName(creds.organizationId, "messenger", identity))
+        ? await fetchMessengerProfileName(creds, evt.psid)
+        : null);
 
     await ingestInboundMessage({
       organizationId: creds.organizationId,
