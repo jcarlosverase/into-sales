@@ -9,7 +9,7 @@
  * Uso:
  *   1) app corriendo (`next dev`) sobre una base migrada, con
  *      WA_MOCK_ENABLED=true, META_GRAPH_BASE_URL → wa-mock, BOT_API_KEY y
- *      BRAIN_DISPATCH_URL=http://127.0.0.1:<puerto libre>/vocero/dispatch.
+ *      BRAIN_DISPATCH_URL=http://127.0.0.1:<puerto libre>/intosales/dispatch.
  *      Con AGENDA=on corre además la cita por venir (AC6).
  *   2) node --env-file=.env scripts/e2e-delete-conversation.mjs
  *
@@ -116,11 +116,11 @@ async function startBrain(url) {
       statusValue.received.push({
         raw: raw.toString("utf8"),
         event: event,
-        signatureOk: signatureOk(raw, req.headers["x-vocero-signature"]),
+        signatureOk: signatureOk(raw, req.headers["x-intosales-signature"]),
         headers: {
-          dispatch: req.headers["x-vocero-dispatch-id"] ?? null,
-          org: req.headers["x-vocero-organization"] ?? null,
-          event: req.headers["x-vocero-event"] ?? null,
+          dispatch: req.headers["x-intosales-dispatch-id"] ?? null,
+          org: req.headers["x-intosales-organization"] ?? null,
+          event: req.headers["x-intosales-event"] ?? null,
         },
       });
       const status = statusValue.mode === "500" ? 500 : 200;
@@ -239,7 +239,7 @@ async function main() {
   console.log(`== Setup (${withBrain ? "con cerebro por despacho" : "sin despacho"}${AGENDA ? ", agenda encendida" : ""}) ==`);
   const brain = withBrain ? await startBrain(new URL(DISPATCH)) : null;
 
-  const email = "e2e@vocero.test";
+  const email = "e2e@intosales.test";
   const password = "password-e2e-123";
   let su = await api("/api/auth/sign-up/email", {
     method: "POST",
@@ -280,7 +280,7 @@ async function permissions() {
   const p = await persona(1, "permisos");
   ok("hay una conversación que cuidar", Boolean(p.conv));
 
-  const emailValue = `equipo-${RUN}@vocero.test`;
+  const emailValue = `equipo-${RUN}@intosales.test`;
   const key = "password-equipo-123";
   const high = await api("/api/settings/team", {
     method: "POST",
@@ -377,7 +377,7 @@ async function theThread(brain) {
     ok("llegó exactamente un conversation.deleted", forgets.length === 1, `llegaron ${forgets.length}`);
     ok("firmado como un turno, sobre el cuerpo crudo", o?.signatureOk === true);
     ok(
-      "con x-vocero-event, con la organización y SIN id de despacho",
+      "con x-intosales-event, con la organización y SIN id de despacho",
       o?.headers.event === "conversation.deleted" && Boolean(o?.headers.org) && o?.headers.dispatch === null,
       JSON.stringify(o?.headers)
     );

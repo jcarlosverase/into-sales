@@ -70,7 +70,7 @@ describe("026 · el evento conversation.deleted", () => {
 });
 
 describe("026 · avisarOlvido", () => {
-  const destination = { url: "http://cerebro.test/vocero/dispatch", secret: SECRET_TWIN };
+  const destination = { url: "http://cerebro.test/intosales/dispatch", secret: SECRET_TWIN };
 
   it("manda UN POST con el cuerpo gemelo, su firma y las cabeceras del evento", async () => {
     const fetchImpl = vi.fn(async () => new Response(null, { status: 204 }));

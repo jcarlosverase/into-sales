@@ -62,19 +62,19 @@ type Status = {
 // ruta) y todas las copias deben compartir el mismo worker: dos temporizadores
 // sobre el mismo outbox se pisarían el lease.
 const globalForWorker = globalThis as unknown as {
-  __voceroDispatchWorker?: Status;
+  __intosalesDispatchWorker?: Status;
 };
 
 function status(): Status {
-  if (!globalForWorker.__voceroDispatchWorker) {
-    globalForWorker.__voceroDispatchWorker = {
+  if (!globalForWorker.__intosalesDispatchWorker) {
+    globalForWorker.__intosalesDispatchWorker = {
       timer: null,
       running: false,
       booking: null,
       bookingAt: null,
     };
   }
-  return globalForWorker.__voceroDispatchWorker;
+  return globalForWorker.__intosalesDispatchWorker;
 }
 
 export function startWorker(): void {

@@ -34,6 +34,7 @@ import type { Booking } from "./booking-look";
 import { CalendarToolbar } from "./calendar-toolbar";
 import { MonthGrid } from "./month-grid";
 import { TimeGrid } from "./time-grid";
+import { readLocalPref, writeLocalPref } from "@/lib/local-prefs";
 
 /**
  * 015 → 215 — Citas: lo agendado por el operador y por la IA, en un
@@ -46,9 +47,11 @@ import { TimeGrid } from "./time-grid";
  */
 
 /** Preferencias de quien mira, en su navegador: no son datos del negocio. */
-const VIEW_KEY = "vocero:citas:vista";
-const CANCELLED_KEY = "vocero:citas:canceladas";
-const TESTS_KEY = "vocero:citas:pruebas";
+// Spec 1013: con el prefijo de antes como respaldo, para no perder la vista.
+const VIEW_KEY = "intosales:citas:vista";
+const CANCELLED_KEY = "intosales:citas:canceladas";
+const TESTS_KEY = "intosales:citas:pruebas";
+const legacyKey = (key: string) => key.replace(/^intosales:/, "vocero:");
 
 /** Una ráfaga de eventos SSE (una cita y su enlace) se paga con UNA consulta. */
 const SSE_COALESCE_MS = 250;
@@ -56,20 +59,10 @@ const SSE_COALESCE_MS = 250;
 type Loaded = { key: string; bookings: Booking[]; truncated: boolean };
 
 function readPref(key: string): string | null {
-  try {
-    return window.localStorage.getItem(key);
-  } catch {
-    return null; // modo privado o almacenamiento bloqueado
-  }
+  return readLocalPref(key, legacyKey(key));
 }
 
-function writePref(key: string, value: string) {
-  try {
-    window.localStorage.setItem(key, value);
-  } catch {
-    // idem: la preferencia es una comodidad, no un requisito
-  }
-}
+const writePref = writeLocalPref;
 
 const keyOf = (r: DateRange) => `${r.from}|${r.to}`;
 

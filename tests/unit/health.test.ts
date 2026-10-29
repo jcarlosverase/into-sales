@@ -33,7 +33,7 @@ const ENV_ORIGINAL = { ...process.env };
 let tmp: string;
 
 beforeEach(async () => {
-  tmp = await mkdtemp(path.join(os.tmpdir(), "vocero-health-"));
+  tmp = await mkdtemp(path.join(os.tmpdir(), "intosales-health-"));
   resetMediaDirCache();
   getDb.mockReturnValue({ execute: async () => [] });
   getEnv.mockReturnValue({ MEDIA_DIR: path.join(tmp, "media") });

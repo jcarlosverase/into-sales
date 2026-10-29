@@ -262,7 +262,7 @@ export async function ensureWebhookForOrg(
   }
 
   const segment = webhookVerifyToken();
-  const name = `vocero-${new URL(env.APP_BASE_URL).host}`;
+  const name = `intosales-${new URL(env.APP_BASE_URL).host}`;
   const acceptableUrls = ZERNIO_CHANNELS.filter((c) => isChannelEnabled(c)).map((c) =>
     webhookUrl(WEBHOOK_PATH[c])
   );

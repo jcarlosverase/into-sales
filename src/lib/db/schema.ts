@@ -911,7 +911,7 @@ export const booking = pgTable(
  * La memoria de lo ofrecido. Es lo que hace verificable el requisito
  * innegociable: sin fila aquí, no hay reserva.
  *
- * Vive en el CRM y no en quien conduce la conversación porque Vocero promete
+ * Vive en el CRM y no en quien conduce la conversación porque IntoSales promete
  * "conecta TU propio cerebro": con la garantía del lado del cliente, cualquier
  * cerebro podría reservar un instante que jamás se ofreció y el CRM lo
  * aceptaría.
@@ -1147,7 +1147,7 @@ export const capiSettings = pgTable(
     tokenTag: text("token_tag").notNull(),
     /**
      * Qué etapa significa "lead calificado" PARA ESTE NEGOCIO. Las etapas
-     * sembradas de Vocero no incluyen ninguna con ese nombre y cada quien
+     * sembradas de IntoSales no incluyen ninguna con ese nombre y cada quien
      * renombra las suyas, así que se elige en vez de adivinarse. NULL = ese
      * evento no se emite. `set null` a propósito: borrar la etapa apaga el
      * evento, no rompe la configuración.

@@ -9,7 +9,7 @@ import {
 /**
  * La guía de inicio: tres pasos (cuatro con la agenda) y nada más (issue #86).
  *
- * Es lo primero que ve quien instala Vocero: configurar el agente, vincular
+ * Es lo primero que ve quien instala IntoSales: configurar el agente, vincular
  * el proveedor de IA, conectar el número y, si la agenda existe en esta
  * instancia, dejarla lista. Al terminar, un botón enciende el agente. Lo
  * demás —la Bandeja, el Pipeline— ya está en el menú; la guía no lo repite.

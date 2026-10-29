@@ -7,7 +7,7 @@ type KbEntry = typeof schema.kbEntry.$inferSelect;
 /**
  * Payload del perfil del agente para un cerebro externo.
  *
- * `enabled` NO viaja: ese flag gobierna la IA in-process de Vocero; el bot
+ * `enabled` NO viaja: ese flag gobierna la IA in-process de IntoSales; el bot
  * externo se pausa por conversación (`aiEnabled` del contexto y los handoffs),
  * no por este endpoint. `resources` nace vacío para que el shape del consumidor
  * no cambie cuando existan recursos alternativos reales.

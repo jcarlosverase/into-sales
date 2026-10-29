@@ -131,30 +131,44 @@ type VerifyInput = Omit<z.infer<typeof putSchema>, "source"> & {
   source: "zernio" | "meta";
 };
 
-/** Fuente Meta. */
+/**
+ * Fuente Meta.
+ *
+ * Spec 1012: el token se valida con `GET /me?fields=id`. Con un token de
+ * página, `/me` ES la página, así que su id tiene que ser el ID pegado: un
+ * token de usuario o de otra página no pasa. Antes se pedía
+ * `{pageId}?fields=id,name`, que (1) devolvía siempre el ID pedido, sin
+ * comprobar de quién era el token, y (2) exige `pages_read_engagement` para
+ * leer el nombre — un permiso que el caso de uso de Messenger no siempre da —,
+ * así que un token de página correcto se rechazaba como «no válido».
+ * El nombre se pide aparte y, si Meta no lo da, se guarda sin él.
+ */
 async function verify(data: VerifyInput): Promise<Check> {
-  // Meta: el token debe ser de ESA página. Un token de otra guardaría
-  // credenciales que reciben webhooks de una y contestan por otra.
+  let tokenOwner: string | undefined;
   try {
-    const res = await graphRequest<{ id?: string; name?: string }>(
-      `${data.pageId}?fields=id,name`,
-      { token: data.token }
-    );
-    if (res.id && res.id !== data.pageId) {
-      return {
-        ok: false,
-        status: 422,
-        code: "id_mismatch",
-        message: `El token pertenece a la página ${res.id}, no a ${data.pageId}`,
-      };
-    }
-    return { ok: true, pageName: res.name?.trim() || null };
+    tokenOwner = (await graphRequest<{ id?: string }>("me?fields=id", { token: data.token })).id;
   } catch (err) {
-    return translate(
-      err,
-      "El token de la página no es válido o no tiene permiso de mensajes (pages_messaging)"
-    );
+    return translate(err, "El token de la página no es válido");
   }
+  if (tokenOwner !== data.pageId) {
+    return {
+      ok: false,
+      status: 422,
+      code: "id_mismatch",
+      message: `El token no es de la página ${data.pageId}${
+        tokenOwner ? ` (es de ${tokenOwner}: un usuario u otra página)` : ""
+      }. Genera el token junto a esa página en Messenger → Configuración de la API.`,
+    };
+  }
+
+  let pageName: string | null = null;
+  try {
+    const res = await graphRequest<{ name?: string }>("me?fields=name", { token: data.token });
+    pageName = res.name?.trim() || null;
+  } catch {
+    // Sin permiso para leer el nombre: la conexión sirve igual.
+  }
+  return { ok: true, pageName };
 }
 
 function translate(err: unknown, invalidMessage: string): Check {
@@ -167,7 +181,15 @@ function translate(err: unknown, invalidMessage: string): Check {
         message: "No se pudo contactar la plataforma; intenta de nuevo",
       };
     }
-    return { ok: false, status: 422, code: "invalid_token", message: invalidMessage };
+    // Meta's own reason (expired token, wrong app, a user token instead of
+    // the page's…) is what tells the owner which of the cases it is. Meta's
+    // error text never carries the token.
+    return {
+      ok: false,
+      status: 422,
+      code: "invalid_token",
+      message: `${invalidMessage}. Meta dice: ${err.message}`,
+    };
   }
   throw err;
 }

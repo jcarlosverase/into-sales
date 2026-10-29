@@ -57,14 +57,14 @@ type ZernioMockState = {
   hits: Record<string, number>;
 };
 
-const g = globalThis as unknown as { __voceroZernioMock?: ZernioMockState };
+const g = globalThis as unknown as { __intosalesZernioMock?: ZernioMockState };
 
 export function zernioMockState(): ZernioMockState {
-  if (!g.__voceroZernioMock) {
-    g.__voceroZernioMock = { seq: 0, sent: [], accounts: [], webhooks: [], down: [], hits: {} };
+  if (!g.__intosalesZernioMock) {
+    g.__intosalesZernioMock = { seq: 0, sent: [], accounts: [], webhooks: [], down: [], hits: {} };
   }
   // Un proceso que venía de antes de la 023 (recarga en caliente).
-  const s = g.__voceroZernioMock;
+  const s = g.__intosalesZernioMock;
   s.accounts ??= [];
   s.webhooks ??= [];
   s.down ??= [];

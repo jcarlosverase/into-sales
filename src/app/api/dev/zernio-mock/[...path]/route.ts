@@ -14,7 +14,7 @@ export const dynamic = "force-dynamic";
  * 017 — Zernio de mentira para el self-test. Tras `mockGuard()`: 404
  * incondicional en producción, indistinguible de una ruta inexistente.
  *
- * Imita lo único que Vocero usa de esa API —listar conversaciones, responder
+ * Imita lo único que IntoSales usa de esa API —listar conversaciones, responder
  * en una y, desde la 023, las cuentas y los webhooks— y expone `_sent`,
  * `_state`, `_accounts`, `_webhooks`, `_down` y `_reset` para que el arnés
  * prepare el escenario y afirme sobre lo que pasó.

@@ -189,7 +189,7 @@ export const googleConnector: AgendaConnector<GoogleCreds> = {
             createRequest: {
               // Google exige un id de petición propio; el instante lo hace
               // único por cita sin necesitar aleatoriedad.
-              requestId: `vocero-${Date.parse(req.startUtc)}`,
+              requestId: `intosales-${Date.parse(req.startUtc)}`,
               conferenceSolutionKey: { type: "hangoutsMeet" },
             },
           },

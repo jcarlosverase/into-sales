@@ -6,7 +6,7 @@
 > de pantalla (ver la lista, pulsar «Encender») se conducen a mano o con
 > Playwright; el arnés verifica la decisión del servidor y la API.
 
-Lo que se protege: que quien instala Vocero vea PRIMERO qué le falta para que
+Lo que se protege: que quien instala IntoSales vea PRIMERO qué le falta para que
 el agente conteste —y nada más—, que cada paso se marque solo cuando la pieza
 de verdad funciona, y que el botón final encienda el agente. Y que a nadie se
 le encierre: la guía captura solo la raíz; el menú lleva a cualquier pantalla.

@@ -4,7 +4,7 @@ import { Barlow, IBM_Plex_Mono, Instrument_Serif } from "next/font/google";
 import { appIconHref, NAV_HEADER_COLOR } from "@/lib/app-icon";
 import { accentCssVariables, DEFAULT_BRANDING } from "@/lib/branding";
 import { faviconHref } from "@/lib/favicon";
-import { normalizeThemePreference, THEME_COOKIE } from "@/lib/theme";
+import { normalizeThemePreference, themeCookieValue } from "@/lib/theme";
 import { getBranding } from "@/server/branding";
 import "./globals.css";
 
@@ -63,7 +63,7 @@ export default async function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   const branding = await getBranding().catch(() => DEFAULT_BRANDING);
   const theme = normalizeThemePreference(
-    (await cookies()).get(THEME_COOKIE)?.value
+    themeCookieValue(await cookies())
   );
   return (
     <html

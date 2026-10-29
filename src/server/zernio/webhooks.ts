@@ -17,7 +17,7 @@ import type { Health } from "@/server/zernio/accounts";
 /** El evento con el que llega un mensaje de un cliente. */
 export const ZERNIO_MESSAGE_EVENT = "message.received";
 
-/** Un webhook de `GET /webhooks/settings`, en lo que a Vocero le importa. */
+/** Un webhook de `GET /webhooks/settings`, en lo que a IntoSales le importa. */
 export type ZernioWebhook = {
   _id: string;
   name?: string | null;
@@ -46,10 +46,10 @@ type Entry = { at: number; ok: boolean; webhooks: ZernioWebhook[] };
 
 // En globalThis porque Next recarga módulos en desarrollo; una instancia es un
 // proceso, así que la memoria alcanza. La llave nunca es la del mapa: su hash.
-const g = globalThis as unknown as { __voceroZernioWebhooks?: Map<string, Entry> };
+const g = globalThis as unknown as { __intosalesZernioWebhooks?: Map<string, Entry> };
 function cache(): Map<string, Entry> {
-  if (!g.__voceroZernioWebhooks) g.__voceroZernioWebhooks = new Map();
-  return g.__voceroZernioWebhooks;
+  if (!g.__intosalesZernioWebhooks) g.__intosalesZernioWebhooks = new Map();
+  return g.__intosalesZernioWebhooks;
 }
 const keyOf = (token: string) => createHash("sha256").update(token).digest("hex");
 

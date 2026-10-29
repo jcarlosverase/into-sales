@@ -352,7 +352,7 @@ export type StoredWhatsApp = {
 /**
  * Las conexiones guardadas, organización por organización y por la misma
  * puerta que usa la app (getCredentialsByOrg: query acotada + descifrado).
- * Vocero raíz no tiene credenciales de WhatsApp en el entorno: viven cifradas
+ * IntoSales no tiene credenciales de WhatsApp en el entorno: viven cifradas
  * en la base.
  */
 export async function loadWhatsAppCredentials(): Promise<StoredWhatsApp[]> {
@@ -552,7 +552,7 @@ export function checkDispatch(
       status: "warn",
       label,
       detail: "no es una URL http:// o https:// válida (o lleva usuario:clave): el despacho queda INACTIVO",
-      fix: "en .env: BRAIN_DISPATCH_URL=http://nea:8000/vocero/dispatch (la dirección interna de tu cerebro)",
+      fix: "en .env: BRAIN_DISPATCH_URL=http://nea:8000/intosales/dispatch (la dirección interna de tu cerebro)",
     };
   }
   if (config.problem === "sin_llave") {

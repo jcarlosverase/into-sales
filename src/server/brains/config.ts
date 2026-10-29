@@ -11,7 +11,7 @@
  *
  * A diferencia de la edición cloud, aquí no se exige una URL pública: la pone
  * quien instala, no un tercero, y lo normal es la dirección interna del
- * contenedor del cerebro (`http://nea:8000/vocero/dispatch`).
+ * contenedor del cerebro (`http://nea:8000/intosales/dispatch`).
  */
 
 const MIN_KEY_LENGTH = 16;

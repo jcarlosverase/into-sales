@@ -116,7 +116,7 @@ async function main() {
   }
 
   console.log("== Setup: registro/login del propietario ==");
-  const email = "e2e@vocero.test";
+  const email = "e2e@intosales.test";
   const password = "password-e2e-123";
   let su = await api("/api/auth/sign-up/email", {
     method: "POST",
@@ -153,7 +153,7 @@ async function main() {
   });
   ok(
     "PUT con token válido → 200 con el nombre de la página",
-    conn.res.ok && conn.json?.pageName === "Página de prueba Vocero",
+    conn.res.ok && conn.json?.pageName === "Página de prueba IntoSales",
     JSON.stringify(conn.json)
   );
 

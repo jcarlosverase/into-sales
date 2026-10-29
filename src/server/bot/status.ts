@@ -44,25 +44,25 @@ type HealthCacheEntry = {
 // En globalThis: los módulos pueden evaluarse más de una vez (una por ruta en
 // dev) y la última llamada la anota `requireBotKey`, en otra ruta.
 const globalForBrain = globalThis as unknown as {
-  __voceroBotLastSeen?: number;
-  __voceroBrainHealth?: HealthCacheEntry;
+  __intosalesBotLastSeen?: number;
+  __intosalesBrainHealth?: HealthCacheEntry;
 };
 
 /** La anota `requireBotKey` en cada llamada autenticada. Solo memoria: se
  *  pierde al reiniciar, y la UI lo dice («desde el último arranque»). */
 export function markBotSeen(now: number = Date.now()): void {
-  globalForBrain.__voceroBotLastSeen = now;
+  globalForBrain.__intosalesBotLastSeen = now;
 }
 
 export function botLastSeenAt(): Date | null {
-  const t = globalForBrain.__voceroBotLastSeen;
+  const t = globalForBrain.__intosalesBotLastSeen;
   return typeof t === "number" ? new Date(t) : null;
 }
 
 /** Solo para tests. */
 export function resetBrainStatusState(): void {
-  delete globalForBrain.__voceroBotLastSeen;
-  delete globalForBrain.__voceroBrainHealth;
+  delete globalForBrain.__intosalesBotLastSeen;
+  delete globalForBrain.__intosalesBrainHealth;
 }
 
 // ---------------------------------------------------------------------------
@@ -221,7 +221,7 @@ export async function getBrainHealth(
 ): Promise<BrainHealthDto | null> {
   if (!rawUrl) return null;
   const clock = opts.clock ?? Date.now;
-  const cached = globalForBrain.__voceroBrainHealth;
+  const cached = globalForBrain.__intosalesBrainHealth;
   if (cached && cached.url === rawUrl && clock() < cached.expiresAt) {
     return cached.pending;
   }
@@ -231,7 +231,7 @@ export async function getBrainHealth(
     expiresAt: Number.POSITIVE_INFINITY,
     pending: fetchBrainHealth(rawUrl, opts),
   };
-  globalForBrain.__voceroBrainHealth = entry;
+  globalForBrain.__intosalesBrainHealth = entry;
   const result = await entry.pending;
   entry.expiresAt = clock() + (opts.ttlMs ?? BRAIN_HEALTH_TTL_MS);
   return result;

@@ -77,7 +77,7 @@ export const UNVERIFIED_COMMIT_NOTE = "commit sin verificar";
 /**
  * El tooltip de la insignia. El nombre llega de la marca y no de una
  * constante: esto es white-label, y una instancia rebautizada que dice
- * "Vocero" aquí delata el producto de debajo.
+ * "IntoSales" aquí delata el producto de debajo.
  *
  * Con un commit sin verificar dice de dónde salió y cómo arreglarlo: quien lo
  * lee está justo dudando de qué código corre.

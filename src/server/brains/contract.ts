@@ -179,11 +179,11 @@ export function buildEventForget(data: {
   };
 }
 
-export const HEADER_SIGNATURE = "x-vocero-signature";
-export const HEADER_DISPATCH = "x-vocero-dispatch-id";
-export const HEADER_ORG = "x-vocero-organization";
+export const HEADER_SIGNATURE = "x-intosales-signature";
+export const HEADER_DISPATCH = "x-intosales-dispatch-id";
+export const HEADER_ORG = "x-intosales-organization";
 /** Para los eventos que no son un turno: hoy, `conversation.deleted` (026). */
-export const HEADER_EVENT = "x-vocero-event";
+export const HEADER_EVENT = "x-intosales-event";
 
 /**
  * Firma del cuerpo CRUDO, con prefijo `sha256=`.

@@ -40,7 +40,7 @@ const ctx = await browser.newContext({ viewport: { width: 1500, height: 950 } })
 const req = ctx.request;
 
 console.log("== Setup: registro + conexión + una conversación ==");
-const email = "e2e@vocero.test";
+const email = "e2e@intosales.test";
 const password = "password-e2e-123";
 let su = await req.post(`${BASE}/api/auth/sign-up/email`, {
   data: { email, password, name: "Operador E2E" },

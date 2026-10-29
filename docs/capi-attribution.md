@@ -12,7 +12,7 @@ lo diga, el algoritmo optimiza hacia lo único que ve —que alguien abra el
 chat— y te entrega el público más barato de hacer escribir, que rara vez es el
 que compra. Se siente como "me llegan muchos mensajes y no cierro ninguno".
 
-Vocero está en el único lugar donde esa verdad existe: sabe que esta
+IntoSales está en el único lugar donde esa verdad existe: sabe que esta
 conversación vino del anuncio A, que se calificó el martes y que se ganó el
 viernes por $12,000. Encender esta feature es devolverle a Meta ese desenlace,
 para que el mismo presupuesto empiece a comprar clientes en vez de chats.
@@ -54,7 +54,7 @@ propio bot por `/api/bot/*`.
 ## De qué anuncio llegó (siempre visible)
 
 Meta dice de qué anuncio vino una persona en el **primer** mensaje de la
-conversación (el objeto `referral` del webhook), y no lo vuelve a decir. Vocero
+conversación (el objeto `referral` del webhook), y no lo vuelve a decir. IntoSales
 lo guarda con la conversación y lo enseña donde se atiende:
 
 - **Bandeja**: el renglón dice «Anuncio · titular» («Publicación» si el clic
@@ -127,7 +127,7 @@ Esto es lo que se aprendió operando esta integración en producción durante
 meses. Ninguno aparece con esa claridad en la documentación oficial:
 
 1. **Meta responde `200` aunque descarte tu evento.** El único acuse real es
-   `events_received >= 1`. Vocero lo comprueba y marca la fila como fallida
+   `events_received >= 1`. IntoSales lo comprueba y marca la fila como fallida
    cuando llega en cero — si no, un evento tirado a la basura se vería idéntico
    a uno bueno.
 2. **No existe el evento de prueba sintético.** Meta valida el `ctwa_clid`
@@ -158,7 +158,7 @@ ventas con destino de mensajes necesita un evento que **sí** esté en la
 intersección de "campaña de ventas" y "catálogo de mensajería":
 `InitiateCheckout`, `ViewContent` o `Purchase`.
 
-Vocero **no** hace esto de fábrica a propósito: duplicar cada lead calificado
+IntoSales **no** hace esto de fábrica a propósito: duplicar cada lead calificado
 como "inició pago" es una decisión de negocio, no una verdad del CRM, y quien la
 tome debe saber que lo está haciendo. Si la quieres, son tres líneas en tu fork:
 

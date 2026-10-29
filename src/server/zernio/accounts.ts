@@ -25,7 +25,7 @@ export const ZERNIO_PLATFORMS: Record<ZernioChannel, readonly string[]> = {
   tiktok: ["tiktok"],
 };
 
-/** Una cuenta de `GET /accounts`, en lo que a Vocero le importa. */
+/** Una cuenta de `GET /accounts`, en lo que a IntoSales le importa. */
 export type ZernioAccount = {
   _id: string;
   platform?: string | null;

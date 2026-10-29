@@ -204,7 +204,7 @@ export function AppNav({
       {/* `text-2` y no `text-3`: a 10.5px, el gris más claro no pasa AA contra
           el fondo de la barra. Discreta sí, ilegible no. */}
       {/* El nombre sale de la marca, no de una constante: esto es white-label,
-          y una instancia rebautizada que dice "Vocero" en el tooltip delata el
+          y una instancia rebautizada que dice "IntoSales" en el tooltip delata el
           producto de debajo justo donde el operador la mira todos los días. */}
       {/* Un commit que no salió del build lo dice (#50): presentarlo igual
           que uno verificado es la insignia mintiendo justo cuando alguien la

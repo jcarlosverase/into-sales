@@ -49,7 +49,7 @@ export async function sendMessengerText(input: {
   threadRef: string | null;
   text: string;
   humanAgentTag?: boolean;
-  /** Id del mensaje en Vocero: llave natural de idempotencia en Zernio. */
+  /** Id del mensaje en IntoSales: llave natural de idempotencia en Zernio. */
   idempotencyKey?: string;
 }): Promise<MessengerSendResult> {
   if (input.credentials.source === "zernio") {

@@ -134,7 +134,7 @@ inunde la API sin llave no deja a tu bot sin servicio.
 
 **Que el CRM le pase cada turno a tu bot.** Tu bot no necesita recibir el
 webhook de Meta: con `BRAIN_DISPATCH_URL` (p. ej.
-`http://nea:8000/vocero/dispatch`) y la misma `BOT_API_KEY`, el mensaje entra
+`http://nea:8000/intosales/dispatch`) y la misma `BOT_API_KEY`, el mensaje entra
 primero a la bandeja y el CRM le hace a tu bot un `POST` firmado con lo que el
 cliente escribió desde la última respuesta, junto, después de esperar a que
 termine su ráfaga. Tu bot contesta por `POST /api/bot/messages`, como siempre.
@@ -274,7 +274,7 @@ variante que construye desde el repositorio.
 ### Ruta B — docker compose
 
 ```bash
-git clone https://github.com/jcarlosverase/into-sales.git vocero && cd vocero
+git clone https://github.com/jcarlosverase/into-sales.git into-sales && cd into-sales
 pnpm install && pnpm init-env --domain crm.tudominio.com   # crea .env con los secretos ya generados
 pnpm doctor                                                 # revisa el .env antes de arrancar
 docker compose up -d
@@ -510,7 +510,7 @@ Con más de un canal encendido, la Bandeja enseña el distintivo de cada
 conversación y permite filtrar por canal. El contacto, el pipeline, la ficha
 y el agente son los mismos: un lead es un lead, escriba por donde escriba.
 
-El agente escribe igual para todos los canales y Vocero lo adapta al salir:
+El agente escribe igual para todos los canales y IntoSales lo adapta al salir:
 en Instagram, Messenger y TikTok, que no dibujan las negritas de WhatsApp, su
 texto llega sin asteriscos, con viñetas y con los enlaces legibles.
 
@@ -522,19 +522,19 @@ mirar cuando «no me llegan los mensajes».
 ### Conectar por Zernio (Instagram, Messenger o TikTok)
 
 [Zernio](https://zernio.com) es una API unificada: vinculas ahí tus redes, con
-tu propia cuenta, y una sola llave las entrega todas. En Vocero es igual para
+tu propia cuenta, y una sola llave las entrega todas. En IntoSales es igual para
 los tres canales:
 
 1. En Zernio vincula la red (**Accounts → Connect**) y crea una API key
    (**Settings → API Keys**; empieza con `sk_` y se muestra una sola vez).
-2. En Vocero abre la pantalla del canal, elige *Zernio*, pega la llave y
+2. En IntoSales abre la pantalla del canal, elige *Zernio*, pega la llave y
    pulsa **Probar y conectar**. Solo el propietario puede hacerlo.
 
 No hay que copiar ningún id ni dar de alta nada más en Zernio:
 
-- **La cuenta la encuentra Vocero** con esa llave. Si la llave tiene varias
+- **La cuenta la encuentra IntoSales** con esa llave. Si la llave tiene varias
   cuentas de esa red (una agencia), te las ofrece para elegir.
-- **El webhook lo da de alta Vocero** en tu Zernio, con el evento
+- **El webhook lo da de alta IntoSales** en tu Zernio, con el evento
   `message.received`, un secreto de firma que él genera y **limitado a tus
   cuentas conectadas**. Un webhook de Zernio sin ese límite recibe los
   mensajes de todas las cuentas de la llave. Los demás webhooks que tengas en
@@ -575,7 +575,7 @@ Dos formas de traer los mensajes; se elige en **Configuración → Messenger**.
    pantalla. Suscribe la página a la app.
 
 Desde ese momento, lo que la gente le escribe a la página entra a la bandeja
-como `Messenger`, con el nombre de su perfil, y lo que respondas desde Vocero
+como `Messenger`, con el nombre de su perfil, y lo que respondas desde IntoSales
 (tú o el agente) llega a su chat. No hay plantillas: pasadas 24 horas del
 último mensaje del cliente ya solo puede contestar una persona, hasta 7 días
 (sale con la etiqueta `HUMAN_AGENT` de Meta); la bandeja lo avisa y dice
@@ -601,7 +601,7 @@ página de Facebook vinculada: eso solo lo pide Messenger.
    una app con el producto **Instagram** y genera el token de la cuenta con
    los permisos `instagram_business_basic` e
    `instagram_business_manage_messages`. Anota el **ID de la cuenta**.
-2. En Vocero, **Configuración → Instagram**: elige *App propia de Meta*, pega
+2. En IntoSales, **Configuración → Instagram**: elige *App propia de Meta*, pega
    el ID y el token y pulsa *Probar y guardar*.
 3. En la app de Meta, **Instagram → Webhooks**: objeto `instagram`, campo
    `messages`, con la URL de callback y el token de verificación que enseña
@@ -620,11 +620,11 @@ TikTok no entrega mensajes a una app propia: llegan por
 [Zernio](https://zernio.com), con tu cuenta de Zernio.
 
 Sigue [Conectar por Zernio](#conectar-por-zernio-instagram-messenger-o-tiktok)
-desde **Configuración → TikTok**. Si la cuenta es personal, Vocero la conecta
+desde **Configuración → TikTok**. Si la cuenta es personal, IntoSales la conecta
 pero te avisa ahí mismo y en **Estado**: TikTok no le entrega mensajes hasta
 que sea Business.
 
-Lo que TikTok impone, y Vocero te dice antes de que lo descubras con un
+Lo que TikTok impone, y IntoSales te dice antes de que lo descubras con un
 mensaje rechazado:
 
 - La cuenta tiene que ser **TikTok Business**, registrada fuera de la Unión
@@ -634,7 +634,7 @@ mensaje rechazado:
   horas**. No hay plantilla que reabra: el undécimo se rechaza (409
   `message_limit`) hasta que el cliente vuelva a escribir.
 - Cada mensaje es texto, de hasta 6,000 caracteres. Las imágenes entran (como
-  aviso de que llegó una), pero todavía no se envían desde Vocero.
+  aviso de que llegó una), pero todavía no se envían desde IntoSales.
 
 El detalle está en [`specs/022-tiktok-channel`](specs/022-tiktok-channel/spec.md).
 

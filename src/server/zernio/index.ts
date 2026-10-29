@@ -65,7 +65,7 @@ export function isValidZernioSignatureAny(
   return secrets.some((s) => isValidZernioSignature(rawBody, signature, s));
 }
 
-/** El evento de Zernio, en lo que a Vocero le importa. */
+/** El evento de Zernio, en lo que a IntoSales le importa. */
 export type ZernioEvent = {
   id?: string;
   event?: string;
@@ -149,7 +149,7 @@ export type ZernioSendResult = { platformMessageId: string };
  *
  * `accountId` va en el cuerpo aunque la conversación ya lo implique (lo exige
  * la API). `Idempotency-Key` evita que un reintento mande el mensaje dos
- * veces: la llave natural es el id que Vocero ya generó para ese envío.
+ * veces: la llave natural es el id que IntoSales ya generó para ese envío.
  */
 export async function sendZernioMessage(input: {
   token: string;

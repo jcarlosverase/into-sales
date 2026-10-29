@@ -1,6 +1,6 @@
-# AGENTS.md — Guía de Vocero CRM para agentes y personas
+# AGENTS.md — Guía de IntoSales para agentes y personas
 
-Vocero es un CRM de WhatsApp open source (MIT) y self-hosted: bandeja en tiempo
+IntoSales es un CRM de WhatsApp open source (MIT) y self-hosted: bandeja en tiempo
 real, pipeline kanban, agente de IA con el conocimiento del negocio y un
 Laboratorio donde clientes simulados lo evalúan antes de hablar con clientes reales.
 Esta guía sirve igual para Claude Code, Codex, OpenCode o una persona: no depende
@@ -115,7 +115,7 @@ Sueltos: `contacts.ts` (serialización), `contact-source.ts` (fuente del prospec
 | `scripts/` | `e2e-*.mjs` (arneses de los guiones), `migrate.mjs` (migrador del contenedor), `seed/demo.ts`, `reset-password.mjs` (imprime el `UPDATE`, no toca la BD), `screenshots.mjs` |
 | `drizzle/` | `0000…0018_*.sql` + `meta/` (snapshots y `_journal.json`). Se genera, nunca se edita a mano. A la imagen viajan solo los `.sql` y `_journal.json`: el migrador no abre los snapshots (`.dockerignore`) |
 | `specs/` | Specs por feature (001, 002, 003, 014–022, 025) con sus contratos; `specs/README.md` explica qué hay y qué no |
-| `docs/` | ADR-001/002, `agenda-connectors.md`, `capi-attribution.md`, capturas del README. (`getting-started.md`, `sdd-workflow.md`, `three-agent-architecture.md` y `mcp-setup.md` describen el starter de Claude Code, no Vocero) |
+| `docs/` | ADR-001/002, `agenda-connectors.md`, `capi-attribution.md`, capturas del README. (`getting-started.md`, `sdd-workflow.md`, `three-agent-architecture.md` y `mcp-setup.md` describen el starter de Claude Code, no IntoSales) |
 
 ## Flujo de una petición: un mensaje de WhatsApp
 
@@ -143,7 +143,7 @@ Con `BRAIN_DISPATCH_URL` y `BOT_API_KEY`, el paso 3 no piensa: `ai/trigger.ts` e
 - **Bandeja primero, cerebro después**: un despacho se encola solo cuando el mensaje ya está guardado. Lo que falle después no pierde el mensaje; lo deja con una persona.
 - **«Sin responder» no es «sin entregar»** (025): quien lleva el turno anota el id del entrante que lo provoca —el despacho en `dispatch.message_ids`, el agente incluido en su entrada de coalesce— y lo debe hasta que el cerebro lo reciba o una persona conteste. Un saliente del agente no salda un mensaje que no leyó; uno de una persona (`ai_generated = false`) sí. Un despacho sin mensajes se descarta, nunca se entrega.
 - **Módulos opcionales** van tras bandera, apagados por defecto, con superficie en 404 y migración aplicada igual. Nunca en una rama aparte.
-- **UI con tokens**: colores por variables de `globals.css` mapeadas en `tailwind.config.ts` (`bg-background`, `text-foreground`, `bg-primary`, `text-muted-foreground`…); nada de `text-white` ni hex sueltos salvo colores de marca de terceros. `tests/unit/theme-contrast.test.ts` mide los tokens reales en ambos temas. White-label: ningún «Vocero» cableado en la UI.
+- **UI con tokens**: colores por variables de `globals.css` mapeadas en `tailwind.config.ts` (`bg-background`, `text-foreground`, `bg-primary`, `text-muted-foreground`…); nada de `text-white` ni hex sueltos salvo colores de marca de terceros. `tests/unit/theme-contrast.test.ts` mide los tokens reales en ambos temas. White-label: ningún «IntoSales» cableado en la UI.
 - **`route.ts` solo exporta handlers** (`GET`, `POST`… y `dynamic`): la lógica va en `src/server/` para poder probarla; Next rechaza otros exports al construir.
 - **Credenciales nuevas**: placeholder `REEMPLAZA_...` en `.env.example` con guía inline; en producción van en la plataforma (runtime, no build).
 
@@ -166,7 +166,7 @@ Con `BRAIN_DISPATCH_URL` y `BOT_API_KEY`, el paso 3 no piensa: `ai/trigger.ts` e
 
 Documentación: README («Trae tu propio agente»), guion `tests/e2e/us-bot-api.md`, pruebas `tests/unit/bot-*.test.ts` y, para la agenda, `specs/015-universal-booking-engine/contracts/agenda.md`.
 
-**Despacho (CRM → cerebro)** — con `BRAIN_DISPATCH_URL`, un `POST` firmado (`X-Vocero-Signature: sha256=<HMAC-SHA256 del cuerpo crudo con BOT_API_KEY>`, `X-Vocero-Dispatch-Id`, `X-Vocero-Organization`) con la ráfaga de la conversación: `dispatchId`, `organization`, `conversation` (`channel`, ventana), `contact` (`identity`) y `messages`. 2xx = recibido; 429 y 5xx se reintentan (tres intentos); otro 4xx no, y la conversación pasa a un humano (`handoff_reason = error`). `messages` nunca viaja vacío, y un mensaje puede ser anterior a la última respuesta del cerebro (025). Contrato en `specs/021-standard-dispatch/contracts/dispatch.md`, guion `tests/e2e/us-dispatch.md`, arnés `scripts/e2e-dispatch.mjs`.
+**Despacho (CRM → cerebro)** — con `BRAIN_DISPATCH_URL`, un `POST` firmado (`X-IntoSales-Signature: sha256=<HMAC-SHA256 del cuerpo crudo con BOT_API_KEY>`, `X-IntoSales-Dispatch-Id`, `X-IntoSales-Organization`) con la ráfaga de la conversación: `dispatchId`, `organization`, `conversation` (`channel`, ventana), `contact` (`identity`) y `messages`. 2xx = recibido; 429 y 5xx se reintentan (tres intentos); otro 4xx no, y la conversación pasa a un humano (`handoff_reason = error`). `messages` nunca viaja vacío, y un mensaje puede ser anterior a la última respuesta del cerebro (025). Contrato en `specs/021-standard-dispatch/contracts/dispatch.md`, guion `tests/e2e/us-dispatch.md`, arnés `scripts/e2e-dispatch.mjs`.
 
 **Webhooks de entrada** — `GET`/`POST /api/webhooks/wa/[token]` (contrato en `specs/001-vocero-core/contracts/webhook.md`); `/api/webhooks/ig/[token]` y `/api/webhooks/messenger/[token]` aceptan Meta o Zernio por la misma URL y existen solo con su canal en `CHANNELS` (specs 014 y 017); `/api/webhooks/tiktok/[token]` acepta solo Zernio (spec 022). Un evento de Zernio se reparte por plataforma llegue a cuál de las tres llegue, y su firma se verifica en `isAuthenticZernioDelivery` (`src/server/zernio/dispatch.ts`): vale cualquier secreto de Zernio de la organización, o el del webhook que Zernio tiene hacia esta instancia. Siempre 200 tras validar; el procesamiento es asíncrono.
 

@@ -181,7 +181,7 @@ describe("qué entiende el CRM de la respuesta del cerebro", () => {
 });
 
 describe("entregar — el POST firmado", () => {
-  const destination = { url: "http://nea:8000/vocero/dispatch", secret: SECRET };
+  const destination = { url: "http://nea:8000/intosales/dispatch", secret: SECRET };
 
   it("manda el cuerpo que firma, con las cabeceras del contrato y sin seguir redirecciones", async () => {
     const calls: { url: string; init: RequestInit }[] = [];

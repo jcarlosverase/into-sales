@@ -23,8 +23,8 @@ import { chromium } from "playwright";
 const BASE = process.env.APP_BASE_URL ?? "http://localhost:3000";
 const OUT = "docs/screenshots";
 const VIEWPORT = { width: 1440, height: 900 };
-const EMAIL = process.env.SCREENSHOTS_EMAIL ?? "capturas@vocero.test";
-const PASSWORD = process.env.SCREENSHOTS_PASSWORD ?? "capturas-vocero-123";
+const EMAIL = process.env.SCREENSHOTS_EMAIL ?? "capturas@intosales.test";
+const PASSWORD = process.env.SCREENSHOTS_PASSWORD ?? "capturas-intosales-123";
 
 await mkdir(OUT, { recursive: true });
 
@@ -41,7 +41,7 @@ const context = await browser.newContext({
 // La Bandeja abre el panel de detalles según esta preferencia de escritorio.
 await context.addInitScript(() => {
   try {
-    localStorage.setItem("vocero.panelOpen", "true");
+    localStorage.setItem("intosales.panelOpen", "true");
   } catch {
     // sin almacenamiento no hay preferencia que recordar
   }
@@ -81,7 +81,7 @@ await call("/api/settings/whatsapp", {
 });
 await call("/api/settings/branding", {
   method: "PUT",
-  data: { name: "Vocero", accent: "#0d5bff", currency: "MXN" },
+  data: { name: "IntoSales", accent: "#0081c8", currency: "PEN" },
 });
 
 const page = await context.newPage();
