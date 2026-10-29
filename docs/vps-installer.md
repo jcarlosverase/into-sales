@@ -180,6 +180,7 @@ instalador solo acepta las que el `docker-compose.yml` le pasa a la app:
 | `AGENT_COALESCE_MS` | Cuánto espera el agente para juntar mensajes | `6000` | `--env AGENT_COALESCE_MS=8000` |
 | `TRUSTED_ORIGINS` | Dominios extra para iniciar sesión | Vacía: solo el dominio del CRM | `--env TRUSTED_ORIGINS=https://crm.demo.pe` |
 | `META_APP_SECRET` | Firma de los webhooks (developers.facebook.com → tu app → Configuración → Básica) | Vacía: no se valida la firma | `--env META_APP_SECRET=…` |
+| `INSTAGRAM_APP_SECRET` | Firma de los webhooks de Instagram con app propia: la clave secreta de la app de Instagram (Casos de uso → Instagram → Configuración de la API con inicio de sesión de Instagram) | Vacía: Instagram se valida solo con `META_APP_SECRET` | `--env INSTAGRAM_APP_SECRET=…` |
 | `META_GRAPH_API_VERSION` | Versión de la API de Meta | `v25.0` | `--env META_GRAPH_API_VERSION=v25.0` |
 | `BOT_API_KEY` | API para un cerebro externo (`openssl rand -base64 32`) | Vacía: `/api/bot/*` responde 401 | `--env BOT_API_KEY=…` |
 | `BRAIN_HEALTH_URL`, `BRAIN_DISPATCH_URL` | Dirección interna del cerebro externo | Vacías: contesta el agente incluido | `--env BRAIN_DISPATCH_URL=http://nea:8000/dispatch` |

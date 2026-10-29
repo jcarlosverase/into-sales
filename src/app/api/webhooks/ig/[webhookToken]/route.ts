@@ -1,7 +1,11 @@
 import { after } from "next/server";
 import { getEnv } from "@/lib/env";
 import { countWebhook } from "@/lib/observability/webhooks";
-import { isValidSignature, isValidWebhookToken } from "@/server/inbox/webhook";
+import {
+  isValidSignatureWithAny,
+  isValidWebhookToken,
+  warnInvalidSignature,
+} from "@/server/inbox/webhook";
 import { processMetaInstagramPayload } from "@/server/instagram/ingest";
 import {
   channelDisabledResponse,
@@ -71,7 +75,13 @@ async function handlePost(req: Request, { params }: Params) {
     // esta capa, quien conozca la URL secreta puede inyectar DMs falsos: el
     // agente los contestaria enviando un DM REAL desde la cuenta del cliente
     // al destinatario que el atacante elija.
-    if (!isValidSignature(rawBody, req.headers.get("x-hub-signature-256"), env.META_APP_SECRET)) {
+    // Spec 1014: con el inicio de sesión de Instagram, Meta puede firmar con
+    // la clave de la app de Instagram en vez del App Secret de la app de
+    // Meta; se acepta cualquiera de las dos. Y un rechazo se dice en el log:
+    // antes era un 401 mudo y la bandeja simplemente no recibía nada.
+    const signature = req.headers.get("x-hub-signature-256");
+    if (!isValidSignatureWithAny(rawBody, signature, [env.META_APP_SECRET, env.INSTAGRAM_APP_SECRET])) {
+      warnInvalidSignature("ig", signature !== null);
       return new Response(null, { status: 401 });
     }
   } else {

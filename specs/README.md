@@ -39,6 +39,7 @@ producto** — y saberlo antes de leerla ahorra una confusión.
 | `1011-instagram-account-id` | Ligero | spec (Instagram en modo Meta guarda el IG_ID de la cuenta, `user_id` de `/me`, y el ID pasa a ser opcional) |
 | `1012-messenger-token-check` | Ligero | spec (Messenger en modo Meta valida el token de la página con `/me` y ya no exige permiso para leer el nombre; el aviso trae el motivo de Meta) |
 | `1013-remove-vocero-name` | Ligero | spec (quitar «Vocero» de pantallas, nombres internos y comentarios; cabeceras del despacho, webhook de Zernio y CAPI con compatibilidad; se conservan créditos MIT, historia y la migración del instalador) |
+| `1014-instagram-app-secret` | Ligero | spec (el webhook de Instagram acepta la firma con la clave de la app de Instagram, `INSTAGRAM_APP_SECRET`; los rechazos de firma de Instagram y Messenger quedan en el log) |
 | `031-ai-after-hours` | Ciclo completo | spec, plan, tasks («Cuándo responde la IA»: siempre o solo fuera del horario de atención del equipo, con su horario semanal y zona; el Laboratorio lo ignora; migración aditiva `0022`) |
 | `030-import-contacts` | Ciclo completo | spec, plan, tasks (Contactos → «Importar» desde `.xlsx` o CSV con vista previa, código de país, sin duplicar ni pisar, leads por turno; sin migración ni dependencias nuevas) |
 | `029-who-to-call-today` | Ciclo completo | spec, plan, tasks (pantalla «Hoy»: seguimientos vencidos, de hoy y leads sin primer contacto, por vendedor; próximo contacto en el cajón del trato; migración aditiva `0021`) |

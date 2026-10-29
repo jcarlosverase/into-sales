@@ -1,7 +1,11 @@
 import { after } from "next/server";
 import { getEnv } from "@/lib/env";
 import { countWebhook } from "@/lib/observability/webhooks";
-import { isValidSignature, isValidWebhookToken } from "@/server/inbox/webhook";
+import {
+  isValidSignature,
+  isValidWebhookToken,
+  warnInvalidSignature,
+} from "@/server/inbox/webhook";
 import { processMetaPagePayload } from "@/server/messenger/ingest";
 import {
   channelDisabledResponse,
@@ -68,13 +72,10 @@ async function handlePost(req: Request, { params }: Params) {
     // la URL secreta puede inyectar mensajes falsos: el agente los contestaría
     // enviando un mensaje REAL desde la página al destinatario que el atacante
     // elija.
-    if (
-      !isValidSignature(
-        rawBody,
-        req.headers.get("x-hub-signature-256"),
-        env.META_APP_SECRET
-      )
-    ) {
+    const signature = req.headers.get("x-hub-signature-256");
+    if (!isValidSignature(rawBody, signature, env.META_APP_SECRET)) {
+      // Spec 1014: el rechazo se dice en el log, como en WhatsApp.
+      warnInvalidSignature("messenger", signature !== null);
       return new Response(null, { status: 401 });
     }
   } else {

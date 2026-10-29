@@ -56,6 +56,7 @@ const SECRET_KEYS = new Set<string>([
   "DATABASE_URL",
   "OPENROUTER_API_TOKEN",
   "META_APP_SECRET",
+  "INSTAGRAM_APP_SECRET",
   "BOT_API_KEY",
 ]);
 
