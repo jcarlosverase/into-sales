@@ -24,6 +24,20 @@ export function isValidWebhookToken(
  * Capa 2 (opcional): firma HMAC-SHA256 de Meta sobre el body CRUDO.
  * Devuelve true si no hay secreto configurado (capa desactivada).
  */
+/**
+ * Spec 1014: la firma vale si cuadra con CUALQUIERA de los secretos
+ * configurados. Sin ninguno, no se valida (como `isValidSignature`).
+ */
+export function isValidSignatureWithAny(
+  rawBody: string,
+  signatureHeader: string | null,
+  appSecrets: ReadonlyArray<string | undefined>
+): boolean {
+  const secrets = appSecrets.filter((s): s is string => !!s);
+  if (secrets.length === 0) return true;
+  return secrets.some((secret) => isValidSignature(rawBody, signatureHeader, secret));
+}
+
 export function isValidSignature(
   rawBody: string,
   signatureHeader: string | null,
@@ -52,7 +66,9 @@ export function warnInvalidSignature(channel: string, hasSignature: boolean): vo
   lastSignatureWarning = now;
   console.warn(
     hasSignature
-      ? `[webhook ${channel}] Meta mandó un evento con una firma que no coincide con META_APP_SECRET y se descartó (401). Revisa que META_APP_SECRET sea el App Secret de la misma app de Meta (32 caracteres, en Configuración de la app → Básica) y reinicia la app.`
+      ? channel === "ig"
+        ? `[webhook ig] Meta mandó un evento de Instagram con una firma que no coincide con META_APP_SECRET ni con INSTAGRAM_APP_SECRET y se descartó (401). Con el inicio de sesión de Instagram, Meta firma con la «Clave secreta de la aplicación de Instagram» (Casos de uso → Instagram → Configuración de la API con inicio de sesión de Instagram): ponla en INSTAGRAM_APP_SECRET y reinicia la app.`
+        : `[webhook ${channel}] Meta mandó un evento con una firma que no coincide con META_APP_SECRET y se descartó (401). Revisa que META_APP_SECRET sea el App Secret de la misma app de Meta (32 caracteres, en Configuración de la app → Básica) y reinicia la app.`
       : `[webhook ${channel}] llegó un evento sin firma y META_APP_SECRET está configurado: se descartó (401).`
   );
 }

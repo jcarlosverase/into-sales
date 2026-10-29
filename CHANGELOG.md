@@ -7,6 +7,11 @@ imagen `ghcr.io/kevinrivm/vocero-crm:X.Y.Z`.
 
 ## Sin publicar — IntoSales
 
+- **Instagram con app propia: nueva variable opcional `INSTAGRAM_APP_SECRET`**
+  (spec 1014), la clave secreta de la app de Instagram. Si los mensajes de
+  Instagram no llegan y el log dice que la firma no coincide, ponla con
+  `--env INSTAGRAM_APP_SECRET=…`. Los rechazos de firma de Instagram y
+  Messenger ahora quedan en el log.
 - **Adiós a «Vocero» en pantallas, código y documentación** (spec 1013). Se
   conservan los créditos de Vocero CRM que exige su licencia MIT.
   - **Cerebro externo:** las cabeceras del despacho ahora se llaman

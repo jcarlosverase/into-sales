@@ -20,6 +20,10 @@ export const envSchema = z.object({
     }),
   META_WEBHOOK_VERIFY_TOKEN: z.string().min(8),
   META_APP_SECRET: z.string().optional(),
+  // Spec 1014: la clave secreta de la app de Instagram («IntoSales - IG»), que
+  // es distinta del App Secret de la app de Meta. Con el inicio de sesión de
+  // Instagram, Meta puede firmar los webhooks de Instagram con ella.
+  INSTAGRAM_APP_SECRET: z.string().optional(),
   META_GRAPH_API_VERSION: z.string().default("v25.0"),
   META_GRAPH_BASE_URL: z.string().url().default("https://graph.facebook.com"),
   OPENROUTER_API_TOKEN: z.string().optional(),
