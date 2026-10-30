@@ -3917,9 +3917,16 @@ async function aboutChecks() {
       })
     );
     await page.goto(`${BASE}/inbox`);
-    await page.getByRole("button", { name: /menú/i }).first().click().catch(() => {});
-    const link = page.getByRole("link", { name: /^Acerca de/ });
-    await link.first().click();
+    // A 360 px el enlace vive en el cajón del menú. Un clic antes de que React
+    // hidrate la página no abre nada (en el CI, con todos los módulos
+    // encendidos, la primera compilación tarda): se reintenta hasta que el
+    // enlace se vea, en vez de esperar 30 s a un cajón que sigue cerrado.
+    const link = page.getByRole("link", { name: /^Acerca de/ }).first();
+    for (let attempt = 0; attempt < 6 && !(await link.isVisible()); attempt++) {
+      await page.getByRole("button", { name: /abrir el menú/i }).first().click({ timeout: 5000 }).catch(() => {});
+      await link.waitFor({ state: "visible", timeout: 5000 }).catch(() => {});
+    }
+    await link.click();
     await page.waitForURL(/\/about/, { timeout: 15000 }).catch(() => {});
     ok("la versión de la barra lateral lleva a «Acerca de» (AC1)", new URL(page.url()).pathname === "/about", page.url());
     const version = (await page.getByTestId("about-version").textContent({ timeout: 15000 }).catch(() => "")) ?? "";
