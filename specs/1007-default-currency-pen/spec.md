@@ -32,6 +32,14 @@ de Vocero.
 - **El formato de los números (`es-MX`) no cambia**: el pedido es la moneda,
   no la presentación.
 
+## Corrección posterior (2026-10-29)
+
+El guion E2E de Resultados (`scripts/e2e-results.mjs`) capturaba los montos
+con `"MXN"` escrito a mano. Con la predeterminada en PEN esos montos dejaron
+de sumar y el paso «calendario, Resultados y ficha» del CI quedó en rojo desde
+este cambio. Ahora el guion usa la moneda del negocio que devuelve
+`/api/settings/branding`.
+
 ## Dónde vive
 
 `src/lib/money.ts` (`DEFAULT_CURRENCY`) · `src/components/pipeline/pipeline-client.tsx`

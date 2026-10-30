@@ -303,18 +303,23 @@ async function main() {
     await sleep(30);
     return r;
   };
-  await move(1, { amountCents: 12_000_00, currency: "MXN" });
+  // Los montos van en la moneda del negocio: solo esa suma en Resultados. Con
+  // "MXN" escrito a mano, el día que la predeterminada pasó a PEN (spec 1007)
+  // los tres montos dejaron de sumar y esta sección se puso roja.
+  const currency =
+    (await api("/api/settings/branding")).json?.branding?.currency ?? "PEN";
+  await move(1, { amountCents: 12_000_00, currency });
   await move(1, { stageId: won.id });
   await move(2, { stageId: lost.id, lossReason: "precio" });
   // Ganado, sacado y vuelto a ganar: UN trato, su monto una vez.
-  await move(4, { amountCents: 5_000_00, currency: "MXN" });
+  await move(4, { amountCents: 5_000_00, currency });
   await move(4, { stageId: won.id });
   await move(4, { stageId: openOnes[0].id });
   await move(4, { stageId: won.id });
   // Ganado y devuelto al embudo: no es venta.
   await move(7, { stageId: won.id });
   await move(7, { stageId: openOnes.at(-1).id });
-  await move(8, { amountCents: 3_000_00, currency: "MXN" });
+  await move(8, { amountCents: 3_000_00, currency });
 
   // Un envío que Meta rechaza (mismo camino que e2e-send-failure).
   await api("/api/dev/wa-mock/outbox", { method: "DELETE" });
