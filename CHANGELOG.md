@@ -7,6 +7,10 @@ imagen `ghcr.io/kevinrivm/vocero-crm:X.Y.Z`.
 
 ## Sin publicar — IntoSales
 
+- **Dependencias al día sin vulnerabilidades críticas** (better-auth 1.7,
+  drizzle-orm 0.45, drizzle-kit 0.31, Next.js 15.5.28, vitest 4). better-auth
+  1.7 exige la columna `invitation.created_at`: la añade la migración 0025, que
+  se aplica sola al arrancar.
 - **Messenger acepta el token de la página aunque no traiga
   `pages_read_engagement`** (spec 1016): si Meta no deja leer la página, el CRM
   comprueba el token suscribiendo la página a tu app antes de guardar.
