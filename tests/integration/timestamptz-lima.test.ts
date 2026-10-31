@@ -30,7 +30,10 @@ describe.skipIf(!TEST_DATABASE_URL)("1002 — timestamptz and Lima database time
     const rows = await getSql()`
       select data_type, count(*)::int as n from information_schema.columns
       where table_schema = 'public' and data_type like 'timestamp%' group by data_type`;
-    expect(rows).toEqual([{ data_type: "timestamp with time zone", n: 83 }]);
+    // Ninguna sin zona. El total crece con cada migración nueva que agrega una
+    // fecha (0025: invitation.created_at); 83 son las que convirtió la 0024.
+    expect(rows.map((r) => r.data_type)).toEqual(["timestamp with time zone"]);
+    expect(Number(rows[0]?.n)).toBeGreaterThanOrEqual(83);
   });
 
   it("a new session defaults to America/Lima (AC2)", async () => {
@@ -92,13 +95,15 @@ describe.skipIf(!TEST_DATABASE_URL)("1002 — migrating a database with data", (
     const u = new URL(TEST_DATABASE_URL!);
     u.pathname = `/${name}`;
     url = u.toString();
-    // Las migraciones de antes de la 1002: la misma carpeta sin la última entrada.
+    // Las migraciones de antes de la 1002: la misma carpeta cortada justo antes
+    // de la 0024 (y sin las que vinieron después, como la 0025).
     previous = mkdtempSync(path.join(tmpdir(), "drizzle-1001-"));
     cpSync(path.join(process.cwd(), "drizzle"), previous, { recursive: true });
     const journalPath = path.join(previous, "meta", "_journal.json");
     const journal = JSON.parse(readFileSync(journalPath, "utf8")) as { entries: { tag: string }[] };
-    expect(journal.entries.at(-1)?.tag).toBe("0024_timestamptz_lima");
-    journal.entries.pop();
+    const cut = journal.entries.findIndex((e) => e.tag === "0024_timestamptz_lima");
+    expect(cut).toBeGreaterThan(0);
+    journal.entries = journal.entries.slice(0, cut);
     writeFileSync(journalPath, JSON.stringify(journal));
   });
 

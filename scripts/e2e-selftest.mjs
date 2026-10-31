@@ -3987,8 +3987,15 @@ async function healthPageChecks() {
       })
     );
     await page.goto(`${BASE}/settings/branding`);
-    await page.getByRole("link", { name: "Salud" }).first().click();
-    await page.waitForURL(/\/settings\/health/, { timeout: 15000 }).catch(() => {});
+    // En el CI la app corre con `next dev`: la primera visita a Salud se
+    // compila en ese momento, y un clic antes de que la página hidrate puede
+    // perderse. Se reintenta el clic hasta que llegue (máx. ~60 s) en vez de
+    // dar por mala la navegación a los 15 s.
+    const healthLink = page.getByRole("link", { name: "Salud" }).first();
+    for (let attempt = 0; attempt < 4 && !/\/settings\/health/.test(page.url()); attempt++) {
+      await healthLink.click({ timeout: 10000 }).catch(() => {});
+      await page.waitForURL(/\/settings\/health/, { timeout: 15000 }).catch(() => {});
+    }
     ok("Ajustes → Sistema → Salud abre la página (AC1)", new URL(page.url()).pathname === "/settings/health", page.url());
     const status = async (id) => page.getByTestId(`health-${id}`).getAttribute("data-status", { timeout: 15000 }).catch(() => null);
     ok("la base de datos responde (AC1)", (await status("database")) === "ok", (await page.getByTestId("health-database").textContent().catch(() => "")) ?? "");
