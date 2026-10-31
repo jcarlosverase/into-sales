@@ -12,25 +12,54 @@ import {
 import { ensureWebhookForOrg } from "@/server/zernio/connections";
 import { accountHealth, zernioAccountName } from "@/server/zernio/accounts";
 import { resolveZernioAccount } from "@/server/zernio/save-connection";
+import {
+  fetchProfile,
+  instagramOAuthConfig,
+  instagramRedirectUri,
+} from "@/server/instagram/oauth";
 
 export const dynamic = "force-dynamic";
 
-/** 014 — Estado de la conexión de Instagram (el token nunca sale entero). */
+/**
+ * 014 — Estado de la conexión de Instagram (el token nunca sale entero).
+ *
+ * Spec 1017: también dice si «Conectar con Instagram» está disponible y su URL
+ * de vuelta, y trae la foto de perfil de la cuenta conectada por Meta. La foto
+ * se pide en vivo porque su URL caduca; si no llega, la pantalla enseña solo
+ * el @usuario.
+ */
 export const GET = withAuth(async (session) => {
   if (!isChannelEnabled("instagram")) return channelDisabledResponse();
+  const oauth = {
+    available: instagramOAuthConfig() !== null,
+    redirectUri: instagramRedirectUri(),
+  };
   const creds = await getInstagramCredentialsByOrg(session.organizationId);
-  if (!creds) return Response.json({ connection: null });
+  if (!creds) return Response.json({ connection: null, oauth });
+  const profile =
+    creds.source === "meta" && creds.status === "connected"
+      ? await withTimeout(fetchProfile(creds.token), 4000).catch(() => null)
+      : null;
   return Response.json({
     connection: {
       source: creds.source,
       igUserId: creds.igUserId,
       accountRef: creds.accountRef,
-      username: creds.username,
+      username: profile?.username ?? creds.username,
+      profilePictureUrl: profile?.pictureUrl ?? null,
       status: creds.status,
       tokenLast4: tokenLast4(creds.token),
     },
+    oauth,
   });
 });
+
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) => setTimeout(() => reject(new Error("timeout")), ms)),
+  ]);
+}
 
 const putSchema = z.object({
   source: z.enum(["zernio", "meta"]),

@@ -2,9 +2,9 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { AlertTriangle, CheckCircle2, Copy, Info } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Copy, Info, Instagram } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -34,10 +34,40 @@ type Connection = {
   igUserId: string;
   accountRef: string | null;
   username: string | null;
+  /** Spec 1017: foto de perfil de la cuenta conectada por Meta (en vivo). */
+  profilePictureUrl?: string | null;
   status: "connected" | "reconnect_required";
   tokenLast4: string;
 };
 
+/** Spec 1017: si «Conectar con Instagram» está disponible y su URL de vuelta. */
+type OAuthInfo = { available: boolean; redirectUri: string };
+
+/** Spec 1017: el resultado de la vuelta del inicio de sesión (`?ig=`). */
+const OAUTH_OUTCOME: Record<string, { ok: boolean; message: string }> = {
+  connected: { ok: true, message: "Cuenta de Instagram conectada." },
+  connected_no_webhook: {
+    ok: false,
+    message:
+      "La cuenta quedó conectada, pero Meta no aceptó suscribirla al webhook: actívala en tu app (Instagram → Configuración de la API → «Suscripción a webhook») o vuelve a conectar.",
+  },
+  denied: { ok: false, message: "Se canceló el inicio de sesión de Instagram: no se conectó nada." },
+  bad_state: {
+    ok: false,
+    message: "El inicio de sesión tardó demasiado o se abrió desde otra pestaña. Vuelve a pulsar «Conectar con Instagram».",
+  },
+  not_configured: {
+    ok: false,
+    message: "Falta INSTAGRAM_APP_ID o INSTAGRAM_APP_SECRET en la instancia.",
+  },
+  forbidden: { ok: false, message: "Solo el propietario puede conectar Instagram." },
+  meta_error: {
+    ok: false,
+    message:
+      "Instagram rechazó la conexión. Revisa que la URL de vuelta de abajo esté registrada en tu app de Meta y que la cuenta sea profesional.",
+  },
+  meta_unavailable: { ok: false, message: "Instagram no respondió. Inténtalo de nuevo en unos minutos." },
+};
 type WebhookInfo = {
   instagramUrl: string | null;
   verifyToken: string;
@@ -56,7 +86,7 @@ const HELP: Record<Source, { title: string; items: string[] }> = {
     title: "Crea una app en developers.facebook.com con el producto Instagram",
     items: [
       "La cuenta tiene que estar en modo profesional (Empresa o Creador).",
-      "En tu app: Instagram → Configuración de la API con inicio de sesión de Instagram → «Generar token» junto a la cuenta. Necesita los permisos instagram_business_basic e instagram_business_manage_messages. El ID de la cuenta sale del token.",
+      "Con «Conectar con Instagram» entras con la cuenta del negocio y listo. Como alternativa, pega un token generado en tu app: Instagram → Configuración de la API con inicio de sesión de Instagram → «Generar token» (permisos instagram_business_basic e instagram_business_manage_messages).",
       "Sin App Review, la cuenta solo recibe mensajes de perfiles con un rol en la app (administradores, desarrolladores, testers).",
     ],
   },
@@ -72,7 +102,9 @@ export function InstagramClient() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState<string | null>(null);
-  const [copied, setCopied] = useState<"url" | "token" | null>(null);
+  const [copied, setCopied] = useState<"url" | "token" | "redirect" | null>(null);
+  const [oauth, setOAuth] = useState<OAuthInfo | null>(null);
+  const [outcome, setOutcome] = useState<{ ok: boolean; message: string } | null>(null);
 
   const refetch = useCallback(async () => {
     const [c, w] = await Promise.all([
@@ -81,6 +113,7 @@ export function InstagramClient() {
     ]).catch(() => [null, null]);
     if (c) {
       setConnection(c.connection);
+      setOAuth(c.oauth ?? null);
       if (c.connection) {
         setSource(c.connection.source);
         if (c.connection.source === "meta") setIgUserId(c.connection.igUserId);
@@ -93,6 +126,18 @@ export function InstagramClient() {
   useEffect(() => {
     void refetch();
   }, [refetch]);
+
+  // Spec 1017: la vuelta del inicio de sesión llega con `?ig=`. Se cuenta una
+  // vez y se limpia la URL, para que recargar no repita el aviso.
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    const code = url.searchParams.get("ig");
+    if (!code) return;
+    setOutcome(OAUTH_OUTCOME[code] ?? null);
+    setSource("meta");
+    url.searchParams.delete("ig");
+    window.history.replaceState(null, "", url.pathname + url.search);
+  }, []);
 
   async function saveMeta() {
     setSaving(true);
@@ -121,7 +166,7 @@ export function InstagramClient() {
     void refetch();
   }
 
-  async function copy(text: string, what: "url" | "token") {
+  async function copy(text: string, what: "url" | "token" | "redirect") {
     try {
       await navigator.clipboard.writeText(text);
       setCopied(what);
@@ -155,9 +200,39 @@ export function InstagramClient() {
         </div>
       )}
 
+      {outcome && (
+        <p
+          role="status"
+          className={cn(
+            "flex items-start gap-2 rounded-lg border p-3 text-sm",
+            outcome.ok
+              ? "border-success-soft bg-success-tint text-success-text"
+              : "border-warning-soft bg-warning-tint text-warning-text"
+          )}
+        >
+          {outcome.ok ? (
+            <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
+          ) : (
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+          )}
+          {outcome.message}
+        </p>
+      )}
+
       {connection?.status === "connected" && (
         <div className="flex items-center gap-3 rounded-lg border border-success-soft bg-success-tint p-4">
-          <CheckCircle2 className="h-5 w-5 text-success" />
+          {connection.profilePictureUrl ? (
+            // La URL de Instagram caduca: sin next/image, que la cachearía.
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={connection.profilePictureUrl}
+              alt={connection.username ? `Foto de perfil de @${connection.username}` : "Foto de perfil"}
+              className="h-10 w-10 shrink-0 rounded-full border border-success-soft object-cover"
+              referrerPolicy="no-referrer"
+            />
+          ) : (
+            <CheckCircle2 className="h-5 w-5 text-success" />
+          )}
           <div className="flex-1 text-sm">
             <p className="font-medium text-success-text">
               Conectado por {connection.source === "zernio" ? "Zernio" : "Meta"}
@@ -224,6 +299,29 @@ export function InstagramClient() {
             />
           ) : (
             <>
+              {oauth?.available ? (
+                <div className="space-y-2">
+                  {/* Un enlace y no un fetch: la ida al inicio de sesión de
+                      Instagram es una navegación completa. */}
+                  <a href="/api/settings/instagram/oauth/start" className={buttonVariants()}>
+                    <Instagram className="h-4 w-4" aria-hidden />
+                    Conectar con Instagram
+                  </a>
+                  <p className="text-xs text-text-2">
+                    Entras con la cuenta de Instagram del negocio y vuelves aquí
+                    con la cuenta conectada. También puedes pegar un token abajo.
+                  </p>
+                </div>
+              ) : (
+                <p className="flex items-start gap-2 text-xs text-text-2">
+                  <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                  Para conectar con un botón, define INSTAGRAM_APP_ID e
+                  INSTAGRAM_APP_SECRET en la instancia (el ID y la clave de la
+                  app de Instagram, no los de la app de Meta). Mientras tanto,
+                  pega un token.
+                </p>
+              )}
+
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-1.5">
                   <Label htmlFor="ig-user-id">ID de la cuenta de Instagram (opcional)</Label>
@@ -251,9 +349,36 @@ export function InstagramClient() {
               {error && <p className="text-sm text-destructive">{error}</p>}
               {saved && <p className="text-sm text-success-text">{saved} ✓</p>}
 
-              <Button disabled={saving || !canSaveMeta} onClick={() => void saveMeta()}>
+              <Button
+                variant={oauth?.available ? "outline" : "default"}
+                disabled={saving || !canSaveMeta}
+                onClick={() => void saveMeta()}
+              >
                 {saving ? "Probando…" : "Probar y guardar"}
               </Button>
+
+              {oauth && (
+                <div className="space-y-1.5">
+                  <Label>URL de vuelta del inicio de sesión</Label>
+                  <div className="flex gap-2">
+                    <Input readOnly value={oauth.redirectUri} className="font-mono text-xs" />
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      aria-label="Copiar la URL de vuelta"
+                      onClick={() => void copy(oauth.redirectUri, "redirect")}
+                    >
+                      {copied === "redirect" ? <CheckCircle2 className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                    </Button>
+                  </div>
+                  <p className="text-xs text-text-2">
+                    Regístrala en tu app de Meta: Casos de uso → Instagram →
+                    Configuración de la API con inicio de sesión de Instagram →
+                    «Configura un inicio de sesión empresarial de Instagram» →
+                    URL de redireccionamiento de OAuth.
+                  </p>
+                </div>
+              )}
             </>
           )}
 

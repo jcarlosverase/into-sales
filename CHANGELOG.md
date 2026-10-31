@@ -7,6 +7,10 @@ imagen `ghcr.io/kevinrivm/vocero-crm:X.Y.Z`.
 
 ## Sin publicar — IntoSales
 
+- **«Conectar con Instagram»** (spec 1017): con `INSTAGRAM_APP_ID` e
+  `INSTAGRAM_APP_SECRET`, Ajustes → Instagram conecta la cuenta del negocio
+  con el inicio de sesión de Instagram, sin pegar tokens, y la suscribe al
+  webhook. Registra en tu app de Meta la URL de vuelta que muestra la pantalla.
 - **Dependencias al día sin vulnerabilidades críticas** (better-auth 1.7,
   drizzle-orm 0.45, drizzle-kit 0.31, Next.js 15.5.28, vitest 4). better-auth
   1.7 exige la columna `invitation.created_at`: la añade la migración 0025, que
