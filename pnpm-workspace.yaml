@@ -5,3 +5,8 @@ allowBuilds:
   esbuild: true
   sharp: true
   unrs-resolver: true
+
+# Transitive packages with known critical advisories, pinned to a patched
+# release until their parents ship one (security-sast, dependencies).
+overrides:
+  shell-quote: '>=1.11.0'

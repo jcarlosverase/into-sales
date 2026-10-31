@@ -24,6 +24,10 @@ export const envSchema = z.object({
   // es distinta del App Secret de la app de Meta. Con el inicio de sesión de
   // Instagram, Meta puede firmar los webhooks de Instagram con ella.
   INSTAGRAM_APP_SECRET: z.string().optional(),
+  // Spec 1017: el ID de la app de Instagram («IntoSales - IG»), no el de la
+  // app de Meta. Con él y INSTAGRAM_APP_SECRET aparece «Conectar con
+  // Instagram» en Ajustes → Instagram.
+  INSTAGRAM_APP_ID: z.string().optional(),
   META_GRAPH_API_VERSION: z.string().default("v25.0"),
   META_GRAPH_BASE_URL: z.string().url().default("https://graph.facebook.com"),
   OPENROUTER_API_TOKEN: z.string().optional(),

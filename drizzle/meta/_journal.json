@@ -176,6 +176,13 @@
       "when": 1792112674882,
       "tag": "0024_timestamptz_lima",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1793422734102,
+      "tag": "0025_invitation_created_at",
+      "breakpoints": true
     }
   ]
 }
