@@ -7,6 +7,9 @@ imagen `ghcr.io/kevinrivm/vocero-crm:X.Y.Z`.
 
 ## Sin publicar — IntoSales
 
+- **La sesión se cierra tras 12 horas sin uso** (spec 1018). Antes duraba 7
+  días y se renovaba sola con cualquier uso, así que en la práctica no se
+  cerraba nunca. Mientras alguien trabaja, no se corta.
 - **«Conectar con Instagram»** (spec 1017): con `INSTAGRAM_APP_ID` e
   `INSTAGRAM_APP_SECRET`, Ajustes → Instagram conecta la cuenta del negocio
   con el inicio de sesión de Instagram, sin pegar tokens, y la suscribe al
