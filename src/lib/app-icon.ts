@@ -27,7 +27,7 @@ export function parseAppIconSize(value: string | null): AppIconSize {
   return (APP_ICON_SIZES as readonly number[]).includes(n) ? (n as AppIconSize) : 512;
 }
 
-/** Los PNG del isotipo de into, generados una vez desde `into-isotipo.png`. */
+/** Los PNG del isotipo de into, generados desde `into-isotipo.svg` (spec 1019). */
 export function staticAppIcon(size: AppIconSize, maskable: boolean): string {
   if (size === 180) return "/brand/apple-touch-icon.png";
   if (maskable) return "/brand/icon-maskable-512.png";

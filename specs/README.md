@@ -44,6 +44,7 @@ producto** — y saberlo antes de leerla ahorra una confusión.
 | `1016-messenger-token-without-read` | Ligero | spec (Messenger acepta el token de página aunque Meta no deje leer `/me` sin `pages_read_engagement`: la suscripción de la página lo confirma antes de guardar) |
 | `1017-instagram-login-button` | Ligero | spec («Conectar con Instagram» en Ajustes → Instagram: inicio de sesión empresarial de Instagram, token de larga duración, suscripción al webhook y @usuario con foto; `INSTAGRAM_APP_ID`) |
 | `1018-session-inactivity` | Ligero | spec (la sesión vence tras 12 h sin uso; mientras alguien trabaja se renueva sola, como mucho cada 10 min) |
+| `1019-brand-2026` | Ligero | spec (manual de marca into 2026: azul `#0070E0` y `#3D9BFF` en oscuro, texto terciario `#5F6E8A`, isotipo nuevo en SVG, favicon plano e íconos regenerados) |
 | `031-ai-after-hours` | Ciclo completo | spec, plan, tasks («Cuándo responde la IA»: siempre o solo fuera del horario de atención del equipo, con su horario semanal y zona; el Laboratorio lo ignora; migración aditiva `0022`) |
 | `030-import-contacts` | Ciclo completo | spec, plan, tasks (Contactos → «Importar» desde `.xlsx` o CSV con vista previa, código de país, sin duplicar ni pisar, leads por turno; sin migración ni dependencias nuevas) |
 | `029-who-to-call-today` | Ciclo completo | spec, plan, tasks (pantalla «Hoy»: seguimientos vencidos, de hoy y leads sin primer contacto, por vendedor; próximo contacto en el cajón del trato; migración aditiva `0021`) |

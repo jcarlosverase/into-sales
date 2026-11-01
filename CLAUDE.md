@@ -13,7 +13,7 @@ el caso típico: una agencia adaptando IntoSales para un cliente.
 **Next.js 15 (App Router) + React 19** en monolito · TypeScript estricto
 (`strict` + `noUncheckedIndexedAccess`) · Tailwind CSS (sistema de diseño de la
 marca IntoSales de into: tokens en `src/app/globals.css`, tema claro/oscuro,
-acento white-label por defecto `#0081c8` (verde de marca `#33b44a`), fuentes
+acento white-label por defecto `#0070e0` (verde de marca `#33b44a`; manual de marca 2026, spec [1019](specs/1019-brand-2026/spec.md)), fuentes
 Barlow (sustituto de DIN Pro) + Instrument Serif + IBM Plex Mono self-hosted
 vía `next/font`; el logo vive en
 `src/lib/brand.ts` y se dibuja con `src/components/brand-mark.tsx`) ·

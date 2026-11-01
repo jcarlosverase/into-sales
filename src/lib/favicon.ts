@@ -1,5 +1,5 @@
 import {
-  BRAND_LOGO_SRC,
+  BRAND_FAVICON_SRC,
   isBrandName,
 } from "./brand";
 import { resolveAccentSet, type Branding } from "./branding";
@@ -8,7 +8,7 @@ import { resolveAccentSet, type Branding } from "./branding";
  * El icono de la pestaña, white-label.
  *
  * Toda instancia tiene uno **sin configurar nada**: si se llama IntoSales, es
- * el isotipo oficial de into (`BRAND_LOGO_SRC`, un archivo estático); con otro
+ * el isotipo plano de into (`BRAND_FAVICON_SRC`, un archivo estático); con otro
  * nombre se dibuja la inicial sobre el acento. Una
  * agencia que despliega para su cliente puede subir el logo real y
  * reemplazarlo.
@@ -140,7 +140,7 @@ export function faviconHref(
   branding: Pick<Branding, "name" | "accent" | "favicon">
 ): string {
   if (!branding.favicon && isBrandName(branding.name)) {
-    return `${BRAND_LOGO_SRC}?v=${faviconCacheKey(branding)}`;
+    return `${BRAND_FAVICON_SRC}?v=${faviconCacheKey(branding)}`;
   }
   return `/api/branding/favicon?v=${faviconCacheKey(branding)}`;
 }

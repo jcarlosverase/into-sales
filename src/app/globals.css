@@ -3,8 +3,8 @@
 @tailwind utilities;
 
 /*
-  Sistema de diseño de IntoSales, con la marca "into": acento azul #0081C8 y
-  verde #33B44A. Papel frío (#f6f8fc), tinta azul marino, tipografía Barlow
+  Sistema de diseño de IntoSales, con la marca "into" (manual de marca 2026,
+  spec 1019): acento azul #0070E0 y verde #33B44A. Papel frío (#f6f8fc), tinta azul marino, tipografía Barlow
   para la interfaz (sustituto libre de DIN Pro, la letra de la marca),
   Instrument Serif itálica para los acentos editoriales e IBM Plex Mono para
   etiquetas y horas. Basado en el sistema de Vocero CRM (MIT).
@@ -17,6 +17,9 @@
 @layer base {
   :root {
     color-scheme: light;
+    /* Manual de marca 2026: «into» del logotipo, en el azul de la marca
+       (#3D9BFF sobre fondo oscuro). Fijo: no sigue al acento white-label. */
+    --brand-logo: #0070e0;
 
     /* Neutros: papel frío de la landing */
     --bg: #ffffff;
@@ -28,7 +31,8 @@
     --bg-raised: #ffffff;
     --text: #0a1730;
     --text-2: #42506b;
-    --text-3: #8391aa;
+    /* Spec 1019 (manual 2026): #5F6E8A pasa AA con texto pequeño (5.1:1). */
+    --text-3: #5f6e8a;
     --text-4: #aab4c8;
     --border: #e8edf6;
     --border-strong: #dde5f1;
@@ -49,11 +53,11 @@
     --bubble-out-text: var(--text);
 
     /* Acento (default: azul into; el white-label lo sobreescribe) */
-    --accent: #0074b4;
-    --accent-hover: #00669e;
-    --accent-soft: #cce3f1;
-    --accent-tint: #e8f3fa;
-    --accent-text: #005a8c;
+    --accent: #0070e0;
+    --accent-hover: #0063c6;
+    --accent-soft: #cce0f8;
+    --accent-tint: #e6f0fc;
+    --accent-text: #0056ad;
     --accent-fg: #ffffff;
     /* El acento como TINTA (una hora, un enlace) y como anillo de foco. En
        claro son el acento mismo; en oscuro, sus variantes aclaradas: el
@@ -112,6 +116,7 @@
     veían. Los pisos de contraste los vigila tests/unit/theme-contrast.test.ts.
   */
   :root[data-theme="dark"] {
+    --brand-logo: #3d9bff;
     color-scheme: dark;
 
     /* Escalera de superficies, de la más honda a la más alta. --bg-subtle es
@@ -143,11 +148,11 @@
 
     /* Acento: respaldo con el azul into calculado para este fondo; el
        white-label lo recalcula (ver resolveAccentSet en lib/branding). */
-    --accent: #1a8ece;
-    --accent-hover: #3ea0d5;
-    --accent-soft: #1b4b70;
-    --accent-tint: #1b3d5c;
-    --accent-text: #68b4de;
+    --accent: #3d9bff;
+    --accent-hover: #6cb0ff;
+    --accent-soft: #285082;
+    --accent-tint: #223c61;
+    --accent-text: #6cb0ff;
     --accent-fg: #0f1419;
     --accent-ink: var(--accent-text);
     --ring: var(--accent-hover);
@@ -201,6 +206,7 @@
   */
   .nav-dark {
     color-scheme: dark;
+    --brand-logo: #3d9bff;
     --bg: #0b1327;
     --bg-subtle: #070e20;
     --bg-panel: #131f3d;

@@ -7,6 +7,11 @@ imagen `ghcr.io/kevinrivm/vocero-crm:X.Y.Z`.
 
 ## Sin publicar — IntoSales
 
+- **Marca into 2026** (spec 1019): el azul pasa a `#0070E0` (`#3D9BFF` en modo
+  oscuro), el texto gris claro se lee mejor y el isotipo es el nuevo, en
+  vector, con favicon plano. Si tu instancia usaba el azul into de antes, cambia sola;
+  un color propio elegido en Ajustes → Marca se respeta. Si instalaste el CRM
+  en el celular, bórralo y agrégalo de nuevo para ver el ícono nuevo.
 - **La sesión se cierra tras 12 horas sin uso** (spec 1018). Antes duraba 7
   días y se renovaba sola con cualquier uso, así que en la práctica no se
   cerraba nunca. Mientras alguien trabaja, no se corta.

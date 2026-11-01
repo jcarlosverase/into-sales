@@ -81,7 +81,7 @@ await call("/api/settings/whatsapp", {
 });
 await call("/api/settings/branding", {
   method: "PUT",
-  data: { name: "IntoSales", accent: "#0081c8", currency: "PEN" },
+  data: { name: "IntoSales", accent: "#0070e0", currency: "PEN" },
 });
 
 const page = await context.newPage();

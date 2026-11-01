@@ -104,7 +104,7 @@ export function BrandLogo({
             WORDMARK_SIZE[size]
           )}
         >
-          <span className="text-brand-ink">into</span>
+          <span className="text-[var(--brand-logo)]">into</span>
           <span style={{ color: BRAND_GREEN }}>sales</span>
         </span>
       </span>

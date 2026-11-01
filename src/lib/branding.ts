@@ -1,3 +1,4 @@
+import { BRAND_BLUE, LEGACY_BRAND_BLUE } from "@/lib/brand";
 import { DEFAULT_CURRENCY, isCurrency, type Currency } from "@/lib/money";
 
 /**
@@ -48,23 +49,23 @@ export const DEFAULT_BRANDING: Branding = {
   name: "IntoSales",
   // El azul de la marca into: la instancia recién instalada ya se ve como
   // IntoSales. Una agencia lo cambia en Configuración → Marca.
-  accent: "#0081c8",
+  accent: BRAND_BLUE,
   currency: DEFAULT_CURRENCY,
   favicon: null,
 };
 
 /**
- * Presets. El primero es la marca into (el azul #0081C8 del logo); los demás
+ * Presets. El primero es la marca into (el azul #0070E0 del logo); los demás
  * son los tonos sobrios del handoff Atlas, que siguen disponibles para quien
  * quiera un CRM más discreto.
  */
 export const ACCENT_PRESETS: Record<string, { label: string; set: AccentSet }> = {
-  // El relleno va un paso más oscuro que el azul del logo: con texto blanco,
-  // #0081c8 se queda en 4.2:1 y no llega a AA (4.5:1); #0074b4 sí (5.05:1) y
-  // a simple vista es el mismo azul. El logo sigue usando el exacto.
-  "#0081c8": {
+  // Spec 1019 (manual de marca 2026): el azul del logo, #0070e0, ya pasa AA
+  // con texto blanco (4.8:1), así que el relleno es el mismo azul del logo.
+  // (El de antes, #0081c8, no llegaba y se oscurecía a #0074b4.)
+  "#0070e0": {
     label: "Azul into",
-    set: { accent: "#0074b4", hover: "#00669e", soft: "#cce3f1", tint: "#e8f3fa", text: "#005a8c", fg: "#ffffff" },
+    set: { accent: "#0070e0", hover: "#0063c6", soft: "#cce0f8", tint: "#e6f0fc", text: "#0056ad", fg: "#ffffff" },
   },
   "#3f5972": {
     label: "Azul acero",
@@ -217,7 +218,10 @@ export function resolveAccentSet(
   accentHex: string,
   mode: ThemeMode = "light"
 ): AccentSet {
-  if (mode === "dark") return darkAccentSet(accentHex, PAGE_DARK);
+  if (mode === "dark") {
+    if (isIntoBlue(accentHex)) return INTO_BLUE_DARK;
+    return darkAccentSet(accentHex, PAGE_DARK);
+  }
 
   const preset = ACCENT_PRESETS[accentHex.toLowerCase()];
   if (preset) return preset.set;
@@ -243,7 +247,37 @@ export function resolveAccentSet(
 
 /** El acento de la barra lateral azul marino (`.nav-dark`), en cualquier tema. */
 export function resolveNavAccentSet(accentHex: string): AccentSet {
+  if (isIntoBlue(accentHex)) return INTO_BLUE_NAV;
   return darkAccentSet(accentHex, NAV_DARK);
+}
+
+/**
+ * Spec 1019 — El azul into sobre fondo oscuro es el del manual de marca 2026,
+ * no uno calculado: #3D9BFF con tinta casi negra (#0F1419, 6.5:1), y el azul
+ * para texto #6CB0FF (el de into-web), que pasa 4.5:1 también sobre el tinte.
+ * (#3D9BFF como texto pasa sobre el fondo, 5.3:1, pero no sobre un tinte que
+ * todavía se distinga del fondo.) Tinte y borde, mezclados hacia cada fondo.
+ */
+const INTO_BLUE_DARK: AccentSet = {
+  accent: "#3d9bff",
+  hover: "#6cb0ff",
+  soft: "#285082",
+  tint: "#223c61",
+  text: "#6cb0ff",
+  fg: "#0f1419",
+};
+const INTO_BLUE_NAV: AccentSet = {
+  accent: "#3d9bff",
+  hover: "#6cb0ff",
+  soft: "#193963",
+  tint: "#13294a",
+  text: "#6cb0ff",
+  fg: "#0f1419",
+};
+
+function isIntoBlue(accentHex: string): boolean {
+  const hex = accentHex.toLowerCase();
+  return hex === BRAND_BLUE || hex === LEGACY_BRAND_BLUE || !isValidHex(accentHex);
 }
 
 function accentBlock(selector: string, s: AccentSet): string {
@@ -279,10 +313,12 @@ export function accentCssVariables(accentHex: string): string {
 
 export function normalizeBranding(input: Partial<Branding> | null): Branding {
   const name = input?.name?.trim().slice(0, 30) || DEFAULT_BRANDING.name;
-  const accent =
+  const stored =
     input?.accent && isValidHex(input.accent)
       ? input.accent.toLowerCase()
       : DEFAULT_BRANDING.accent;
+  // Spec 1019: quien guardó el azul into de antes sigue con el azul into.
+  const accent = stored === LEGACY_BRAND_BLUE ? DEFAULT_BRANDING.accent : stored;
   const currency = isCurrency(input?.currency)
     ? input.currency
     : DEFAULT_BRANDING.currency;
