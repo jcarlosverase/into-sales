@@ -1,131 +1,33 @@
 import type { Config } from "tailwindcss";
 import animate from "tailwindcss-animate";
+import intoPreset from "@into/designsystem/tailwind";
 
 /**
- * Los nombres semánticos existentes (background, primary, muted…) se remapean
- * a los tokens del sistema de diseño de IntoSales (marca into) para
- * que toda la app comparta el tema activo (claro u oscuro, ver globals.css);
- * la escala `brand-*` expone el acento white-label y las escalas de estado
- * exponen la tríada tint/soft/text.
+ * Spec 1021: el tema sale del sistema de diseño into (vendor/): colores
+ * semánticos (background, primary, muted…), escala `brand-*` (el acento
+ * white-label), estados, radios, sombras y las tres fuentes de la marca, con
+ * sus variables y estilos base. Aquí solo va lo propio del CRM: el chat.
  *
- * Dos reglas para no romper el tema oscuro:
- * 1. Nada de colores literales en la UI (`text-white`, `bg-black`, hex suelto).
- *    Excepción deliberada: la paleta de identidad (avatares, palomita azul de
- *    WhatsApp) son tonos medios legibles en ambos temas. Los puntos de etapa
- *    ya no lo son: salen de los tokens del tema y siguen al acento.
- * 2. Nada de modificador de opacidad (`bg-brand/20`) sobre estos nombres:
- *    Tailwind 3 no sabe aplicarlo a un color `var(--x)` y descarta la regla en
- *    silencio. Usa un token propio (p. ej. `--accent-veil`) o `opacity-*`.
+ * Las dos reglas del tema oscuro siguen en pie (ver el preset): nada de
+ * colores literales en la UI y nada de modificador de opacidad sobre un color
+ * `var(--x)`. Excepción deliberada de la primera: la paleta de identidad
+ * (avatares, palomita azul de WhatsApp), tonos medios legibles en ambos temas.
  */
 const config: Config = {
-  content: ["./src/**/*.{ts,tsx}"],
+  presets: [intoPreset],
+  // La segunda ruta deja que Tailwind vea las clases de los componentes del
+  // sistema de diseño: sin ella salen sin estilo.
+  content: ["./src/**/*.{ts,tsx}", "./node_modules/@into/designsystem/dist/**/*.js"],
   theme: {
     extend: {
       colors: {
-        border: "var(--border)",
-        "border-strong": "var(--border-strong)",
-        input: "var(--border-strong)",
-        // En claro es el acento; en oscuro, su variante aclarada: el acento
-        // sólido queda bajo 3:1 sobre la fila seleccionada y los diálogos.
-        ring: "var(--ring)",
-        background: "var(--bg)",
-        foreground: "var(--text)",
-        subtle: "var(--bg-subtle)",
-        primary: {
-          DEFAULT: "var(--accent)",
-          foreground: "var(--accent-fg)",
-        },
-        secondary: {
-          DEFAULT: "var(--bg-panel)",
-          foreground: "var(--text-2)",
-        },
-        destructive: {
-          DEFAULT: "var(--danger)",
-          foreground: "var(--danger-fg)",
-        },
-        muted: {
-          DEFAULT: "var(--bg-panel)",
-          foreground: "var(--text-3)",
-        },
-        accent: {
-          DEFAULT: "var(--bg-hover)",
-          foreground: "var(--text)",
-        },
-        card: {
-          DEFAULT: "var(--bg)",
-          foreground: "var(--text)",
-        },
-        // Lo que flota (diálogos, cajones, menús): en oscuro, un escalón
-        // arriba de la página para que se despegue; en claro, el mismo blanco.
-        popover: {
-          DEFAULT: "var(--bg-raised)",
-          foreground: "var(--text)",
-        },
-        brand: {
-          DEFAULT: "var(--accent)",
-          hover: "var(--accent-hover)",
-          soft: "var(--accent-soft)",
-          tint: "var(--accent-tint)",
-          text: "var(--accent-text)",
-          fg: "var(--accent-fg)",
-          // El acento como texto (una hora, un enlace): legible en los dos temas.
-          ink: "var(--accent-ink)",
-          veil: "var(--accent-veil)",
-        },
-        "text-2": "var(--text-2)",
-        "text-3": "var(--text-3)",
-        "text-4": "var(--text-4)",
+        // El hilo del chat y sus burbujas (variables en globals.css).
         chat: "var(--chat-bg)",
         "bubble-in": "var(--bubble-in)",
         "bubble-in-border": "var(--bubble-in-border)",
         "bubble-out": "var(--bubble-out)",
         "bubble-out-border": "var(--bubble-out-border)",
         "bubble-out-text": "var(--bubble-out-text)",
-        success: {
-          DEFAULT: "var(--success)",
-          tint: "var(--success-tint)",
-          soft: "var(--success-soft)",
-          text: "var(--success-text)",
-        },
-        warning: {
-          DEFAULT: "var(--warning)",
-          tint: "var(--warning-tint)",
-          soft: "var(--warning-soft)",
-          text: "var(--warning-text)",
-        },
-        danger: {
-          DEFAULT: "var(--danger)",
-          tint: "var(--danger-tint)",
-          soft: "var(--danger-soft)",
-          text: "var(--danger-text)",
-        },
-        info: {
-          DEFAULT: "var(--info)",
-          tint: "var(--info-tint)",
-          soft: "var(--info-soft)",
-          text: "var(--info-text)",
-        },
-        overlay: "var(--overlay)",
-        knob: "var(--knob)",
-        chip: "var(--chip-bg)",
-        "row-hover": "var(--row-hover)",
-      },
-      borderRadius: {
-        sm: "var(--radius-sm)",
-        md: "var(--radius)",
-        lg: "var(--radius-lg)",
-      },
-      boxShadow: {
-        sm: "var(--shadow-sm)",
-        md: "var(--shadow-md)",
-        pop: "var(--shadow-pop)",
-      },
-      // Las tres voces de la marca (ver src/app/layout.tsx, donde next/font
-      // las descarga en build y las sirve self-hosted, sin CDN en runtime).
-      fontFamily: {
-        sans: ["var(--font-sans)", "Barlow", "system-ui", "-apple-system", "Segoe UI", "sans-serif"],
-        serif: ["var(--font-serif)", "Instrument Serif", "Georgia", "serif"],
-        mono: ["var(--font-mono)", "IBM Plex Mono", "ui-monospace", "Cascadia Code", "monospace"],
       },
     },
   },

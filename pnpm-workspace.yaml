@@ -9,4 +9,8 @@ allowBuilds:
 # Transitive packages with known critical advisories, pinned to a patched
 # release until their parents ship one (security-sast, dependencies).
 overrides:
+  '@into/tokens': file:vendor/into-tokens-0.1.0.tgz
   shell-quote: '>=1.11.0'
+
+minimumReleaseAgeExclude:
+  - '@into/*'
