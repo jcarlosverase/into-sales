@@ -7,6 +7,9 @@ imagen `ghcr.io/kevinrivm/vocero-crm:X.Y.Z`.
 
 ## Sin publicar — IntoSales
 
+- **«Pipeline» ahora se llama «Embudo»** (spec 1020), como pide el manual de
+  marca. La dirección `/pipeline` no cambia. La pantalla de entrada de
+  IntoSales lleva su lema, «Vende más por WhatsApp.».
 - **Marca into 2026** (spec 1019): el azul pasa a `#0070E0` (`#3D9BFF` en modo
   oscuro), el texto gris claro se lee mejor y el isotipo es el nuevo, en
   vector, con favicon plano. Si tu instancia usaba el azul into de antes, cambia sola;

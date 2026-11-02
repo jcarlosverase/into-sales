@@ -59,7 +59,7 @@ export function appNavGroups({
     // 029 — lo primero que abre un vendedor al empezar el día.
     { href: "/today", label: "Hoy", icon: PhoneCall },
     { href: "/inbox", label: "Bandeja", icon: Inbox, badge: true },
-    { href: "/pipeline", label: "Pipeline", icon: Kanban },
+    { href: "/pipeline", label: "Embudo", icon: Kanban },
     { href: "/contacts", label: "Contactos", icon: Users },
   ];
   // Citas va después de Contactos: es el paso siguiente de un trato, no una

@@ -37,6 +37,13 @@ export const LEGACY_BRAND_BLUE = "#0081c8";
 export const BRAND_GREEN = "#33b44a";
 
 /**
+ * Spec 1020: el lema de IntoSales (manual de marca 2026). Solo acompaña a la
+ * marca IntoSales: una instancia rebautizada no lleva el lema de otro
+ * producto.
+ */
+export const PRODUCT_TAGLINE = "Vende más por WhatsApp.";
+
+/**
  * ¿Esta instancia se llama IntoSales? Solo entonces se dibuja el logo: una
  * agencia que rebautizó el CRM para su cliente no debe ver las flechas de
  * otro producto en su barra lateral ni en su pestaña. El nombre por defecto

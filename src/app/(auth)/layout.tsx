@@ -1,11 +1,15 @@
 import { DEFAULT_BRANDING } from "@/lib/branding";
 import { getBranding } from "@/server/branding";
 import { BrandLogo } from "@/components/brand-mark";
+import { isBrandName, PRODUCT_TAGLINE } from "@/lib/brand";
 
 /**
  * Pantalla de entrada: papel frío, rejilla difuminada y dos resplandores
- * (azul y verde de into) detrás del formulario, el logo y una descripción
- * neutra, sin lema.
+ * (azul y verde de into) detrás del formulario, el logo y una línea debajo.
+ *
+ * Spec 1020: con la marca IntoSales, esa línea es su lema («Vende más por
+ * WhatsApp.», manual de marca 2026). Una instancia rebautizada (white-label)
+ * conserva la descripción neutra: el lema es de IntoSales, no de su negocio.
  */
 export default async function AuthLayout({
   children,
@@ -22,7 +26,9 @@ export default async function AuthLayout({
           <BrandLogo branding={branding} size="lg" />
           <div>
             <h1 className="sr-only">{branding.name}</h1>
-            <p className="text-sm text-text-3">CRM de WhatsApp con agente de IA</p>
+            <p className="text-sm text-text-3">
+              {isBrandName(branding.name) ? PRODUCT_TAGLINE : "CRM de WhatsApp con agente de IA"}
+            </p>
           </div>
         </div>
         {children}

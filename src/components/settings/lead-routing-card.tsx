@@ -118,7 +118,7 @@ export function LeadRoutingCard({ refreshKey }: { refreshKey: number }) {
         {!enabled && (
           <p className="text-xs text-text-3">
             Con el reparto apagado, los leads nuevos quedan sin asignar y el
-            propietario los asigna desde el Pipeline.
+            propietario los asigna desde el Embudo.
           </p>
         )}
         {error && <p className="text-sm text-destructive">{error}</p>}

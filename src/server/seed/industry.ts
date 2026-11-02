@@ -134,7 +134,7 @@ async function seedContacts(
     .orderBy(asc(schema.pipelineStage.position));
   const stageByName = new Map(stages.map((s) => [s.name, s.id]));
   const firstOpen = stages.find((s) => s.kind === "open")?.id ?? stages[0]?.id;
-  if (!firstOpen) throw new Error("La organización no tiene etapas en el Pipeline");
+  if (!firstOpen) throw new Error("La organización no tiene etapas en el Embudo");
 
   const now = Date.now();
   let assigned = 0;

@@ -105,7 +105,7 @@ async function shoot(path, file, ready) {
 await shoot("/inbox", "inbox.png", async () => {
   await page.getByRole("button", { name: /María Fernanda/ }).first().click();
   await page.getByText("Hola, vi su anuncio del ciclo de verano", { exact: false }).first().waitFor();
-  await page.getByText("Etapa del pipeline").waitFor();
+  await page.getByText("Etapa en el embudo").waitFor();
 });
 
 await shoot("/pipeline", "pipeline.png", async () => {
