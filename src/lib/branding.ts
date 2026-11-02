@@ -298,7 +298,10 @@ function accentBlock(selector: string, s: AccentSet): string {
  * (`NAV_BG`, ver `resolveNavAccentSet`), no con el que esté activo en el resto
  * de la página. Al declararse directamente sobre el `<aside>` (no sobre
  * `:root`), gana para ese elemento y sus hijos sin competir en especificidad
- * con los otros dos bloques, que solo tocan `<html>`.
+ * con los otros dos bloques, que solo tocan `<html>`. El selector va
+ * duplicado (`.nav-dark.nav-dark`) por lo mismo que `:root:root`: el preset
+ * del sistema de diseño también declara el acento de `.nav-dark` (spec 1021),
+ * y el white-label tiene que ganarle sin depender del orden de carga.
  */
 export function accentCssVariables(accentHex: string): string {
   return (
@@ -307,7 +310,7 @@ export function accentCssVariables(accentHex: string): string {
       ':root:root[data-theme="dark"]',
       resolveAccentSet(accentHex, "dark")
     ) +
-    accentBlock(".nav-dark", resolveNavAccentSet(accentHex))
+    accentBlock(".nav-dark.nav-dark", resolveNavAccentSet(accentHex))
   );
 }
 

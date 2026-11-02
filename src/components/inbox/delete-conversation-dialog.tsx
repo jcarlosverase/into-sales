@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Notice } from "@into/designsystem";
 
 /**
  * 026 — Confirmación de borrado. Es irreversible, así que dice con todas sus
@@ -84,12 +85,9 @@ export function DeleteConversationDialog({
         <p className="mt-3 text-xs font-medium text-danger-text">No se puede deshacer.</p>
 
         {error && (
-          <p
-            role="alert"
-            className="mt-3 rounded-md border border-danger-soft bg-danger-tint p-2.5 text-xs text-danger-text"
-          >
+          <Notice tone="danger" icon={null} className="mt-3 rounded-md p-2.5 text-xs">
             {error}
-          </p>
+          </Notice>
         )}
 
         <div className="mt-4 flex justify-end gap-2">

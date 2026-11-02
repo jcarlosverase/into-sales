@@ -15,6 +15,7 @@ import { cn } from "@/lib/utils";
 import { CHANNEL_LABEL } from "@/lib/channels";
 import { formatBytes, formatRemaining, formatRemainingLong } from "./helpers";
 import { TemplateSender } from "./template-sender";
+import { Notice } from "@into/designsystem";
 
 /** 008 — Panel secundario del clip: formulario de ubicación o contacto. */
 type AttachPanel = "location" | "contact" | null;
@@ -203,17 +204,14 @@ export function Composer({
   if (!conversation.windowOpen && conversation.channel === "tiktok") {
     return (
       <div className="border-t bg-background px-[18px] py-3.5">
-        <div className="flex items-start gap-2 rounded-md border border-warning-soft bg-warning-tint p-3 text-sm text-warning-text">
-          <Clock3 className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={1.7} />
-          <div>
-            <p className="font-medium">La ventana de 48 horas de TikTok está cerrada.</p>
-            <p className="opacity-80">
-              TikTok solo deja contestar dentro de las 48 horas siguientes al
-              último mensaje del cliente, y no permite reabrir la conversación.
-              Podrás escribirle cuando vuelva a mandar un mensaje.
-            </p>
-          </div>
-        </div>
+        <Notice tone="warning" icon={Clock3} className="rounded-md p-3">
+          <p className="font-medium">La ventana de 48 horas de TikTok está cerrada.</p>
+          <p className="opacity-80">
+            TikTok solo deja contestar dentro de las 48 horas siguientes al
+            último mensaje del cliente, y no permite reabrir la conversación.
+            Podrás escribirle cuando vuelva a mandar un mensaje.
+          </p>
+        </Notice>
       </div>
     );
   }
@@ -226,20 +224,19 @@ export function Composer({
   if (!conversation.windowOpen && human && !human.open) {
     return (
       <div className="border-t bg-background px-[18px] py-3.5">
-        <div
+        <Notice
+          tone="warning"
+          icon={Clock3}
           data-window="closed"
-          className="flex items-start gap-2 rounded-md border border-warning-soft bg-warning-tint p-3 text-sm text-warning-text"
+          className="rounded-md p-3"
         >
-          <Clock3 className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={1.7} />
-          <div>
-            <p className="font-medium">La ventana de atención de {channel} está cerrada.</p>
-            <p className="opacity-80">
-              {channel} deja contestar hasta 7 días después del último mensaje
-              del cliente, y no tiene plantillas para reabrir la conversación.
-              Podrás escribirle cuando vuelva a mandar un mensaje.
-            </p>
-          </div>
-        </div>
+          <p className="font-medium">La ventana de atención de {channel} está cerrada.</p>
+          <p className="opacity-80">
+            {channel} deja contestar hasta 7 días después del último mensaje
+            del cliente, y no tiene plantillas para reabrir la conversación.
+            Podrás escribirle cuando vuelva a mandar un mensaje.
+          </p>
+        </Notice>
       </div>
     );
   }
@@ -247,17 +244,14 @@ export function Composer({
   if (!conversation.windowOpen && !human) {
     return (
       <div className="border-t bg-background px-[18px] py-3.5">
-        <div className="mb-3 flex items-start gap-2 rounded-md border border-warning-soft bg-warning-tint p-3 text-sm text-warning-text">
-          <Clock3 className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={1.7} />
-          <div>
-            <p className="font-medium">La ventana de 24 horas está cerrada.</p>
-            <p className="opacity-80">
-              WhatsApp solo permite texto libre dentro de las 24 horas
-              siguientes al último mensaje del cliente. Para retomar la
-              conversación, envía una plantilla aprobada.
-            </p>
-          </div>
-        </div>
+        <Notice tone="warning" icon={Clock3} className="mb-3 rounded-md p-3">
+          <p className="font-medium">La ventana de 24 horas está cerrada.</p>
+          <p className="opacity-80">
+            WhatsApp solo permite texto libre dentro de las 24 horas
+            siguientes al último mensaje del cliente. Para retomar la
+            conversación, envía una plantilla aprobada.
+          </p>
+        </Notice>
         <TemplateSender conversationId={conversation.id} onSent={onSent} />
       </div>
     );
@@ -270,17 +264,16 @@ export function Composer({
   return (
     <div className="border-t bg-background px-[18px] pb-3.5 pt-3">
       {soloPersona && (
-        <div
+        <Notice
+          tone="info"
+          icon={Clock3}
           data-window="human"
-          className="mb-2.5 flex items-start gap-2 rounded-md border border-info-soft bg-info-tint p-2.5 text-xs text-info-text"
+          className="mb-2.5 rounded-md p-2.5 text-xs [&>svg]:h-3.5 [&>svg]:w-3.5"
         >
-          <Clock3 className="mt-0.5 h-3.5 w-3.5 shrink-0" strokeWidth={1.7} />
-          <p>
-            <span className="font-semibold">Solo puede contestar una persona.</span>{" "}
-            Pasaron más de 24 horas desde el último mensaje del cliente: {channel}{" "}
-            te deja responder a ti hasta 7 días, al agente ya no.
-          </p>
-        </div>
+          <span className="font-semibold">Solo puede contestar una persona.</span>{" "}
+          Pasaron más de 24 horas desde el último mensaje del cliente: {channel}{" "}
+          te deja responder a ti hasta 7 días, al agente ya no.
+        </Notice>
       )}
       {templates.length > 0 && !file && panel === null && (
         <div className="mb-2.5 flex flex-wrap gap-1.5">

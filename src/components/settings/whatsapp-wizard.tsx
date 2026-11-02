@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Notice } from "@into/designsystem";
 
 type Connection = {
   wabaId: string;
@@ -431,8 +432,11 @@ function RegistrationNotice({
     );
   }
   return (
-    <p className="flex items-start gap-2 rounded-md border border-warning-soft bg-warning-tint p-3 text-xs text-warning-text">
-      <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+    <Notice
+      tone="warning"
+      icon={AlertTriangle}
+      className="rounded-md p-3 text-xs [&>svg]:h-3.5 [&>svg]:w-3.5"
+    >
       <span>
         {registration.ok ? (
           <>
@@ -459,7 +463,7 @@ function RegistrationNotice({
           </>
         )}
       </span>
-    </p>
+    </Notice>
   );
 }
 
@@ -531,11 +535,14 @@ function WebhookCard({
           </div>
         )}
         {!webhook.isHttps && (
-          <p className="flex items-start gap-2 rounded-md border border-warning-soft bg-warning-tint p-3 text-xs text-warning-text">
-            <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+          <Notice
+            tone="warning"
+            icon={AlertTriangle}
+            className="rounded-md p-3 text-xs [&>svg]:h-3.5 [&>svg]:w-3.5"
+          >
             La URL configurada no es https: Meta exige https para los webhooks.
             Ajusta APP_BASE_URL con tu dominio público.
-          </p>
+          </Notice>
         )}
         <div className="space-y-1.5">
           <Label>URL del webhook (callback URL)</Label>

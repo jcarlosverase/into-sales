@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ZernioConnect } from "@/components/settings/zernio-connect";
 import { cn } from "@/lib/utils";
+import { Notice } from "@into/designsystem";
 
 /**
  * 023 — Conexión del canal de Instagram: la pantalla que faltaba.
@@ -185,19 +186,16 @@ export function InstagramClient() {
   return (
     <div className="max-w-3xl space-y-6">
       {connection?.status === "reconnect_required" && (
-        <div className="flex items-start gap-2 rounded-lg border border-danger-soft bg-danger-tint p-4 text-sm">
-          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
-          <div>
-            <p className="font-medium text-danger-text">
-              {connection.source === "zernio"
-                ? "La API key de Zernio expiró o fue revocada."
-                : "El token expiró o fue revocado."}
-            </p>
-            <p className="text-danger-text opacity-80">
-              Los envíos por Instagram están pausados. Vuelve a conectar abajo.
-            </p>
-          </div>
-        </div>
+        <Notice tone="danger" icon={AlertTriangle} className="p-4">
+          <p className="font-medium">
+            {connection.source === "zernio"
+              ? "La API key de Zernio expiró o fue revocada."
+              : "El token expiró o fue revocado."}
+          </p>
+          <p className="opacity-80">
+            Los envíos por Instagram están pausados. Vuelve a conectar abajo.
+          </p>
+        </Notice>
       )}
 
       {outcome && (

@@ -1,20 +1,12 @@
 "use client";
 
-import { useState } from "react";
-import { Moon, Sun } from "lucide-react";
-import {
-  LEGACY_THEME_COOKIE,
-  nextThemePreference,
-  THEME_COOKIE,
-  THEME_COOKIE_MAX_AGE,
-  THEME_LABELS,
-  type ThemePreference,
-} from "@/lib/theme";
-import { cn } from "@/lib/utils";
+import { ThemeToggle as IntoThemeToggle, type ThemePreference } from "@into/designsystem";
+import { LEGACY_THEME_COOKIE, THEME_COOKIE } from "@/lib/theme";
 
-const ICONS = { light: Sun, dark: Moon } as const;
-
-/** Botón que alterna Claro ⇄ Oscuro y persiste la elección en cookie. */
+/**
+ * Botón que alterna Claro ⇄ Oscuro (spec 1021: el del sistema de diseño), con
+ * la cookie de IntoSales. Spec 1013: borra la cookie de antes al usarse.
+ */
 export function ThemeToggle({
   initial,
   className,
@@ -22,32 +14,12 @@ export function ThemeToggle({
   initial: ThemePreference;
   className?: string;
 }) {
-  const [pref, setPref] = useState<ThemePreference>(initial);
-
-  function cycle() {
-    const value = nextThemePreference(pref);
-    setPref(value);
-    document.documentElement.setAttribute("data-theme", value);
-    document.cookie = `${THEME_COOKIE}=${value};path=/;max-age=${THEME_COOKIE_MAX_AGE};samesite=lax`;
-    // Spec 1013: la cookie de antes ya no hace falta.
-    document.cookie = `${LEGACY_THEME_COOKIE}=;path=/;max-age=0;samesite=lax`;
-  }
-
-  const Icon = ICONS[pref];
-  const label = `Tema: ${THEME_LABELS[pref]}`;
-
   return (
-    <button
-      type="button"
-      onClick={cycle}
-      aria-label={label}
-      title={`${label} (clic para cambiar)`}
-      className={cn(
-        "rounded p-1 text-text-3 transition-colors hover:text-foreground",
-        className
-      )}
-    >
-      <Icon className="h-4 w-4" strokeWidth={1.7} />
-    </button>
+    <IntoThemeToggle
+      initial={initial}
+      cookieName={THEME_COOKIE}
+      clearCookies={[LEGACY_THEME_COOKIE]}
+      className={className}
+    />
   );
 }

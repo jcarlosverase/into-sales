@@ -12,6 +12,14 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 /**
  * 016 — Ajustes → Anuncios: conectar el dataset de Meta, decir qué etapa
@@ -257,45 +265,43 @@ export function AdsClient() {
               por un anuncio avance de etapa.
             </p>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="kicker text-left">
-                  <tr>
-                    <th className="py-2 pr-3 font-medium">Evento</th>
-                    <th className="py-2 pr-3 font-medium">Contacto</th>
-                    <th className="py-2 pr-3 font-medium">Estado</th>
-                    <th className="py-2 pr-3 font-medium">Cuándo</th>
-                    <th className="py-2 font-medium">Detalle</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {activity.map((row) => (
-                    <tr key={row.id} className="border-t align-top">
-                      <td className="py-2 pr-3">
-                        {EVENT_LABEL[row.eventName] ?? row.eventName}
-                        {row.adHeadline ? (
-                          <span className="block text-xs text-muted-foreground">
-                            {row.adHeadline}
-                          </span>
-                        ) : null}
-                      </td>
-                      <td className="py-2 pr-3">{row.contactName ?? "—"}</td>
-                      <td className="py-2 pr-3">
-                        <Badge variant={STATUS_VARIANT[row.status]}>
-                          {STATUS_LABEL[row.status]}
-                        </Badge>
-                      </td>
-                      <td className="py-2 pr-3 whitespace-nowrap text-muted-foreground">
-                        {new Date(row.at).toLocaleString()}
-                      </td>
-                      <td className="py-2 text-xs text-muted-foreground">
-                        {row.error ?? row.fbTraceId ?? "—"}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Evento</TableHead>
+                  <TableHead>Contacto</TableHead>
+                  <TableHead>Estado</TableHead>
+                  <TableHead>Cuándo</TableHead>
+                  <TableHead>Detalle</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {activity.map((row) => (
+                  <TableRow key={row.id}>
+                    <TableCell>
+                      {EVENT_LABEL[row.eventName] ?? row.eventName}
+                      {row.adHeadline ? (
+                        <span className="block text-xs text-muted-foreground">
+                          {row.adHeadline}
+                        </span>
+                      ) : null}
+                    </TableCell>
+                    <TableCell>{row.contactName ?? "—"}</TableCell>
+                    <TableCell>
+                      <Badge variant={STATUS_VARIANT[row.status]}>
+                        {STATUS_LABEL[row.status]}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap text-muted-foreground">
+                      {new Date(row.at).toLocaleString()}
+                    </TableCell>
+                    <TableCell className="text-xs text-muted-foreground">
+                      {row.error ?? row.fbTraceId ?? "—"}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           )}
         </CardContent>
       </Card>

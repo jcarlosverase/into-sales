@@ -7,6 +7,9 @@ imagen `ghcr.io/kevinrivm/vocero-crm:X.Y.Z`.
 
 ## Sin publicar — IntoSales
 
+- **Sistema de diseño into** (spec 1021): colores, botones, avisos, tablas,
+  logotipo y pantalla de entrada vienen del paquete compartido con
+  into-central (en `vendor/`). El CRM se ve igual y el white-label no cambia.
 - **«Pipeline» ahora se llama «Embudo»** (spec 1020), como pide el manual de
   marca. La dirección `/pipeline` no cambia. La pantalla de entrada de
   IntoSales lleva su lema, «Vende más por WhatsApp.».

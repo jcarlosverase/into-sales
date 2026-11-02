@@ -12,7 +12,10 @@ el caso típico: una agencia adaptando IntoSales para un cliente.
 
 **Next.js 15 (App Router) + React 19** en monolito · TypeScript estricto
 (`strict` + `noUncheckedIndexedAccess`) · Tailwind CSS (sistema de diseño de la
-marca IntoSales de into: tokens en `src/app/globals.css`, tema claro/oscuro,
+marca IntoSales de into: tema, preset de Tailwind y componentes base del
+sistema de diseño into, `@into/designsystem` en `vendor/`, spec
+[1021](specs/1021-design-system/spec.md); `src/components/ui/` los reexporta y
+`src/app/globals.css` guarda solo lo propio del CRM; tema claro/oscuro,
 acento white-label por defecto `#0070e0` (verde de marca `#33b44a`; manual de marca 2026, spec [1019](specs/1019-brand-2026/spec.md)), fuentes
 Barlow (sustituto de DIN Pro) + Instrument Serif + IBM Plex Mono self-hosted
 vía `next/font`; el logo vive en

@@ -12,6 +12,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { CONNECTOR_META, type ConnectorId } from "@/lib/agenda-connectors";
+import { Notice } from "@into/designsystem";
 
 /**
  * 015 — Las credenciales de un conector externo.
@@ -172,10 +173,10 @@ export function ConnectorCredentials({
         </ul>
 
         {connection?.status === "error" && (
-          <p className="rounded-sm border border-danger-soft bg-danger-tint px-3 py-2 text-sm text-danger-text">
+          <Notice tone="danger" icon={null} className="rounded-sm px-3 py-2">
             {meta.label} rechazó las últimas credenciales. Las citas se siguen
             agendando, pero sin enlace hasta que vuelvas a conectar.
-          </p>
+          </Notice>
         )}
 
         <div className="space-y-3">

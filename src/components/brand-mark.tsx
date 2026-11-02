@@ -1,5 +1,6 @@
+import { IntoIsotipo, IntoLogo } from "@into/designsystem";
 import type { Branding } from "@/lib/branding";
-import { BRAND_GREEN, BRAND_LOGO_SRC, isBrandName } from "@/lib/brand";
+import { BRAND_LOGO_SRC, isBrandName } from "@/lib/brand";
 import { faviconHref, faviconInitial } from "@/lib/favicon";
 import { cn } from "@/lib/utils";
 
@@ -10,20 +11,12 @@ import { cn } from "@/lib/utils";
 export type BrandingMark = Pick<Branding, "name" | "accent" | "favicon">;
 
 /**
- * El isotipo oficial de into. Es un PNG con fondo transparente: se ve igual
- * sobre el papel del tema claro y sobre la barra azul marino.
+ * El isotipo oficial de into (spec 1021: el componente es del sistema de
+ * diseño). Se ve igual sobre el papel del tema claro y sobre la barra azul
+ * marino.
  */
 export function BrandMark({ className }: { className?: string }) {
-  return (
-    // Sin next/image a propósito: es un archivo estático pequeño.
-    // eslint-disable-next-line @next/next/no-img-element
-    <img
-      src={BRAND_LOGO_SRC}
-      alt=""
-      aria-hidden="true"
-      className={cn("object-contain", className)}
-    />
-  );
+  return <IntoIsotipo src={BRAND_LOGO_SRC} className={className} />;
 }
 
 /**
@@ -64,16 +57,6 @@ export function BrandTile({
   );
 }
 
-const WORDMARK_SIZE = {
-  md: "text-[21px]",
-  lg: "text-[30px]",
-} as const;
-
-const MARK_SIZE = {
-  md: "h-[24px] w-[24px]",
-  lg: "h-[34px] w-[34px]",
-} as const;
-
 const TILE_SIZE = {
   md: "h-[30px] w-[30px] rounded-[9px] text-[15px]",
   lg: "h-[44px] w-[44px] rounded-[13px] text-[22px]",
@@ -81,7 +64,7 @@ const TILE_SIZE = {
 
 /**
  * La marca completa: isotipo + wordmark "intosales" en minúsculas, con
- * "into" en el acento y "sales" en el verde de marca. Una instancia rebautizada ve en su
+ * "into" en el azul de la marca y "sales" en el verde de marca. Una instancia rebautizada ve en su
  * lugar el mosaico con la inicial y su nombre (white-label). Con logo subido
  * gana el logo, se llame como se llame: quien sube un archivo quiere verlo.
  */
@@ -91,23 +74,13 @@ export function BrandLogo({
   className,
 }: {
   branding: BrandingMark;
-  size?: keyof typeof WORDMARK_SIZE;
+  size?: keyof typeof TILE_SIZE;
   className?: string;
 }) {
   if (isBrandName(branding.name) && !branding.favicon) {
+    // Spec 1021: el logotipo «intosales» es el del sistema de diseño.
     return (
-      <span className={cn("flex items-center gap-2 text-foreground", className)}>
-        <BrandMark className={cn("shrink-0", MARK_SIZE[size])} />
-        <span
-          className={cn(
-            "font-[700] leading-none tracking-[-0.02em]",
-            WORDMARK_SIZE[size]
-          )}
-        >
-          <span className="text-[var(--brand-logo)]">into</span>
-          <span style={{ color: BRAND_GREEN }}>sales</span>
-        </span>
-      </span>
+      <IntoLogo product="sales" isotipoSrc={BRAND_LOGO_SRC} size={size} className={className} />
     );
   }
   return (
