@@ -183,6 +183,13 @@
       "when": 1793422734102,
       "tag": "0025_invitation_created_at",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1793800133029,
+      "tag": "0026_central_customer_product",
+      "breakpoints": true
     }
   ]
 }

@@ -17,6 +17,8 @@ export type PublicLicense = {
   lastAttempt: Date | null;
   lastResult: Row["lastResult"];
   lastOk: Date | null;
+  /** Spec 1022: el nombre del cliente en into, del último latido aceptado. */
+  customerName: string | null;
   plan: { code: string; name: string } | null;
   account: "active" | "suspended" | null;
 };
@@ -27,6 +29,7 @@ export function toPublic(row: Row): PublicLicense {
     lastAttempt: row.lastAttemptAt,
     lastResult: row.lastResult,
     lastOk: row.lastOkAt,
+    customerName: row.customerName,
     plan: row.planCode && row.planName ? { code: row.planCode, name: row.planName } : null,
     account: row.customerStatus,
   };
@@ -80,6 +83,8 @@ export async function saveKey(organizationId: string, key: string): Promise<void
     lastOkAt: null,
     planCode: null,
     planName: null,
+    customerName: null,
+    product: null,
     customerStatus: null,
     nextHeartbeatSeconds: null,
     updatedAt: now,
@@ -105,6 +110,8 @@ export async function noteResult(organizationId: string, result: ResultHeartbeat
         lastOkAt: now,
         planCode: result.response.plan.code,
         planName: result.response.plan.name,
+        customerName: result.response.customer.name,
+        product: result.response.product ?? null,
         customerStatus: result.response.customer.status,
         nextHeartbeatSeconds: result.response.next_heartbeat_seconds ?? null,
         updatedAt: now,

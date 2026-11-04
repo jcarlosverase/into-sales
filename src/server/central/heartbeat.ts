@@ -1,6 +1,7 @@
 import { APP_VERSION, resolveCommit } from "@/lib/version";
 import { heartbeatChecks } from "@/server/central/checks";
 import {
+  PRODUCT,
   sendHeartbeat,
   nextInterval,
   type BodyHeartbeat,
@@ -23,6 +24,7 @@ const STARTUP = new Date();
 export async function buildBody(organizationId: string): Promise<BodyHeartbeat> {
   const { commit } = resolveCommit();
   return {
+    product: PRODUCT,
     app_version: APP_VERSION,
     ...(commit ? { app_commit: commit } : {}),
     app_started_at: STARTUP.toISOString(),

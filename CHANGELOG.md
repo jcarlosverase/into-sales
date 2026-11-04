@@ -7,6 +7,10 @@ imagen `ghcr.io/kevinrivm/vocero-crm:X.Y.Z`.
 
 ## Sin publicar — IntoSales
 
+- **Ajustes → Plan como en IntoCredit** (spec 1022): muestra el cliente en
+  into, un aviso claro con cada resultado y «Comprobar ahora». El latido dice
+  que es IntoSales: una llave de otro producto de into se rechaza y la pantalla
+  lo explica. La migración `0026` se aplica sola al arrancar.
 - **Sistema de diseño into** (spec 1021): colores, botones, avisos, tablas,
   logotipo y pantalla de entrada vienen del paquete compartido con
   into-central (en `vendor/`). El CRM se ve igual y el white-label no cambia.

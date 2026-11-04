@@ -47,6 +47,7 @@ producto** — y saberlo antes de leerla ahorra una confusión.
 | `1019-brand-2026` | Ligero | spec (manual de marca into 2026: azul `#0070E0` y `#3D9BFF` en oscuro, texto terciario `#5F6E8A`, isotipo nuevo en SVG, favicon plano e íconos regenerados) |
 | `1020-brand-voice` | Ligero | spec (tono del manual 2026: «Embudo de ventas» en vez de «Pipeline» en la interfaz y el lema «Vende más por WhatsApp.» en la entrada de IntoSales) |
 | `1021-design-system` | Ligero | spec (adoptar el sistema de diseño into: preset de Tailwind, componentes `ui/` reexportados, `Notice`, `Table`, logotipo, tema y pantalla de entrada compartidos con into-central; mismo aspecto y mismo white-label) |
+| `1022-plan-like-credit` | Ligero | spec (Ajustes → Plan igual que en IntoCredit: `LicenseStatus` del sistema de diseño, cliente y «Comprobar ahora», y el latido con `product`) |
 | `031-ai-after-hours` | Ciclo completo | spec, plan, tasks («Cuándo responde la IA»: siempre o solo fuera del horario de atención del equipo, con su horario semanal y zona; el Laboratorio lo ignora; migración aditiva `0022`) |
 | `030-import-contacts` | Ciclo completo | spec, plan, tasks (Contactos → «Importar» desde `.xlsx` o CSV con vista previa, código de país, sin duplicar ni pisar, leads por turno; sin migración ni dependencias nuevas) |
 | `029-who-to-call-today` | Ciclo completo | spec, plan, tasks (pantalla «Hoy»: seguimientos vencidos, de hoy y leads sin primer contacto, por vendedor; próximo contacto en el cajón del trato; migración aditiva `0021`) |

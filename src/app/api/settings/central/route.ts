@@ -52,3 +52,11 @@ export const DELETE = withAuth(async (session) => {
   await removeKey(session.organizationId);
   return Response.json(await view(session.organizationId));
 });
+
+/** Spec 1022: «Comprobar ahora», un latido en este momento (como IntoCredit). */
+export const POST = withAuth(async (session) => {
+  if (!readConfigCentral().active) return centralDisabledResponse();
+  if (!canConfigure(session.role)) return apiError(403, "forbidden", "Solo quien configura el negocio");
+  await beatNow(session.organizationId);
+  return Response.json(await view(session.organizationId));
+});

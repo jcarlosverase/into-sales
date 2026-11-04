@@ -1313,6 +1313,8 @@ export const CENTRAL_RESULTS = [
   "limite",
   "rechazado",
   "sin_respuesta",
+  // Spec 1022: el central respondió 403: la llave es de otro producto de into.
+  "otro_producto",
 ] as const;
 export type CentralResult = (typeof CENTRAL_RESULTS)[number];
 
@@ -1339,6 +1341,9 @@ export const centralLicense = pgTable(
     lastOkAt: timestamp("last_ok_at", { withTimezone: true }),
     planCode: text("plan_code"),
     planName: text("plan_name"),
+    /** Spec 1022: el nombre del cliente en into y el producto de la licencia, del último latido aceptado. */
+    customerName: text("customer_name"),
+    product: text("product"),
     customerStatus: text("customer_status", { enum: ["active", "suspended"] }),
     /** Lo que pidió el central, sin acotar; el temporizador lo acota. */
     nextHeartbeatSeconds: integer("next_heartbeat_seconds"),
@@ -1349,7 +1354,7 @@ export const centralLicense = pgTable(
     uniqueIndex("central_license_org_uq").on(t.organizationId),
     check(
       "central_license_last_result_check",
-      sql`${t.lastResult} is null or ${t.lastResult} in ('ok', 'llave_invalida', 'limite', 'rechazado', 'sin_respuesta')`
+      sql`${t.lastResult} is null or ${t.lastResult} in ('ok', 'llave_invalida', 'limite', 'rechazado', 'sin_respuesta', 'otro_producto')`
     ),
     check(
       "central_license_customer_status_check",
