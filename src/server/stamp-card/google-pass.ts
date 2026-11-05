@@ -11,7 +11,8 @@ import {
   type GoogleClassBody,
   type GoogleObjectBody,
 } from "@/server/central/wallet";
-import { staffCardUrl, type StampCard } from "./cards";
+import type { StampCard } from "./cards";
+import { staffCardUrl } from "./urls";
 import type { StampProgram } from "./program";
 
 /**
@@ -43,6 +44,18 @@ export function classSuffixOf(program: Pick<StampProgram, "id">): string {
   return program.id;
 }
 
+/**
+ * La forma de la clase. Cuando cambia (por ejemplo, el premio al frente), se
+ * sube en uno: la versión que va al central es `revisión × 1 000 000 + versión
+ * del programa`, así las clases ya creadas se actualizan aunque nadie edite
+ * el programa. El central no aplica una versión menor o igual a la que tiene.
+ */
+const CLASS_LAYOUT_REVISION = 1;
+
+export function googleClassVersion(program: Pick<StampProgram, "version">): number {
+  return CLASS_LAYOUT_REVISION * 1_000_000 + program.version;
+}
+
 export function buildGoogleClass(program: StampProgram): GoogleClassBody {
   const modules = [{ id: "reward", header: "Premio", body: program.reward }];
   if (program.terms) modules.push({ id: "terms", header: "Condiciones", body: program.terms });
@@ -51,6 +64,13 @@ export function buildGoogleClass(program: StampProgram): GoogleClassBody {
     programLogo: { sourceUri: { uri: logoImageUrl(program.color, program.version) } },
     hexBackgroundColor: program.color,
     textModulesData: modules,
+    // Google pone los módulos de texto debajo del QR; el premio va además al
+    // frente. Las condiciones, largas, quedan en el detalle (como en Apple).
+    classTemplateInfo: {
+      cardTemplateOverride: {
+        cardRowTemplateInfos: [{ oneItem: { item: { firstValue: { fields: [{ fieldPath: "class.textModulesData['reward']" }] } } } }],
+      },
+    },
   };
 }
 
@@ -70,9 +90,10 @@ export function buildGoogleObject(card: StampCard): GoogleObjectBody {
 const applied = globalThis as unknown as { __googleClassApplied?: Map<string, number> };
 export async function ensureGoogleClass(program: StampProgram): Promise<void> {
   applied.__googleClassApplied ??= new Map();
-  if ((applied.__googleClassApplied.get(program.id) ?? 0) >= program.version) return;
-  await putGoogleClass(program.organizationId, classSuffixOf(program), program.version, buildGoogleClass(program));
-  applied.__googleClassApplied.set(program.id, program.version);
+  const version = googleClassVersion(program);
+  if ((applied.__googleClassApplied.get(program.id) ?? 0) >= version) return;
+  await putGoogleClass(program.organizationId, classSuffixOf(program), version, buildGoogleClass(program));
+  applied.__googleClassApplied.set(program.id, version);
 }
 
 /**

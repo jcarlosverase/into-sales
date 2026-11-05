@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  walletPlatform,
   applyAdjust,
   applyRedeem,
   applyStamp,
@@ -157,5 +158,14 @@ describe("1023, H7 — contexto de la tarjeta para el agente", () => {
     expect(done).toMatch(/lleva 10 de 10/);
     expect(done).toMatch(/Ya la completó/);
     expect(done).toMatch(/en pausa/);
+  });
+});
+
+describe("botón de wallet según el celular", () => {
+  it("iPhone solo Apple, Android solo Google, computadora los dos", () => {
+    expect(walletPlatform("Mozilla/5.0 (iPhone; CPU iPhone OS 18_1 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148")).toBe("ios");
+    expect(walletPlatform("Mozilla/5.0 (Linux; Android 14; SM-A546E) AppleWebKit/537.36 Chrome/130.0 Mobile Safari/537.36")).toBe("android");
+    expect(walletPlatform("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 Safari/605.1.15")).toBe("other");
+    expect(walletPlatform(null)).toBe("other");
   });
 });

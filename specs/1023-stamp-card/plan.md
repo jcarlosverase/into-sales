@@ -119,3 +119,19 @@ Migración aditiva `0027_stamp_card` con las cuatro tablas de
   actualiza solo.
 - **El webhook de WhatsApp** debe seguir respondiendo rápido: `handleJoin`
   corre después de guardar el mensaje, igual que el turno.
+
+## Ajustes tras la prueba en celulares (2026-11-05)
+
+- **Franja de Apple**: iOS amplía la franja para llenar un área más alta y
+  recorta los lados, así que los círculos van en el 66 % central del ancho y
+  en filas: una hasta 5 sellos, dos hasta 12 y tres después.
+- **Condiciones**: en Apple van al reverso (⋯ → Detalles del pase) y en
+  Google, al detalle bajo el QR; son texto largo y no caben al frente.
+- **Premio al frente en Google**: la clase lleva `classTemplateInfo` con una
+  fila que lee `class.textModulesData['reward']` (el central 016 lo acepta
+  desde este cambio, solo con rutas a campos). La versión de la clase es
+  `revisión × 1 000 000 + versión del programa`, para que las clases ya
+  creadas se actualicen. **Se despliega primero el central**: uno viejo
+  rechaza el campo.
+- **Un botón por celular**: por el `User-Agent`, un iPhone solo ve Apple
+  Wallet y un Android solo Google Wallet; una computadora ve los dos.

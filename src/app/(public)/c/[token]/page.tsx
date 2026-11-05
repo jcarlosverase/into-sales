@@ -5,6 +5,7 @@ import { Wallet } from "lucide-react";
 import { BrandTile } from "@/components/brand-mark";
 import { StampCardFace } from "@/components/stamp-card/card-face";
 import { qrSvg } from "@/lib/qr";
+import { walletPlatform, type WalletPlatform } from "@/lib/stamp-card";
 import { loadPublicCard, type PublicCard } from "@/server/stamp-card/public";
 
 export const dynamic = "force-dynamic";
@@ -25,7 +26,8 @@ export const metadata: Metadata = {
  */
 export default async function PublicStampCardPage({ params }: Props) {
   const { token } = await params;
-  const result = await loadPublicCard(token, await headers());
+  const requestHeaders = await headers();
+  const result = await loadPublicCard(token, requestHeaders);
   if (result.kind === "not_found") notFound();
   if (result.kind === "rate_limited") {
     return (
@@ -47,7 +49,7 @@ export default async function PublicStampCardPage({ params }: Props) {
         logo={<BrandTile branding={card.branding} className="h-10 w-10 rounded-xl bg-white text-lg" />}
       />
 
-      <WalletButtons token={token} wallet={card.wallet} />
+      <WalletButtons token={token} wallet={card.wallet} platform={walletPlatform(requestHeaders.get("user-agent"))} />
 
       <figure className="flex flex-col items-center gap-2 rounded-2xl border bg-card p-4">
         <div
@@ -76,13 +78,16 @@ export default async function PublicStampCardPage({ params }: Props) {
 /**
  * AC8 y AC10 — Los botones de wallet: solo con el central y un plan con
  * wallet. Con el central caído, se dice en vez de ofrecer algo que falla.
+ * En el celular, solo el de su sistema; en una computadora, los dos.
  */
-function WalletButtons({ token, wallet }: { token: string; wallet: PublicCard["wallet"] }) {
+function WalletButtons({ token, wallet, platform }: { token: string; wallet: PublicCard["wallet"]; platform: WalletPlatform }) {
+  const apple = platform === "android" ? "hidden" : wallet.apple;
+  const google = platform === "ios" ? "hidden" : wallet.google;
   const offers = [
-    wallet.apple === "available" ? { href: `/c/${token}/apple`, label: "Agregar a Apple Wallet" } : null,
-    wallet.google === "available" ? { href: `/c/${token}/google`, label: "Guardar en Google Wallet" } : null,
+    apple === "available" ? { href: `/c/${token}/apple`, label: "Agregar a Apple Wallet" } : null,
+    google === "available" ? { href: `/c/${token}/google`, label: "Guardar en Google Wallet" } : null,
   ].filter((o): o is { href: string; label: string } => o !== null);
-  const down = wallet.apple === "unavailable" || wallet.google === "unavailable";
+  const down = apple === "unavailable" || google === "unavailable";
   if (offers.length === 0 && !down) return null;
   return (
     <div className="space-y-2">

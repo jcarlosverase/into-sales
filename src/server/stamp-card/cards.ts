@@ -2,7 +2,6 @@ import { and, desc, eq } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db";
 import { newId } from "@/lib/db/ids";
 import { scoped } from "@/lib/db/tenant";
-import { getEnv } from "@/lib/env";
 import {
   applyAdjust,
   applyRedeem,
@@ -29,15 +28,7 @@ export class StampCardError extends Error {
   }
 }
 
-/** El enlace público de la tarjeta (D5). Se puede volver a dar: el token se deriva. */
-export function publicCardUrl(cardId: string): string {
-  return `${getEnv().APP_BASE_URL.replace(/\/+$/, "")}/c/${publicTokenFor(cardId)}`;
-}
-
-/** Lo que el QR de la tarjeta lleva: la pantalla del equipo para sellar (D6). */
-export function staffCardUrl(serial: string): string {
-  return `${getEnv().APP_BASE_URL.replace(/\/+$/, "")}/s/${serial}`;
-}
+export { publicCardUrl, staffCardUrl } from "./urls";
 
 type Tx = Parameters<Parameters<ReturnType<typeof getDb>["transaction"]>[0]>[0];
 

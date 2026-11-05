@@ -325,6 +325,17 @@ async function walletChecks({ card, link }) {
 
   await page.goto(link);
   ok("la tarjeta ofrece «Agregar a Apple Wallet» (AC8)", await page.getByText("Agregar a Apple Wallet").isVisible());
+  // En el celular, solo el botón de su sistema.
+  for (const [os, userAgent, apple] of [
+    ["iPhone", "Mozilla/5.0 (iPhone; CPU iPhone OS 18_1 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148", true],
+    ["Android", "Mozilla/5.0 (Linux; Android 14; SM-A546E) AppleWebKit/537.36 Chrome/130.0 Mobile Safari/537.36", false],
+  ]) {
+    const ctx = await browser.newContext({ viewport: { width: 360, height: 780 }, userAgent });
+    const p = await ctx.newPage();
+    await p.goto(link);
+    ok(`en ${os}, ${apple ? "ofrece" : "no ofrece"} Apple Wallet`, (await p.getByText("Agregar a Apple Wallet").count()) === (apple ? 1 : 0));
+    await ctx.close();
+  }
   // http:// en el e2e: Google no puede bajar el logo, así que no se ofrece.
   ok("sin HTTPS no ofrece Google Wallet", (await page.getByText("Guardar en Google Wallet").count()) === 0);
   if (process.env.E2E_SCREENSHOTS) await page.screenshot({ path: `${process.env.E2E_SCREENSHOTS}/stamp-card-public-wallet-360.png`, fullPage: true });
