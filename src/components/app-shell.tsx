@@ -8,6 +8,7 @@ import type { ThemePreference } from "@/lib/theme";
 import type { ResolvedCommit } from "@/lib/version";
 import { AppNav } from "@/components/app-nav";
 import { BrandLogo } from "@/components/brand-mark";
+import { SessionKeepAlive } from "@/components/session-keep-alive";
 
 /**
  * Cascarón de la app en dos modos:
@@ -70,6 +71,8 @@ export function AppShell({
 
   return (
     <div className="flex h-dvh overflow-hidden bg-background">
+      {/* Spec 1018: la sesión sigue viva mientras alguien trabaja. */}
+      <SessionKeepAlive />
       {navOpen && (
         <button
           aria-label="Cerrar el menú"

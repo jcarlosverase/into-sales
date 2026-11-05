@@ -6,6 +6,7 @@ import { Funnel } from "./funnel";
 import { Section, Subhead } from "./section";
 import { RateCard, StatCard } from "./stat-card";
 import { TimeBars } from "./time-bars";
+import { Notice } from "@into/designsystem";
 
 const plural = (n: number, one: string, several: string) => `${n} ${n === 1 ? one : several}`;
 
@@ -181,11 +182,11 @@ export function SalesSection({
               />
             </div>
             {data.pipeline.otherCurrency > 0 && (
-              <p className="mt-3 rounded-md border border-warning-soft bg-warning-tint px-3 py-2 text-xs text-warning-text">
+              <Notice tone="warning" icon={null} className="mt-3 rounded-md px-3 py-2 text-xs">
                 {plural(data.pipeline.otherCurrency, "trato", "tratos")} con monto en otra
                 moneda no {data.pipeline.otherCurrency === 1 ? "entra" : "entran"} en los
                 totales: mezclar monedas daría una suma falsa.
-              </p>
+              </Notice>
             )}
           </div>
 

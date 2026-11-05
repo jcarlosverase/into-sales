@@ -7,6 +7,8 @@ FROM node:22-alpine AS deps
 WORKDIR /app
 RUN corepack enable
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+# El sistema de diseño into llega como .tgz versionado (file:vendor/…).
+COPY vendor ./vendor
 RUN pnpm install --frozen-lockfile
 
 FROM node:22-alpine AS builder

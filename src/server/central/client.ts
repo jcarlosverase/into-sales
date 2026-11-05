@@ -14,7 +14,11 @@ export const CHECK_IDS = ["database", "media_dir", "whatsapp", "ai", "dispatch"]
 export type CheckId = (typeof CHECK_IDS)[number];
 export type CheckStatus = "ok" | "warn" | "fail" | "skip";
 
+/** Spec 1022: el producto que es esta instalación; el central rechaza una llave de otro (403). */
+export const PRODUCT = "into-sales";
+
 export type BodyHeartbeat = {
+  product: typeof PRODUCT;
   app_version: string;
   app_commit?: string;
   app_started_at: string;
@@ -24,6 +28,7 @@ export type BodyHeartbeat = {
 const responseSchema = z.object({
   customer: z.object({ name: z.string(), status: z.enum(["active", "suspended"]) }),
   plan: z.object({ code: z.string(), name: z.string() }),
+  product: z.string().optional(),
   next_heartbeat_seconds: z.number().int().positive().optional(),
 });
 export type ResponseCentral = z.infer<typeof responseSchema>;
@@ -55,11 +60,14 @@ export async function sendHeartbeat(input: {
     return { ok: false, result: "sin_respuesta", http: null };
   }
   if (res.status === 401) return { ok: false, result: "llave_invalida", http: 401 };
+  if (res.status === 403) return { ok: false, result: "otro_producto", http: 403 };
   if (res.status === 429) return { ok: false, result: "limite", http: 429 };
   if (res.status === 400) return { ok: false, result: "rechazado", http: 400 };
   if (!res.ok) return { ok: false, result: "sin_respuesta", http: res.status };
   const parsed = responseSchema.safeParse(await res.json().catch(() => null));
   if (!parsed.success) return { ok: false, result: "sin_respuesta", http: res.status };
+  // Un central que dice otro producto es tan malo como un 403.
+  if (parsed.data.product && parsed.data.product !== PRODUCT) return { ok: false, result: "otro_producto", http: res.status };
   return { ok: true, response: parsed.data };
 }
 

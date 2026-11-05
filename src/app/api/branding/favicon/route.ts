@@ -1,6 +1,6 @@
 import { readMediaFile } from "@/server/whatsapp/media";
 import { getBrandingContext } from "@/server/branding";
-import { BRAND_LOGO_SRC, isBrandName } from "@/lib/brand";
+import { BRAND_FAVICON_SRC, isBrandName } from "@/lib/brand";
 import { DEFAULT_BRANDING } from "@/lib/branding";
 import { FAVICON_ASSET, generatedFaviconSvg } from "@/lib/favicon";
 
@@ -55,7 +55,7 @@ export async function GET(req: Request) {
   // La marca IntoSales tiene su isotipo como archivo estático. Una URL vieja
   // de esta ruta (cacheada antes del logo oficial) se manda ahí.
   if (isBrandName(branding.name)) {
-    return Response.redirect(new URL(BRAND_LOGO_SRC, req.url), 307);
+    return Response.redirect(new URL(BRAND_FAVICON_SRC, req.url), 307);
   }
 
   return new Response(generatedFaviconSvg(branding), {

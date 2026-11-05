@@ -24,6 +24,7 @@ import {
 import { registerOriginAd } from "@/server/attribution/store";
 import { onLeadActivity } from "@/server/inbox/lead-activity";
 import { maybeRunAgentTurn } from "@/server/ai/trigger";
+import { handleJoinPhrase } from "@/server/stamp-card/join";
 
 /** Tipos de contenido soportados; el resto se ignora sin error. */
 const SUPPORTED_TYPES = new Set([
@@ -523,6 +524,19 @@ export async function ingestInboundMessage(input: {
     type: "conversation.updated",
     data: { conversation: { id: conversation.id } },
   });
+
+  // 1023, D4 — La frase de alta de la tarjeta de sellos se contesta sola y
+  // no llega ni al agente ni al cerebro externo.
+  if (
+    await handleJoinPhrase({
+      organizationId,
+      contact,
+      conversationId: conversation.id,
+      text: input.text,
+    })
+  ) {
+    return;
+  }
 
   await maybeRunAgentTurn(conversation.id, organizationId, message.id);
 }

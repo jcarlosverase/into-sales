@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { themeRules } from "@into/tokens";
 import { describe, expect, it } from "vitest";
 import {
   ACCENT_PRESETS,
@@ -26,19 +26,15 @@ function contrast(a: string, b: string): number {
   return (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05);
 }
 
-/** Variables de un bloque de globals.css, con el valor sin saltos de línea. */
-function variables(css: string, selector: string): Record<string, string> {
-  const start = css.indexOf(selector);
-  expect(start, `no está el bloque ${selector}`).toBeGreaterThanOrEqual(0);
-  const body = css
-    .slice(css.indexOf("{", start) + 1, css.indexOf("}", start))
-    .replace(/\/\*[\s\S]*?\*\//g, ""); // un comentario puede nombrar un token
-  return Object.fromEntries(
-    [...body.matchAll(/(--[\w-]+):\s*([^;]+);/g)].map((m) => [
-      m[1]!,
-      m[2]!.replace(/\s+/g, " ").trim(),
-    ])
-  );
+/**
+ * Variables de un tema del sistema de diseño (spec 1021: la marca vive en
+ * `@into/tokens`, ya no en globals.css). `selector` como en el CSS:
+ * `:root`, `:root[data-theme="dark"]` o `.nav-dark`.
+ */
+function variables(selector: string): Record<string, string> {
+  const rules = themeRules()[selector];
+  expect(rules, `no está el tema ${selector}`).toBeDefined();
+  return Object.fromEntries(Object.entries(rules!).filter(([k]) => k.startsWith("--")));
 }
 
 describe("white-label: acento", () => {
@@ -64,19 +60,34 @@ describe("white-label: acento", () => {
   });
 
   it("hex inválido cae al default (el azul into)", () => {
-    expect(resolveAccentSet("rojo")).toEqual(ACCENT_PRESETS["#0081c8"]!.set);
+    expect(resolveAccentSet("rojo")).toEqual(ACCENT_PRESETS["#0070e0"]!.set);
   });
 
-  it("el azul into es el default; el relleno va un paso más oscuro para pasar AA", () => {
-    expect(DEFAULT_BRANDING.accent).toBe("#0081c8");
-    expect(resolveAccentSet(DEFAULT_BRANDING.accent)).toEqual({
-      accent: "#0074b4",
-      hover: "#00669e",
-      soft: "#cce3f1",
-      tint: "#e8f3fa",
-      text: "#005a8c",
+  it("el azul into (manual 2026) es el default y pasa AA tal cual con texto blanco", () => {
+    expect(DEFAULT_BRANDING.accent).toBe("#0070e0");
+    const s = resolveAccentSet(DEFAULT_BRANDING.accent);
+    expect(s).toEqual({
+      accent: "#0070e0",
+      hover: "#0063c6",
+      soft: "#cce0f8",
+      tint: "#e6f0fc",
+      text: "#0056ad",
       fg: "#ffffff",
     });
+    expect(contrast(s.fg, s.accent)).toBeGreaterThanOrEqual(4.5);
+    expect(contrast(s.text, s.tint)).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it("spec 1019: en oscuro, el azul into es el del manual: #3D9BFF con tinta #0F1419", () => {
+    const s = resolveAccentSet(DEFAULT_BRANDING.accent, "dark");
+    expect(s.accent).toBe("#3d9bff");
+    expect(s.fg).toBe("#0f1419");
+    expect(contrast(s.fg, s.accent)).toBeGreaterThanOrEqual(4.5);
+    expect(contrast(s.text, s.tint)).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it("spec 1019: una marca guardada con el azul into de antes pasa al de ahora", () => {
+    expect(normalizeBranding({ accent: "#0081C8" }).accent).toBe("#0070e0");
   });
 });
 
@@ -110,7 +121,7 @@ describe("white-label: acento en tema oscuro", () => {
 
   it("hex inválido en oscuro también cae al acento por defecto", () => {
     expect(resolveAccentSet("rojo", "dark")).toEqual(
-      resolveAccentSet("#0081c8", "dark")
+      resolveAccentSet("#0070e0", "dark")
     );
   });
 
@@ -122,14 +133,13 @@ describe("white-label: acento en tema oscuro", () => {
     expect(css).toContain(resolveAccentSet("#3f5972", "dark").accent);
   });
 
-  it("el fondo de referencia del cálculo sigue al de globals.css", () => {
+  it("el fondo de referencia del cálculo sigue al de los tokens", () => {
     // DARK_BG y NAV_BG viven duplicados en branding.ts porque el cálculo de
     // contraste es JS y el token es CSS. Si alguien cambia un fondo y no el
     // otro, los acentos se calculan contra un fondo que ya no existe.
-    const css = readFileSync("src/app/globals.css", "utf8");
-    const dark = variables(css, ':root[data-theme="dark"] {');
+    const dark = variables(':root[data-theme="dark"]');
     expect(dark["--bg"]?.toLowerCase()).toBe(DARK_BG);
-    expect(variables(css, ".nav-dark {")["--bg"]?.toLowerCase()).toBe(NAV_BG);
+    expect(variables(".nav-dark")["--bg"]?.toLowerCase()).toBe(NAV_BG);
     // …y el cálculo de verdad los usa: el relleno se despega de cada uno.
     expect(contrast(resolveAccentSet("#12305a", "dark").accent, DARK_BG)).toBeGreaterThanOrEqual(3);
     expect(contrast(resolveNavAccentSet("#12305a").accent, NAV_BG)).toBeGreaterThanOrEqual(3.5);
@@ -147,15 +157,15 @@ describe("white-label: barra lateral bicolor (.nav-dark)", () => {
     expect(nav).not.toContain(resolveAccentSet("#3f5972", "light").accent);
   });
 
-  it("con el azul into, la barra lleva su receta fija", () => {
+  it("con el azul into, la barra lleva el azul de modo oscuro del manual (#3D9BFF)", () => {
     // El ítem activo del tema claro no cambia aunque el tema oscuro de la
     // página sí.
     expect(resolveNavAccentSet(DEFAULT_BRANDING.accent)).toEqual({
-      accent: "#1a8ece",
-      hover: "#3ea0d5",
-      soft: "#0f3556",
-      tint: "#0d223b",
-      text: "#5aaddb",
+      accent: "#3d9bff",
+      hover: "#6cb0ff",
+      soft: "#193963",
+      tint: "#13294a",
+      text: "#6cb0ff",
       fg: "#0f1419",
     });
   });
@@ -164,9 +174,8 @@ describe("white-label: barra lateral bicolor (.nav-dark)", () => {
     // Antes `.nav-dark` repetía el bloque oscuro y barra y página quedaban a
     // 1.04:1. Ahora la página va un escalón arriba; si alguien vuelve a
     // igualarlas, el bicolor desaparece en oscuro: aquí se cae.
-    const css = readFileSync("src/app/globals.css", "utf8");
-    const darkValue = variables(css, ':root[data-theme="dark"] {');
-    const nav = variables(css, ".nav-dark {");
+    const darkValue = variables(':root[data-theme="dark"]');
+    const nav = variables(".nav-dark");
     expect(Object.keys(nav)).toEqual(
       expect.arrayContaining(["--bg", "--bg-subtle", "--text", "--text-3", "--border"])
     );
@@ -180,9 +189,8 @@ describe("tema oscuro: las superficies se distinguen", () => {
   // iguales: bordes a 1.26:1 del fondo y chips del mismo color que su fila.
   // Se afirma sobre legibilidad, no sobre un hex: el que retoque el tema
   // oscuro puede mover los valores, no el piso.
-  const css = readFileSync("src/app/globals.css", "utf8");
-  const darkValue = variables(css, ':root[data-theme="dark"] {');
-  const light = variables(css, ":root {");
+  const light = variables(":root");
+  const darkValue = { ...light, ...variables(':root[data-theme="dark"]') };
   const tone = (name: string) => darkValue[name] ?? `falta ${name}`;
 
   it("los bordes separan las columnas: ≥ 1.6:1 contra el fondo", () => {
@@ -217,7 +225,7 @@ describe("white-label: normalización", () => {
   });
 
   it("acento inválido → default", () => {
-    expect(normalizeBranding({ accent: "azul" }).accent).toBe("#0081c8");
+    expect(normalizeBranding({ accent: "azul" }).accent).toBe("#0070e0");
     expect(normalizeBranding({ accent: "#3F6B66" }).accent).toBe("#3f6b66");
   });
 });

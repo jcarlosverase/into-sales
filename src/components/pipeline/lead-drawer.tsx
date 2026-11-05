@@ -1,5 +1,6 @@
 "use client";
 
+import { ContactStampCard } from "@/components/stamp-card/contact-stamp-card";
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { MessageSquareText, X } from "lucide-react";
@@ -317,6 +318,9 @@ export function LeadDrawer({
 
           {/* Qué se sabe */}
           <QualificationPanel ficha={qualification} onSave={saveQualification} />
+
+          {/* 1023 — La tarjeta de sellos (solo con la bandera y un programa). */}
+          <ContactStampCard contactId={contactId} className="border-t p-4" />
         </div>
       </aside>
     </>

@@ -1313,6 +1313,8 @@ export const CENTRAL_RESULTS = [
   "limite",
   "rechazado",
   "sin_respuesta",
+  // Spec 1022: el central respondió 403: la llave es de otro producto de into.
+  "otro_producto",
 ] as const;
 export type CentralResult = (typeof CENTRAL_RESULTS)[number];
 
@@ -1339,6 +1341,9 @@ export const centralLicense = pgTable(
     lastOkAt: timestamp("last_ok_at", { withTimezone: true }),
     planCode: text("plan_code"),
     planName: text("plan_name"),
+    /** Spec 1022: el nombre del cliente en into y el producto de la licencia, del último latido aceptado. */
+    customerName: text("customer_name"),
+    product: text("product"),
     customerStatus: text("customer_status", { enum: ["active", "suspended"] }),
     /** Lo que pidió el central, sin acotar; el temporizador lo acota. */
     nextHeartbeatSeconds: integer("next_heartbeat_seconds"),
@@ -1349,11 +1354,158 @@ export const centralLicense = pgTable(
     uniqueIndex("central_license_org_uq").on(t.organizationId),
     check(
       "central_license_last_result_check",
-      sql`${t.lastResult} is null or ${t.lastResult} in ('ok', 'llave_invalida', 'limite', 'rechazado', 'sin_respuesta')`
+      sql`${t.lastResult} is null or ${t.lastResult} in ('ok', 'llave_invalida', 'limite', 'rechazado', 'sin_respuesta', 'otro_producto')`
     ),
     check(
       "central_license_customer_status_check",
       sql`${t.customerStatus} is null or ${t.customerStatus} in ('active', 'suspended')`
     ),
+  ]
+);
+
+/* ============================================================
+ * 1023 — Tarjeta de sellos (bandera STAMP_CARD)
+ * ============================================================ */
+
+/**
+ * El programa de fidelización de la instancia. Uno vivo por organización en
+ * esta versión (D3): el índice único parcial lo garantiza.
+ */
+export const stampProgram = pgTable(
+  "stamp_program",
+  {
+    id: text("id").primaryKey(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    stampsRequired: integer("stamps_required").notNull(),
+    reward: text("reward").notNull(),
+    terms: text("terms"),
+    color: text("color").notNull(),
+    /** 0 = sin freno (D7). */
+    minHoursBetweenStamps: integer("min_hours_between_stamps").notNull().default(0),
+    joinPhrase: text("join_phrase").notNull(),
+    joinReply: text("join_reply").notNull(),
+    notifyOnComplete: boolean("notify_on_complete").notNull().default(false),
+    completeTemplateId: text("complete_template_id").references(() => template.id, {
+      onDelete: "set null",
+    }),
+    status: text("status", { enum: ["active", "paused", "archived"] })
+      .notNull()
+      .default("active"),
+    /** Sube con cada cambio: la clase de Google se actualiza por versión. */
+    version: integer("version").notNull().default(1),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("stamp_program_org_live_uq")
+      .on(t.organizationId)
+      .where(sql`${t.status} <> 'archived'`),
+    check(
+      "stamp_program_status_check",
+      sql`${t.status} in ('active', 'paused', 'archived')`
+    ),
+    check(
+      "stamp_program_stamps_required_check",
+      sql`${t.stampsRequired} between 2 and 30`
+    ),
+  ]
+);
+
+/** La tarjeta de un contacto en un programa (D2). */
+export const stampCard = pgTable(
+  "stamp_card",
+  {
+    id: text("id").primaryKey(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    programId: text("program_id")
+      .notNull()
+      .references(() => stampProgram.id, { onDelete: "cascade" }),
+    contactId: text("contact_id")
+      .notNull()
+      .references(() => contact.id, { onDelete: "cascade" }),
+    /** Va en el QR (`/s/<serial>`); será el serialNumber de Apple y el sufijo de Google. */
+    serial: text("serial").notNull(),
+    /** SHA-256 del token de `/c/<token>`; el token en claro nunca se guarda (D5). */
+    publicTokenHash: text("public_token_hash").notNull(),
+    /** SHA-256 del authenticationToken del pase de Apple (corte 2). */
+    appleAuthTokenHash: text("apple_auth_token_hash").notNull(),
+    stamps: integer("stamps").notNull().default(0),
+    /**
+     * Sellos que completan ESTE ciclo. Se copia del programa al crear la
+     * tarjeta y en cada canje: cambiar el programa no toca un ciclo en curso (D3).
+     */
+    stampsRequired: integer("stamps_required").notNull(),
+    rewardsRedeemed: integer("rewards_redeemed").notNull().default(0),
+    lastStampAt: timestamp("last_stamp_at", { withTimezone: true }),
+    passVersion: integer("pass_version").notNull().default(1),
+    googleObjectSaved: boolean("google_object_saved").notNull().default(false),
+    walletSyncPending: boolean("wallet_sync_pending").notNull().default(false),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("stamp_card_program_contact_uq").on(t.programId, t.contactId),
+    uniqueIndex("stamp_card_serial_uq").on(t.serial),
+    uniqueIndex("stamp_card_public_token_uq").on(t.publicTokenHash),
+    index("stamp_card_org_contact_idx").on(t.organizationId, t.contactId),
+    index("stamp_card_sync_pending_idx")
+      .on(t.walletSyncPending)
+      .where(sql`${t.walletSyncPending} = true`),
+    check("stamp_card_stamps_check", sql`${t.stamps} >= 0`),
+  ]
+);
+
+/** La bitácora de la tarjeta (D7). Solo se inserta. */
+export const stampEvent = pgTable(
+  "stamp_event",
+  {
+    id: text("id").primaryKey(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    cardId: text("card_id")
+      .notNull()
+      .references(() => stampCard.id, { onDelete: "cascade" }),
+    kind: text("kind", { enum: ["join", "stamp", "redeem", "adjust"] }).notNull(),
+    delta: integer("delta").notNull(),
+    stampsAfter: integer("stamps_after").notNull(),
+    source: text("source", { enum: ["whatsapp", "panel", "qr"] }).notNull(),
+    userId: text("user_id").references(() => user.id, { onDelete: "set null" }),
+    /** Se confirmó saltando el mínimo de horas entre sellos. */
+    forced: boolean("forced").notNull().default(false),
+    idempotencyKey: text("idempotency_key").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("stamp_event_card_idempotency_uq").on(t.cardId, t.idempotencyKey),
+    index("stamp_event_org_created_idx").on(t.organizationId, t.createdAt),
+    check("stamp_event_kind_check", sql`${t.kind} in ('join', 'stamp', 'redeem', 'adjust')`),
+    check("stamp_event_source_check", sql`${t.source} in ('whatsapp', 'panel', 'qr')`),
+  ]
+);
+
+/** Dispositivos que registraron un pase de Apple Wallet (servicio web, corte 2). */
+export const applePassRegistration = pgTable(
+  "apple_pass_registration",
+  {
+    id: text("id").primaryKey(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    cardId: text("card_id")
+      .notNull()
+      .references(() => stampCard.id, { onDelete: "cascade" }),
+    deviceLibraryId: text("device_library_id").notNull(),
+    pushToken: text("push_token").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("apple_pass_registration_device_card_uq").on(t.deviceLibraryId, t.cardId),
+    index("apple_pass_registration_card_idx").on(t.cardId),
   ]
 );

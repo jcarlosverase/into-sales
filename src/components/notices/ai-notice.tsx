@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { Sparkles } from "lucide-react";
+import { Notice } from "@into/designsystem";
 import type { NoticeIa } from "@/server/ai/notice";
 
 /**
- * La franja que dice que el agente no puede contestar (issue #85).
+ * La franja que dice que el agente no puede contestar (issue #85). Spec 1021:
+ * es el `Notice` en franja del sistema de diseño.
  *
  * Sin descartar. Un banner que se cierra es un banner que se cierra una vez y
  * nunca se vuelve a ver, y esto no es una novedad: es que el producto no está
@@ -12,19 +14,15 @@ import type { NoticeIa } from "@/server/ai/notice";
 export function NoticeIaBanner({ notice: notice }: { notice: NoticeIa }) {
   if (!notice) return null;
   return (
-    <div
-      role="status"
+    <Notice
+      layout="banner"
+      tone="warning"
+      icon={Sparkles}
       data-aviso-ia
-      className="flex flex-wrap items-center gap-x-3 gap-y-1.5 border-b border-warning-soft bg-warning-tint px-4 py-2.5 text-[13px] text-warning-text"
+      className="flex-wrap items-center gap-x-3 gap-y-1.5"
+      action={<Link href="/settings/ai">{notice.action} →</Link>}
     >
-      <Sparkles className="h-4 w-4 shrink-0" strokeWidth={1.7} />
-      <span className="min-w-0 flex-1">{notice.message}</span>
-      <Link
-        href="/settings/ai"
-        className="shrink-0 font-medium underline underline-offset-2"
-      >
-        {notice.action} →
-      </Link>
-    </div>
+      {notice.message}
+    </Notice>
   );
 }

@@ -1,17 +1,20 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Badge } from "@/components/ui/badge";
+import { LicenseStatus, Notice } from "@into/designsystem";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ACCOUNT_LABEL, FORMAT_KEY, resultText, type ResultCentral } from "@/lib/central";
+import { PasswordInput } from "@/components/ui/password-input";
+import { FORMAT_KEY, LICENSE_RESULT, type ResultCentral } from "@/lib/central";
 
 /**
  * 028 — Ajustes → Plan: la llave de licencia de into y el plan que devuelve
  * el servicio central. La llave se manda una vez y no vuelve: la pantalla
  * solo muestra sus últimos 4. Nada de esto afecta al resto del CRM.
+ *
+ * Spec 1022: la misma pantalla de IntoCredit (su spec 003): el estado es
+ * `LicenseStatus` del sistema de diseño y debajo van «Guardar y comprobar»,
+ * «Comprobar ahora» y «Quitar la llave».
  */
 
 type License = {
@@ -19,6 +22,7 @@ type License = {
   lastAttempt: string | null;
   lastResult: ResultCentral | null;
   lastOk: string | null;
+  customerName: string | null;
   plan: { code: string; name: string } | null;
   account: "active" | "suspended" | null;
 };
@@ -27,12 +31,22 @@ type View = { central: string | null; license: License | null };
 
 type Message = { kind: "ok" | "error"; text: string };
 
-const date = new Intl.DateTimeFormat("es-PE", { dateStyle: "medium", timeStyle: "short" });
+// Como IntoCredit: «04/11/2026 08:00», en hora de Lima.
+const date = new Intl.DateTimeFormat("es-PE", {
+  timeZone: "America/Lima",
+  day: "2-digit",
+  month: "2-digit",
+  year: "numeric",
+  hour: "2-digit",
+  minute: "2-digit",
+  hour12: false,
+});
+const when = (iso: string | null) => (iso ? date.format(new Date(iso)).replace(",", "") : null);
 
 export function CentralClient() {
   const [view, setView] = useState<View | null>(null);
   const [key, setKey] = useState("");
-  const [busy, setBusy] = useState<"guardar" | "quitar" | null>(null);
+  const [busy, setBusy] = useState<"save" | "check" | "remove" | null>(null);
   const [message, setMessage] = useState<Message | null>(null);
 
   const load = useCallback(async () => {
@@ -44,145 +58,125 @@ export function CentralClient() {
     void load();
   }, [load]);
 
+  async function call(method: "PUT" | "POST" | "DELETE", body?: unknown): Promise<boolean> {
+    const res = await fetch("/api/settings/central", {
+      method,
+      ...(body ? { headers: { "content-type": "application/json" }, body: JSON.stringify(body) } : {}),
+    }).catch(() => null);
+    if (!res?.ok) return false;
+    setView((await res.json()) as View);
+    return true;
+  }
+
   async function save(e: React.FormEvent) {
     e.preventDefault();
     setMessage(null);
     const clean = key.trim();
     if (!FORMAT_KEY.test(clean)) {
-      setMessage({ kind: "error", text: "La llave empieza con into_live_ y sigue con 32 letras y números." });
+      setMessage({ kind: "error", text: "La llave empieza con into_live_ y lleva 32 letras y números. Cópiala completa." });
       return;
     }
-    setBusy("guardar");
-    const res = await fetch("/api/settings/central", {
-      method: "PUT",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ key: clean }),
-    }).catch(() => null);
+    setBusy("save");
+    const ok = await call("PUT", { key: clean });
     setBusy(null);
-    if (!res?.ok) {
-      setMessage({ kind: "error", text: "No se pudo guardar la llave. Inténtalo de nuevo." });
+    if (!ok) {
+      // Un 500 suele ser la base sin migrar o el servidor caído: Salud dice cuál.
+      setMessage({ kind: "error", text: "No se pudo guardar la llave por un error del servidor. Revisa Ajustes → Salud e inténtalo de nuevo." });
       return;
     }
     setKey("");
-    setView((await res.json()) as View);
     setMessage({ kind: "ok", text: "Llave guardada." });
+  }
+
+  async function check() {
+    setMessage(null);
+    setBusy("check");
+    const ok = await call("POST");
+    setBusy(null);
+    setMessage(ok ? { kind: "ok", text: "Latido enviado." } : { kind: "error", text: "No se pudo comprobar. Inténtalo de nuevo." });
   }
 
   async function remove() {
     setMessage(null);
-    setBusy("quitar");
-    const res = await fetch("/api/settings/central", { method: "DELETE" }).catch(() => null);
+    setBusy("remove");
+    const ok = await call("DELETE");
     setBusy(null);
-    if (res?.ok) {
-      setView((await res.json()) as View);
-      setMessage({ kind: "ok", text: "Llave quitada: el CRM dejó de latir al central." });
-    }
+    if (ok) setMessage({ kind: "ok", text: "Llave quitada: IntoSales deja de latir al central." });
   }
 
   const license = view?.license ?? null;
-  const result = resultText(license?.lastResult ?? null);
 
   return (
-    <div className="max-w-2xl space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>Plan</CardTitle>
-          <CardDescription>
-            Tu plan con into. Con la llave de licencia, este CRM le avisa a into cada 15 minutos que
-            sigue en pie y si algo falla (sin datos de tus clientes), y aquí ves el plan que tienes.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
+    <div className="max-w-3xl space-y-4">
+      <div className="mb-4">
+        <h3 className="text-base font-semibold">Plan</h3>
+        <p className="text-sm text-muted-foreground">
+          La licencia de into de esta instalación y cómo salió el último latido al central.
+        </p>
+      </div>
+      {message ? (
+        <Notice tone={message.kind === "error" ? "danger" : "success"} role={message.kind === "error" ? "alert" : "status"}>
+          {message.text}
+        </Notice>
+      ) : null}
+      <section className="rounded-lg border border-border-strong bg-card shadow-sm">
+        <header className="flex flex-wrap items-center justify-between gap-2 border-b px-4 py-3 sm:px-5">
+          <h3 className="text-[15px] font-bold tracking-tight">Plan y licencia de into</h3>
+        </header>
+        <div className="space-y-4 p-4 sm:p-5" data-testid="central-license">
           {view === null ? (
             <p className="text-sm text-muted-foreground">Cargando…</p>
-          ) : license ? (
-            <div className="space-y-3 rounded-md border p-3 text-sm" data-testid="central-estado">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="font-semibold" data-testid="central-plan">
-                  {license.plan ? license.plan.name : "Plan sin confirmar"}
-                </span>
-                {license.plan && <code className="font-mono text-xs text-muted-foreground">{license.plan.code}</code>}
-                {license.account && (
-                  <Badge variant={license.account === "active" ? "success" : "warning"} data-testid="central-cuenta">
-                    {ACCOUNT_LABEL[license.account]}
-                  </Badge>
-                )}
-              </div>
-              <dl className="grid gap-x-4 gap-y-1 text-muted-foreground sm:grid-cols-[auto_1fr]">
-                <dt>Llave</dt>
-                <dd className="font-mono" data-testid="central-llave">
-                  ••••{license.keyLast4}
-                </dd>
-                <dt>Último latido</dt>
-                <dd>{license.lastAttempt ? date.format(new Date(license.lastAttempt)) : "Todavía ninguno"}</dd>
-                {view.central && (
-                  <>
-                    <dt>Central</dt>
-                    <dd className="break-all">{view.central}</dd>
-                  </>
-                )}
-              </dl>
-              {result && (
-                <p
-                  data-testid="central-resultado"
-                  className={
-                    result.tone === "ok"
-                      ? "text-success-text"
-                      : result.tone === "error"
-                        ? "text-danger-text"
-                        : "text-warning-text"
-                  }
-                >
-                  {result.text}
-                </p>
-              )}
-            </div>
           ) : (
-            <p className="text-sm text-muted-foreground">
-              Todavía no hay llave: pega la que te dio into. Sin ella, el CRM funciona igual y no le
-              avisa nada al central.
-            </p>
+            <LicenseStatus
+              product="IntoSales"
+              license={
+                license
+                  ? {
+                      keyLast4: license.keyLast4,
+                      customerName: license.customerName,
+                      plan: license.plan,
+                      account: license.account,
+                      lastResult: license.lastResult ? LICENSE_RESULT[license.lastResult] : null,
+                      lastAttemptAt: when(license.lastAttempt),
+                      lastOkAt: when(license.lastOk),
+                    }
+                  : null
+              }
+              emptyText="Pega la llave de licencia que te dio into. IntoSales avisa al central que está funcionando cada 15 minutos; nunca le manda datos de tus clientes ni de tus conversaciones."
+            />
           )}
 
-          <form onSubmit={save} className="space-y-3">
+          <form onSubmit={save} className="grid gap-3 sm:grid-cols-[1fr,auto] sm:items-end">
             <div className="space-y-1.5">
-              <Label htmlFor="central-llave">{license ? "Reemplazar la llave" : "Llave de licencia"}</Label>
-              <Input
-                id="central-llave"
-                type="password"
+              <Label htmlFor="license-key">{license ? "Cambiar la llave" : "Llave de licencia"}</Label>
+              <PasswordInput
+                id="license-key"
+                name="key"
+                required
                 autoComplete="off"
+                spellCheck={false}
+                placeholder="into_live_…"
                 value={key}
                 onChange={(e) => setKey(e.target.value)}
-                placeholder={license ? `•••• ${license.keyLast4}` : "into_live_…"}
               />
-              <p className="text-xs text-muted-foreground">Se guarda cifrada en tu servidor. No la compartas por chat.</p>
             </div>
-            {message && (
-              <p
-                role={message.kind === "error" ? "alert" : "status"}
-                className={message.kind === "error" ? "text-sm text-danger-text" : "text-sm text-success-text"}
-              >
-                {message.text}
-              </p>
-            )}
-            <div className="flex flex-wrap items-center gap-2">
-              <Button type="submit" disabled={busy !== null || key.trim() === ""}>
-                {busy === "guardar" ? "Guardando…" : "Guardar y probar"}
-              </Button>
-              {license && (
-                <button
-                  type="button"
-                  onClick={remove}
-                  disabled={busy !== null}
-                  className="text-sm text-text-3 hover:text-foreground"
-                >
-                  Quitar
-                </button>
-              )}
-            </div>
+            <Button type="submit" disabled={busy !== null || key.trim() === ""}>
+              {busy === "save" ? "Comprobando…" : "Guardar y comprobar"}
+            </Button>
           </form>
-        </CardContent>
-      </Card>
+
+          {license ? (
+            <div className="flex flex-wrap gap-2">
+              <Button type="button" variant="outline" onClick={check} disabled={busy !== null}>
+                {busy === "check" ? "Comprobando…" : "Comprobar ahora"}
+              </Button>
+              <Button type="button" variant="ghost" className="text-danger-text" onClick={remove} disabled={busy !== null}>
+                {busy === "remove" ? "Quitando…" : "Quitar la llave"}
+              </Button>
+            </div>
+          ) : null}
+        </div>
+      </section>
     </div>
   );
 }

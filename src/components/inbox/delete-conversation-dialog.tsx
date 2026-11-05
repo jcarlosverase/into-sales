@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Notice } from "@into/designsystem";
 
 /**
  * 026 — Confirmación de borrado. Es irreversible, así que dice con todas sus
@@ -75,7 +76,7 @@ export function DeleteConversationDialog({
             <span className="font-medium">Borrar también el contacto y su lead</span>
             <span className="mt-0.5 block text-xs text-text-3">
               {alsoContact
-                ? "Se van además sus notas, su etapa en el pipeline y sus citas pasadas. Deja de contar en Resultados."
+                ? "Se van además sus notas, su etapa en el embudo y sus citas pasadas. Deja de contar en Resultados."
                 : "Sin marcar, el contacto conserva sus notas, su etapa y sus citas."}
             </span>
           </span>
@@ -84,12 +85,9 @@ export function DeleteConversationDialog({
         <p className="mt-3 text-xs font-medium text-danger-text">No se puede deshacer.</p>
 
         {error && (
-          <p
-            role="alert"
-            className="mt-3 rounded-md border border-danger-soft bg-danger-tint p-2.5 text-xs text-danger-text"
-          >
+          <Notice tone="danger" icon={null} className="mt-3 rounded-md p-2.5 text-xs">
             {error}
-          </p>
+          </Notice>
         )}
 
         <div className="mt-4 flex justify-end gap-2">

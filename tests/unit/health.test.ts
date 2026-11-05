@@ -51,6 +51,7 @@ describe("features: las banderas de despliegue", () => {
       channels: ["whatsapp"],
       atribucion: false,
       central: false,
+      stampCard: false,
     });
   });
 
@@ -62,12 +63,14 @@ describe("features: las banderas de despliegue", () => {
         CHANNELS: "messenger, Instagram",
         ATRIBUCION: "1",
         INTO_CENTRAL_URL: "https://api.into.center",
+        STAMP_CARD: "on",
       })
     ).toEqual({
       agenda: true,
       channels: ["whatsapp", "instagram", "messenger"],
       atribucion: true,
       central: true,
+      stampCard: true,
     });
   });
 
@@ -75,8 +78,8 @@ describe("features: las banderas de despliegue", () => {
     // Mismos parsers que usan las rutas para responder 404: si aquí dijera
     // `true` y la agenda respondiera 404, el health mentiría.
     expect(
-      healthFeatures({ AGENDA: "onn", CHANNELS: "telegram", ATRIBUCION: "off", INTO_CENTRAL_URL: "api.into.center" })
-    ).toEqual({ agenda: false, channels: ["whatsapp"], atribucion: false, central: false });
+      healthFeatures({ AGENDA: "onn", CHANNELS: "telegram", ATRIBUCION: "off", INTO_CENTRAL_URL: "api.into.center", STAMP_CARD: "onn" })
+    ).toEqual({ agenda: false, channels: ["whatsapp"], atribucion: false, central: false, stampCard: false });
   });
 });
 

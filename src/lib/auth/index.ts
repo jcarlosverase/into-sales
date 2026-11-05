@@ -12,6 +12,7 @@ import {
   resolveActiveOrganizationId,
 } from "@/server/auth/on-signup";
 import { isPublicSignupAllowed } from "@/server/auth/registration";
+import { SESSION_EXPIRES_IN_SECONDS, SESSION_REFRESH_SECONDS } from "@/lib/auth/session-policy";
 
 /**
  * Contexto interno del proceso: permite que el alta de cuentas de equipo
@@ -59,6 +60,13 @@ function createAuth() {
         invitation: schema.invitation,
       },
     }),
+    // Spec 1018: la sesión vence tras 12 h sin uso. Mientras alguien trabaja,
+    // `SessionKeepAlive` la renueva (como mucho cada 10 min) y cada
+    // renovación vuelve a contar 12 h en la base y en la cookie.
+    session: {
+      expiresIn: SESSION_EXPIRES_IN_SECONDS,
+      updateAge: SESSION_REFRESH_SECONDS,
+    },
     emailAndPassword: {
       enabled: true,
       requireEmailVerification: false,

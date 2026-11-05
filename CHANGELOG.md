@@ -7,6 +7,24 @@ imagen `ghcr.io/kevinrivm/vocero-crm:X.Y.Z`.
 
 ## Sin publicar — IntoSales
 
+- **Ajustes → Plan como en IntoCredit** (spec 1022): muestra el cliente en
+  into, un aviso claro con cada resultado y «Comprobar ahora». El latido dice
+  que es IntoSales: una llave de otro producto de into se rechaza y la pantalla
+  lo explica. La migración `0026` se aplica sola al arrancar.
+- **Sistema de diseño into** (spec 1021): colores, botones, avisos, tablas,
+  logotipo y pantalla de entrada vienen del paquete compartido con
+  into-central (en `vendor/`). El CRM se ve igual y el white-label no cambia.
+- **«Pipeline» ahora se llama «Embudo»** (spec 1020), como pide el manual de
+  marca. La dirección `/pipeline` no cambia. La pantalla de entrada de
+  IntoSales lleva su lema, «Vende más por WhatsApp.».
+- **Marca into 2026** (spec 1019): el azul pasa a `#0070E0` (`#3D9BFF` en modo
+  oscuro), el texto gris claro se lee mejor y el isotipo es el nuevo, en
+  vector, con favicon plano. Si tu instancia usaba el azul into de antes, cambia sola;
+  un color propio elegido en Ajustes → Marca se respeta. Si instalaste el CRM
+  en el celular, bórralo y agrégalo de nuevo para ver el ícono nuevo.
+- **La sesión se cierra tras 12 horas sin uso** (spec 1018). Antes duraba 7
+  días y se renovaba sola con cualquier uso, así que en la práctica no se
+  cerraba nunca. Mientras alguien trabaja, no se corta.
 - **«Conectar con Instagram»** (spec 1017): con `INSTAGRAM_APP_ID` e
   `INSTAGRAM_APP_SECRET`, Ajustes → Instagram conecta la cuenta del negocio
   con el inicio de sesión de Instagram, sin pegar tokens, y la suscribe al

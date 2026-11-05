@@ -21,7 +21,7 @@ describe("barra lateral agrupada", () => {
     expect(groups.map((g) => g.title)).toEqual(["Trabajo", "Agente", undefined]);
     expect(labels(groups)).toEqual([
       // 029 — «Hoy» va primero: es lo que abre un vendedor al empezar el día.
-      ["Hoy", "Bandeja", "Pipeline", "Contactos"],
+      ["Hoy", "Bandeja", "Embudo", "Contactos"],
       ["Agente", "Laboratorio"],
       ["Resultados"],
     ]);
@@ -32,7 +32,7 @@ describe("barra lateral agrupada", () => {
     expect(work!.items.map((i) => i.label)).toEqual([
       "Hoy",
       "Bandeja",
-      "Pipeline",
+      "Embudo",
       "Contactos",
       "Citas",
     ]);

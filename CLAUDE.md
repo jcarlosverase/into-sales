@@ -12,8 +12,11 @@ el caso típico: una agencia adaptando IntoSales para un cliente.
 
 **Next.js 15 (App Router) + React 19** en monolito · TypeScript estricto
 (`strict` + `noUncheckedIndexedAccess`) · Tailwind CSS (sistema de diseño de la
-marca IntoSales de into: tokens en `src/app/globals.css`, tema claro/oscuro,
-acento white-label por defecto `#0081c8` (verde de marca `#33b44a`), fuentes
+marca IntoSales de into: tema, preset de Tailwind y componentes base del
+sistema de diseño into, `@into/designsystem` en `vendor/`, spec
+[1021](specs/1021-design-system/spec.md); `src/components/ui/` los reexporta y
+`src/app/globals.css` guarda solo lo propio del CRM; tema claro/oscuro,
+acento white-label por defecto `#0070e0` (verde de marca `#33b44a`; manual de marca 2026, spec [1019](specs/1019-brand-2026/spec.md)), fuentes
 Barlow (sustituto de DIN Pro) + Instrument Serif + IBM Plex Mono self-hosted
 vía `next/font`; el logo vive en
 `src/lib/brand.ts` y se dibuja con `src/components/brand-mark.tsx`) ·
@@ -50,7 +53,8 @@ externas: el trabajo en segundo plano (agente, Laboratorio) es in-process.
 | «Hoy»: a quién llamar (seguimientos y leads sin primer contacto) | `src/server/leads/today.ts` (consulta, con el alcance de la 022) · `src/lib/today.ts` (fechas y orden) · `GET /api/today` · pantalla `src/components/today/` · próximo contacto en `src/components/pipeline/follow-up-picker.tsx` · spec [029](specs/029-who-to-call-today/spec.md) |
 | Importar contactos desde Excel o CSV | `src/lib/import/` (lectura de CSV y `.xlsx` sin dependencias, columnas y teléfonos) · `src/server/contacts-import.ts` · `POST /api/contacts/import[/preview]` · diálogo `src/components/contacts/import-dialog.tsx` · spec [030](specs/030-import-contacts/spec.md) |
 | Cuándo responde la IA (siempre o solo fuera del horario de atención) | `src/lib/attention.ts` (regla y esquema) · `src/server/ai/attention.ts` (horario efectivo y la puerta) · puerta en `src/server/ai/pipeline.ts` · `/api/agent/profile` · `src/components/agent/attention-hours.tsx` · spec [031](specs/031-ai-after-hours/spec.md) |
-| El latido al servicio central de into y el plan (opcional) | `src/server/central/` — bandera `INTO_CENTRAL_URL` (`flag.ts`), adaptador del contrato (`client.ts`), llave cifrada (`license.ts`), temporizador (`heartbeat.ts`) · Ajustes → Plan · spec [028](specs/028-central-heartbeat/spec.md) |
+| La tarjeta de sellos (fidelización) | `src/server/stamp-card/` — bandera `STAMP_CARD` (`flag.ts`): programa (`program.ts`), tarjetas, sellos y canjes (`cards.ts`), frase de alta antes del agente (`join.ts`, llamada desde `inbox/ingest.ts`), página pública (`public.ts`) y cartel (`poster.ts`) · reglas puras en `src/lib/stamp-card.ts` · QR propio en `src/lib/qr.ts` · API `src/app/api/stamp-card/` · `/c/<token>` en `src/app/(public)/` y `/s/<serial>` en `src/app/(staff)/` · Ajustes → Tarjeta de sellos · spec [1023](specs/1023-stamp-card/spec.md) |
+| El latido al servicio central de into y el plan (opcional) | `src/server/central/` — bandera `INTO_CENTRAL_URL` (`flag.ts`), adaptador del contrato (`client.ts`), llave cifrada (`license.ts`), temporizador (`heartbeat.ts`) · Ajustes → Plan (`LicenseStatus` del sistema de diseño, igual que IntoCredit, spec [1022](specs/1022-plan-like-credit/spec.md)) · spec [028](specs/028-central-heartbeat/spec.md) |
 | La instalación en un VPS con un comando | `deploy/install.sh` + `deploy/docker-compose.vps.yml` (capa sobre `docker-compose.yml`: apaga su Caddy y usa el compartido `into-edge`) · guía: [docs/vps-installer.md](docs/vps-installer.md) · spec [1001](specs/1001-vps-installer/spec.md) |
 | La página de salud del CRM (base de datos, migraciones, archivos, WhatsApp, IA, cerebro, central) | `src/server/system-health.ts` (reusa los chequeos de `src/server/doctor/checks.ts`) · `src/app/(app)/settings/health/page.tsx` · spec [1004](specs/1004-health-page/spec.md) |
 | Las pruebas de seguridad del CI (SAST y DAST) | `.github/workflows/security-sast.yml` y `security-dast.yml` · reglas de ZAP en `.zap/rules.tsv` · `.gitleaksignore` · resumen de SARIF en `scripts/sarif-summary.ts` · guía: [docs/security-scans.md](docs/security-scans.md) · spec [1005](specs/1005-security-scans/spec.md) |

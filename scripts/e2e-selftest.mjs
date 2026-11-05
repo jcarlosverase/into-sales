@@ -3603,7 +3603,8 @@ async function centralChecks() {
   ok(
     "el latido lleva solo lo del contrato (AC5)",
     bodyValue &&
-      Object.keys(bodyValue).every((k) => ["app_version", "app_commit", "app_started_at", "checks"].includes(k)) &&
+      bodyValue.product === "into-sales" &&
+      Object.keys(bodyValue).every((k) => ["product", "app_version", "app_commit", "app_started_at", "checks"].includes(k)) &&
       JSON.stringify(ids) === JSON.stringify(["database", "media_dir", "whatsapp", "ai", "dispatch"]) &&
       bodyValue.checks.every((c) => Object.keys(c).join() === "id,status" && ["ok", "warn", "fail", "skip"].includes(c.status)),
     JSON.stringify(bodyValue)
@@ -3618,6 +3619,10 @@ async function centralChecks() {
     JSON.stringify(rejected.json)
   );
 
+  // Spec 1022: una llave de otro producto (403), como en IntoCredit.
+  const otherProduct = await api("/api/settings/central", { method: "PUT", body: JSON.stringify({ key: keyValue("4030") }) });
+  ok("una llave de otro producto se guarda y lo dice (spec 1022)", otherProduct.res.ok && otherProduct.json?.license?.lastResult === "otro_producto", JSON.stringify(otherProduct.json));
+
   const isDown = await api("/api/settings/central", { method: "PUT", body: JSON.stringify({ key: keyValue("5000") }) });
   ok("con el central fallando, responde y dice «sin respuesta» (AC6)", isDown.res.ok && isDown.json?.license?.lastResult === "sin_respuesta", JSON.stringify(isDown.json));
   const continues = await api("/api/conversations");
@@ -3628,6 +3633,13 @@ async function centralChecks() {
 
   // AC9: la pantalla a 360 px, con el plan a la vista y sin scroll horizontal.
   await api("/api/settings/central", { method: "PUT", body: JSON.stringify({ key: goodValue }) });
+  // Spec 1022: «Comprobar ahora» late otra vez y trae el cliente.
+  const checked = await api("/api/settings/central", { method: "POST" });
+  ok(
+    "«Comprobar ahora» late y muestra el cliente (spec 1022)",
+    checked.res.ok && checked.json?.license?.lastResult === "ok" && checked.json?.license?.customerName === "Academia Ejemplo",
+    JSON.stringify(checked.json)
+  );
   const { chromium } = await import("playwright");
   const browser = await chromium.launch();
   try {
@@ -3640,8 +3652,14 @@ async function centralChecks() {
       })
     );
     await page.goto(`${BASE}/settings/central`);
-    const plan = await page.getByTestId("central-plan").textContent({ timeout: 15000 }).catch(() => null);
-    ok("Plan muestra el plan en el teléfono (AC3, AC9)", plan === "Pyme", String(plan));
+    const plan = await page.getByTestId("license-plan").textContent({ timeout: 15000 }).catch(() => null);
+    ok("Plan muestra el plan en el teléfono (AC3, AC9)", plan === "Pyme (CE-PYM)", String(plan));
+    ok(
+      "Plan tiene las opciones de IntoCredit (spec 1022)",
+      (await page.getByRole("button", { name: "Comprobar ahora" }).count()) === 1 &&
+        (await page.getByRole("button", { name: "Quitar la llave" }).count()) === 1 &&
+        (await page.getByText("Academia Ejemplo").count()) > 0,
+    );
     const overflows = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);
     ok("Plan a 360 px sin scroll horizontal (AC9)", !overflows);
     ok("la llave no está en el HTML de la página (AC5)", !(await page.content()).includes(goodValue));

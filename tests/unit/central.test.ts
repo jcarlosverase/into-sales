@@ -9,6 +9,7 @@ import { healthFeatures } from "@/server/health";
 
 const KEY = "into_live_" + "A".repeat(28) + "1234";
 const BODY: BodyHeartbeat = {
+  product: "into-sales",
   app_version: "1.5.0",
   app_started_at: "2026-10-14T03:00:00.000Z",
   checks: [{ id: "database", status: "ok" }],
@@ -64,6 +65,9 @@ describe("028 — adaptador del central (contrato de into-central)", () => {
   it("traduce cada respuesta a un resultado cerrado, sin la llave (AC4, AC6)", async () => {
     const testCases: [() => Promise<Response>, string][] = [
       [response(401, { error: {} }), "llave_invalida"],
+      // Spec 1022: la llave es de otro producto de into (into-central, spec 014).
+      [response(403, { error: { code: "wrong_product" } }), "otro_producto"],
+      [response(200, { customer: { name: "A", status: "active" }, plan: { code: "X", name: "X" }, product: "into-credit" }), "otro_producto"],
       [response(429, { error: {} }), "limite"],
       [response(400, { error: {} }), "rechazado"],
       [response(500, "boom"), "sin_respuesta"],
@@ -154,6 +158,12 @@ describe("028 — textos de Ajustes → Plan", () => {
     expect(resultText("ok")?.tone).toBe("ok");
     expect(resultText("llave_invalida")?.text).toMatch(/no reconoce esta llave/);
     expect(resultText("sin_respuesta")?.text).toMatch(/Sin respuesta del central.*sigue funcionando/);
+    // Spec 1022: los mismos textos de IntoCredit, con el nombre de IntoSales.
+    expect(resultText("otro_producto")).toEqual({
+      tone: "error",
+      text: "Esta llave es de otro producto de into, no de IntoSales. Pide a into la llave de esta instalación.",
+    });
+    expect(resultText("ok")?.text).toBe("El central de into aceptó la llave.");
     expect(ACCOUNT_LABEL).toEqual({ active: "Activa", suspended: "Suspendida" });
   });
 });

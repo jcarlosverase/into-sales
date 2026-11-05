@@ -1,42 +1,40 @@
 <!--
 SYNC IMPACT REPORT
 ==================
-Versión: 1.4.0 → 1.5.0
+Versión: 1.5.0 → 1.6.0
 
 Cambios:
-  - Principio VIII "Foco Vertical" → EXPANDIDO: la exclusión de "lo que solo
-    sirva a una plataforma centralizada" se acota. Sigue FUERA que el CRM sea
-    una plataforma (billing, multi-instancia, vender planes dentro del CRM);
-    entra un conector opcional al servicio central de quien instala y
-    mantiene la instancia (la agencia), que recibe el estado del diagnóstico
-    sin detalle y devuelve información de la cuenta del negocio (su plan) para
-    mostrarla, sin poder bloquear ni limitar la operación core.
+  - Principio VIII "Foco Vertical" → EXPANDIDO: además de atender, organizar
+    y convertir conversaciones, entra FIDELIZAR a los clientes del negocio
+    cuando el vínculo pasa por su contacto de WhatsApp (tarjeta de sellos,
+    spec 1023). El marketing masivo sigue FUERA.
   - Principio II "Soberanía", condición 4 de los conectores opcionales →
-    ACLARADA: la llave de ese conector es la credencial del propio negocio con
-    su proveedor; se cifra en reposo como cualquier otra y no le da al central
-    acceso a la instancia.
+    EXCEPCIÓN ACOTADA: los pases de Apple Wallet y Google Wallet se firman con
+    las cuentas de quien mantiene la instancia, a través de su servicio
+    central, sin datos personales ni conversaciones. La tarjeta funciona sin
+    él como página web (condición 3).
   - Principios I, III, IV, V, VI, VII y IX: íntegros (sin cambio).
   - Governance: sin cambio.
 
-Bump: MINOR (1.4.0 → 1.5.0) — expansión material de dos principios; una
-instancia por defecto (sin la bandera `INTO_CENTRAL_URL`) cumple exactamente
-la promesa vigente.
+Bump: MINOR (1.5.0 → 1.6.0) — expansión material de dos principios; una
+instancia por defecto (sin la bandera `STAMP_CARD`) cumple exactamente la
+promesa vigente.
 
 Motivación:
-  into instala y mantiene IntoSales para sus clientes y necesita saber cuándo
-  un CRM se cae o pierde su WhatsApp sin esperar la llamada del cliente; el
-  cliente necesita ver en su CRM qué plan tiene. La spec 028 (latido al
-  servicio central) lo hace como conector opcional; la 1.4.0 lo prohibía por
-  dos frases. Propuesta por escrito:
-  specs/028-central-heartbeat/constitution-amendment.md. Pedida por el
-  responsable el 2026-10-14; el texto espera su revisión antes del commit.
+  Juan Carlos decidió el 2026-11-04 ampliar IntoSales a cualquier negocio con
+  clientes que vuelven y agregar una tarjeta de sellos virtual. Propuesta por
+  escrito: specs/1023-stamp-card/constitution-amendment.md. Ratificada por
+  Juan Carlos el 2026-11-04; el texto espera su revisión antes del commit.
 
 Plantillas dependientes:
   - .specify/templates/*.md — ✅ compatibles (sin cambios).
-  - CLAUDE.md y AGENTS.md — ✅ actualizados en este mismo cambio.
+  - CLAUDE.md y AGENTS.md — ⏳ se actualizan al implementar la spec 1023.
 
 TODOs diferidos:
   - Deuda documental heredada de la 1.3.0: sigue igual.
+
+Historial: la 1.5.0 (2026-10-14, spec 028) abrió el conector opcional al
+servicio central de quien mantiene la instancia.
 -->
 
 # Vocero CRM Constitution
@@ -96,6 +94,14 @@ dependencias externas en runtime es CERRADA:
         con ese proveedor: se trata como cualquier otra credencial del negocio
         (cifrada en reposo, solo sus últimos 4 hacia fuera) y no le da al
         central acceso a la instancia.
+        **Excepción (1.6.0, spec 1023):** los pases de **Apple Wallet y
+        Google Wallet** se firman con las cuentas de quien mantiene la
+        instancia, a través de su servicio central (Principio VIII), porque
+        el negocio no puede tener las suyas. El central solo recibe lo
+        indispensable para firmar y avisar (manifiestos con hashes, tokens de
+        push, sellos y textos del programa), nunca datos personales ni
+        conversaciones. La tarjeta sigue funcionando sin él como página web
+        (condición 3).
      5. **Verificables apagados y encendidos**: la CI ejercita ambas
         configuraciones y cada conector externo tiene mock con camino infeliz.
 - **PROHIBIDO como dependencia del núcleo** (todo lo que el producto necesite
@@ -220,6 +226,11 @@ conversaciones de WhatsApp de UN negocio* se rechaza.
 - El modelo de datos y los flujos MUST reflejar ese dominio: contactos que escriben
   por WhatsApp, conversaciones con ventana de 24h, leads en un pipeline, un agente
   de IA que atiende con el conocimiento del negocio y escala a humanos.
+- Entra también **fidelizar** a los clientes de ese negocio cuando el vínculo
+  pasa por su contacto de WhatsApp (1.6.0, spec 1023): una tarjeta de sellos
+  que nace de un mensaje del cliente, la sella el equipo y lo devuelve a la
+  conversación. Sigue fuera el marketing masivo: la fidelización no envía
+  mensajes a clientes que no los pidieron.
 - WhatsApp Cloud API es el canal; el producto es el CRM. Features de canal que no
   sirvan a atender/organizar/convertir (broadcast masivo, scraping de números,
   flujos visuales genéricos) quedan FUERA del alcance de v1.
@@ -333,4 +344,4 @@ práctica, convención o preferencia; ante un conflicto, gana la constitución.
 - **Propagación**: al enmendar la constitución se revisan y, si procede, se actualizan
   las plantillas dependientes (plan, spec, tasks).
 
-**Version**: 1.5.0 | **Ratified**: 2026-07-09 | **Last Amended**: 2026-10-14
+**Version**: 1.6.0 | **Ratified**: 2026-07-09 | **Last Amended**: 2026-11-04

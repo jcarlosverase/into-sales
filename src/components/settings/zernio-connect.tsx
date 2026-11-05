@@ -6,6 +6,7 @@ import { AlertTriangle, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Notice } from "@into/designsystem";
 
 /**
  * 023 — Conectar un canal por Zernio, igual en Instagram, Messenger y TikTok.
@@ -173,14 +174,14 @@ export function ZernioConnect({
                 : "El webhook de tu Zernio quedó actualizado y limitado a tus cuentas conectadas."}
             </p>
           )}
-          {saved.health && saved.health.level !== "ok" && <Notice>{saved.health.message}</Notice>}
+          {saved.health && saved.health.level !== "ok" && <Warning>{saved.health.message}</Warning>}
           {saved.webhook && !saved.webhook.ok && (
-            <Notice>
+            <Warning>
               {saved.webhook.message ?? "No se pudo dar de alta el webhook en Zernio."}{" "}
               <Link href="/settings/channels" className="font-semibold underline">
                 Ver el estado de los canales
               </Link>
-            </Notice>
+            </Warning>
           )}
         </div>
       )}
@@ -188,11 +189,10 @@ export function ZernioConnect({
   );
 }
 
-function Notice({ children }: { children: React.ReactNode }) {
+function Warning({ children }: { children: React.ReactNode }) {
   return (
-    <p className="flex items-start gap-2 rounded-md border border-warning-soft bg-warning-tint p-3 text-warning-text">
-      <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-      <span>{children}</span>
-    </p>
+    <Notice tone="warning" icon={AlertTriangle} className="rounded-md p-3">
+      {children}
+    </Notice>
   );
 }

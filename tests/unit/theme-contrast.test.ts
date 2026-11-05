@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { themeRules } from "@into/tokens";
 import { describe, expect, it } from "vitest";
 import {
   ACCENT_PRESETS,
@@ -8,8 +9,9 @@ import {
 } from "@/lib/branding";
 
 /**
- * R8 — Pisos de contraste de los dos temas, medidos sobre los tokens REALES de
- * globals.css (no sobre una copia). El tema oscuro de antes pasaba todas las
+ * R8 — Pisos de contraste de los dos temas, medidos sobre los tokens REALES
+ * (no sobre una copia): desde la spec 1021, los del sistema de diseño
+ * (`@into/tokens`) más las variables propias del CRM de globals.css. El tema oscuro de antes pasaba todas las
  * pruebas y aun así se veía plano: barra y página a 1.04:1, chip y panel a
  * 1.01:1. Aquí vive cada par que importa con su piso, para que un retoque de
  * color que lo rompa truene en `pnpm test` y no en una captura.
@@ -49,9 +51,20 @@ function block(css: string, selector: string): Vars {
 }
 
 const css = readFileSync("src/app/globals.css", "utf8");
-const light = block(css, ":root {");
-const darkRaw = block(css, ':root[data-theme="dark"] {');
-const nav = block(css, ".nav-dark {");
+const tokens = themeRules();
+
+/** Las variables de un selector de los tokens, en minúsculas como en el CSS. */
+function tokenVars(selector: string): Vars {
+  return Object.fromEntries(
+    Object.entries(tokens[selector] ?? {}).filter(([k]) => k.startsWith("--"))
+  );
+}
+
+// Lo de la marca viene de los tokens; lo propio del CRM (chat, calendario),
+// de globals.css.
+const light = { ...tokenVars(":root"), ...block(css, ":root {") };
+const darkRaw = { ...tokenVars(':root[data-theme="dark"]'), ...block(css, ':root[data-theme="dark"] {') };
+const nav = tokenVars(".nav-dark");
 
 /** Tokens del tema oscuro: lo que el bloque no redeclara viene de `:root`. */
 const dark: Vars = { ...light, ...darkRaw };
@@ -185,7 +198,7 @@ describe("tema oscuro: texto", () => {
 describe("tema oscuro: acento", () => {
   const set = resolveAccentSet(DEFAULT_BRANDING.accent, "dark");
 
-  it("el respaldo de globals.css es el que calcula lib/branding", () => {
+  it("el respaldo de los tokens es el que calcula lib/branding", () => {
     // Si alguien retoca la receta y no el respaldo (o al revés), el primer
     // pintado sin white-label sale de otro color que el resto.
     expect(hex(dark, "--accent")).toBe(set.accent);
@@ -238,7 +251,7 @@ describe("tema claro: no cambia", () => {
       "--border-strong": "#34498a",
       "--ring": "var(--accent)",
     });
-    expect(css).toMatch(/\.nav-dark \{\s*color-scheme: dark;/);
+    expect(tokens[".nav-dark"]?.["color-scheme"]).toBe("dark");
   });
 
   it("dentro de la barra el texto se lee", () => {

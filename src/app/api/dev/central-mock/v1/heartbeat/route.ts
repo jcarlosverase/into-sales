@@ -5,7 +5,8 @@ export const dynamic = "force-dynamic";
 /**
  * 028 — `POST /v1/heartbeat` del servicio central, para el self-test. Mismo
  * contrato que into-central. El final de la llave elige el caso:
- * `…0000` → 401, `…5000` → 500, `…4290` → 429; el resto, 200 con un plan.
+ * `…0000` → 401, `…5000` → 500, `…4290` → 429, `…4030` → 403 (llave de otro
+ * producto, spec 1022); el resto, 200 con un plan.
  * Guarda el último cuerpo recibido para que el guion compruebe qué se mandó.
  */
 
@@ -20,6 +21,9 @@ export async function POST(req: Request) {
     return Response.json({ error: { code: "invalid_api_key", message: "Invalid or revoked license key" } }, { status: 401 });
   }
   if (key.endsWith("5000")) return new Response("boom", { status: 500 });
+  if (key.endsWith("4030")) {
+    return Response.json({ error: { code: "wrong_product", message: "This license key is for IntoCredit" } }, { status: 403 });
+  }
   if (key.endsWith("4290")) {
     return Response.json({ error: { code: "rate_limited", message: "Too many heartbeats" } }, { status: 429 });
   }
@@ -27,6 +31,7 @@ export async function POST(req: Request) {
   return Response.json({
     customer: { name: "Academia Ejemplo", status: key.endsWith("9999") ? "suspended" : "active" },
     plan: { code: "CE-PYM", name: "Pyme" },
+    product: "into-sales",
     next_heartbeat_seconds: 900,
   });
 }

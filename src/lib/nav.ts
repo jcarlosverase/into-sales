@@ -59,7 +59,7 @@ export function appNavGroups({
     // 029 — lo primero que abre un vendedor al empezar el día.
     { href: "/today", label: "Hoy", icon: PhoneCall },
     { href: "/inbox", label: "Bandeja", icon: Inbox, badge: true },
-    { href: "/pipeline", label: "Pipeline", icon: Kanban },
+    { href: "/pipeline", label: "Embudo", icon: Kanban },
     { href: "/contacts", label: "Contactos", icon: Users },
   ];
   // Citas va después de Contactos: es el paso siguiente de un trato, no una
@@ -107,8 +107,11 @@ export function settingsSections({
   instagram = false,
   messenger = false,
   tiktok = false,
+  stampCard = false,
 }: {
   agenda?: boolean;
+  /** 1023 — "Tarjeta de sellos" solo con la bandera STAMP_CARD. */
+  stampCard?: boolean;
   /** 016 — "Anuncios" existe solo con la bandera ATRIBUCION. */
   atribucion?: boolean;
   /** 028 — "Plan" existe solo con la bandera INTO_CENTRAL_URL. */
@@ -140,6 +143,7 @@ export function settingsSections({
     { href: "/settings/templates", label: "Plantillas" },
     { href: "/settings/team", label: "Equipo" },
   ];
+  if (stampCard) business.push({ href: "/settings/stamp-card", label: "Tarjeta de sellos" });
   if (attribution) business.push({ href: "/settings/ads", label: "Anuncios" });
   if (central) business.push({ href: "/settings/central", label: "Plan" });
 
