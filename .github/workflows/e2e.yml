@@ -40,10 +40,13 @@ jobs:
             channels: ""
             agenda: ""
             central: ""
+            stamp_card: ""
           - name: completo
             channels: "whatsapp,instagram,messenger,tiktok"
             agenda: "on"
             central: "http://localhost:3000/api/dev/central-mock"
+            # 1023: la tarjeta de sellos.
+            stamp_card: "on"
 
     services:
       postgres:
@@ -77,6 +80,7 @@ jobs:
       CHANNELS: ${{ matrix.config.channels }}
       AGENDA: ${{ matrix.config.agenda }}
       INTO_CENTRAL_URL: ${{ matrix.config.central }}
+      STAMP_CARD: ${{ matrix.config.stamp_card }}
       ZOOM_BASE_URL: http://localhost:3000/api/dev/zoom-mock
       ZOOM_OAUTH_BASE_URL: http://localhost:3000/api/dev/zoom-mock
       GOOGLE_CAL_BASE_URL: http://localhost:3000/api/dev/google-mock
@@ -112,6 +116,11 @@ jobs:
 
       - name: e2e
         run: node scripts/e2e-selftest.mjs
+
+      # 1023: apagada en `default` (todo 404) y encendida en `completo`.
+      - name: e2e · tarjeta de sellos
+        if: ${{ !cancelled() }}
+        run: node scripts/e2e-stamp-card.mjs
 
       - name: e2e · calendario, Resultados y ficha
         if: ${{ !cancelled() && matrix.config.name == 'completo' }}
