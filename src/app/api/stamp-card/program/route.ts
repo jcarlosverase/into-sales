@@ -2,7 +2,7 @@ import { apiError, parseBody, withAuth } from "@/lib/api";
 import { canConfigure } from "@/lib/auth/roles";
 import { programInputSchema } from "@/lib/stamp-card";
 import { stampCardDisabledResponse, stampCardEnabled } from "@/server/stamp-card/flag";
-import { getProgram, programDefaults, saveProgram } from "@/server/stamp-card/program";
+import { approvedTemplate, getProgram, programDefaults, saveProgram } from "@/server/stamp-card/program";
 
 export const dynamic = "force-dynamic";
 
@@ -24,6 +24,9 @@ export const PUT = withAuth(async (session, req: Request) => {
   }
   const body = await parseBody(req, programInputSchema);
   if (!body.ok) return body.response;
+  if (body.data.completeTemplateId && !(await approvedTemplate(session.organizationId, body.data.completeTemplateId))) {
+    return apiError(422, "invalid_template", "La plantilla del aviso tiene que ser una plantilla aprobada de este negocio");
+  }
   const program = await saveProgram(session.organizationId, { ...body.data, terms: body.data.terms ?? null });
   return Response.json({ program });
 });

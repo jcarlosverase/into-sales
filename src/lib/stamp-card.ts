@@ -58,10 +58,24 @@ export const programInputSchema = z
       "La respuesta de alta debe llevar {enlace}"
     ),
     status: z.enum(["active", "paused"]),
+    /** D10 — Avisar por WhatsApp al completar la tarjeta. Viene apagado. */
+    notifyOnComplete: z.boolean().default(false),
+    /** D10 — Plantilla aprobada para cuando la ventana de 24 horas está cerrada. */
+    completeTemplateId: z
+      .string()
+      .max(64)
+      .nullish()
+      .transform((v) => (v ? v : null)),
   })
   .strict();
 
 export type ProgramInput = z.infer<typeof programInputSchema>;
+
+/** D10 — El texto del aviso cuando la ventana de 24 horas está abierta. */
+export function completeNotice(values: { nombre: string; negocio: string; premio: string }): string {
+  const hola = values.nombre ? `¡${values.nombre}, completaste` : "¡Completaste";
+  return `${hola} tu tarjeta de sellos de ${values.negocio}! 🎉 Pide tu premio en tu próxima visita: ${values.premio}.`;
+}
 
 /**
  * D4 — La frase se compara sin mayúsculas, tildes, signos ni espacios de más:

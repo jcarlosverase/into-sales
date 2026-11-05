@@ -197,6 +197,13 @@
       "when": 1793838496523,
       "tag": "0027_stamp_card",
       "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1793900799457,
+      "tag": "0028_stamp_card_google",
+      "breakpoints": true
     }
   ]
 }

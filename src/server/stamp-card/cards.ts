@@ -13,6 +13,7 @@ import {
 import { publish } from "@/server/events/bus";
 import { getProgram, type StampProgram } from "./program";
 import { appleAuthTokenFor, hashToken, newSerial, publicTokenFor } from "./tokens";
+import { kickWalletSync } from "./wallet-sync";
 
 export type StampCard = typeof schema.stampCard.$inferSelect;
 export type StampSource = "whatsapp" | "panel" | "qr";
@@ -42,6 +43,7 @@ type Tx = Parameters<Parameters<ReturnType<typeof getDb>["transaction"]>[0]>[0];
 
 function notify(organizationId: string, card: StampCard) {
   publish(organizationId, { type: "stamp_card.updated", data: { cardId: card.id, contactId: card.contactId } });
+  if (card.walletSyncPending) kickWalletSync(organizationId, card.id);
 }
 
 /**
@@ -187,6 +189,8 @@ async function writeEvent(
       rewardsRedeemed: values.rewards ?? card.rewardsRedeemed,
       lastStampAt: values.lastStampAt ?? card.lastStampAt,
       passVersion: card.passVersion + 1,
+      // D9: el cambio va a los wallets después, y se reintenta si el central no responde.
+      walletSyncPending: true,
       updatedAt: now,
     })
     .where(eq(schema.stampCard.id, card.id))
@@ -223,7 +227,14 @@ export async function addStamp(
     );
     return { status: "ok", card: updated, replayed: false, completed: next.complete && !isComplete(card) };
   });
-  if (result.status === "ok" && !result.replayed) notify(organizationId, result.card);
+  if (result.status === "ok" && !result.replayed) {
+    notify(organizationId, result.card);
+    // D10: el aviso al completar va aparte; lo importa recién aquí para no
+    // cargar el envío de WhatsApp en cada consulta de tarjetas.
+    if (result.completed) {
+      void import("./complete").then((m) => m.notifyCardComplete(organizationId, result.card.id)).catch(() => undefined);
+    }
+  }
   return result;
 }
 

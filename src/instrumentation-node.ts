@@ -9,6 +9,7 @@ import { startHeartbeats } from "@/server/central/heartbeat";
 import { logger, routeConsoleToLogger } from "@/lib/observability/logger";
 import { metrics } from "@/lib/observability/metrics";
 import { safePath } from "@/lib/observability/safe-path";
+import { startWalletSync } from "@/server/stamp-card/wallet-sync";
 
 /**
  * Spec 1006: from here on, console output (ours, Next's and the libraries')
@@ -139,4 +140,13 @@ export function startHeartbeatCentral(): void {
       "[boot] INTO_CENTRAL_URL no es una URL http:// o https:// válida (sin usuario:clave): el latido al servicio central queda INACTIVO."
     );
   }
+}
+
+/**
+ * 1023, D9 — Reintentos de wallet de la tarjeta de sellos: cada minuto, solo
+ * con `STAMP_CARD`. Sin central no hay nada que reintentar y la vuelta es una
+ * consulta vacía.
+ */
+export function startStampCardWalletSync(): void {
+  startWalletSync();
 }

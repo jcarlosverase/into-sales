@@ -1,0 +1,1 @@
+ALTER TABLE "stamp_card" ADD COLUMN "google_link_issued_at" timestamp with time zone;

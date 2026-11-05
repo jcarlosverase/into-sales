@@ -4,7 +4,8 @@
 
 **Status**: Especificada antes de escribir código. Revisada por
 Juan Carlos el 2026-11-04. Plan en [plan.md](plan.md) y tareas en [tasks.md](tasks.md).
-Corte 1 (tarjeta web) implementado el 2026-11-05; cortes 2 y 3 pendientes.
+Los tres cortes implementados el 2026-11-05. Falta la verificación humana
+con un iPhone y un Android (T024).
 
 **Input**: Juan Carlos, el 2026-11-04: «quiero agregar la funcionalidad de
 tarjeta de sellos virtual» y «quiero ampliar mi CRM a cualquier negocio, ya

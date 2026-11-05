@@ -69,7 +69,7 @@ Banderas de despliegue (apagadas por defecto; su código viaja siempre en `main`
 |---|---|
 | `AGENDA=on` | Motor de citas: pantalla Citas, Ajustes → Agenda, `/api/bookings`, `/api/calendar/*`, `/api/bot/availability` y `/api/bot/bookings`, instrucciones de agendar en el prompt del agente (`src/server/agenda/flag.ts`) |
 | `CHANNELS=whatsapp,instagram,messenger,tiktok` | Canales extra: webhooks `/api/webhooks/ig`, `/api/webhooks/messenger` y `/api/webhooks/tiktok`, Ajustes → Estado, Instagram, Messenger y TikTok, credenciales por canal, distintivo en la bandeja (`src/server/channels/enabled.ts`) |
-| `STAMP_CARD=on` | Tarjeta de sellos (spec 1023): Ajustes → Tarjeta de sellos, `/api/stamp-card/*`, la página pública `/c/<token>`, la pantalla del equipo `/s/<serial>`, el cartel del mostrador y la frase de alta por WhatsApp antes del agente (`src/server/stamp-card/flag.ts`) |
+| `STAMP_CARD=on` | Tarjeta de sellos (spec 1023): Ajustes → Tarjeta de sellos, `/api/stamp-card/*`, la página pública `/c/<token>`, la pantalla del equipo `/s/<serial>`, el cartel del mostrador, la frase de alta por WhatsApp antes del agente, la sección de Resultados y, con `INTO_CENTRAL_URL` y un plan con wallet, Apple y Google Wallet (`/api/wallet/*`, `/c/<token>/apple` y `/google`) (`src/server/stamp-card/flag.ts`) |
 | `ATRIBUCION=on` | Guardado del `ctwa_clid`, reporte a la Conversions API de Meta, Ajustes → Anuncios y `/api/settings/capi` (`src/server/attribution/flag.ts`). El anuncio de origen se ve siempre, con o sin bandera |
 
 Apagada, cada superficie responde 404 (no 403). El despliegue en producción está en el README («Instalación»: Rutas A y B, y «Otras plataformas» con `render.yaml`, `fly.toml` y `railway.toml`) y en `INSTALL-AI.md`; no se repite aquí.

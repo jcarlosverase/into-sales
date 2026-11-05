@@ -3,6 +3,7 @@ import { getSessionOrNull } from "@/lib/auth/session";
 import { todayInTz } from "@/lib/time/slots";
 import { getBranding } from "@/server/branding";
 import { agendaEnabled } from "@/server/agenda/flag";
+import { stampCardEnabled } from "@/server/stamp-card/flag";
 import { businessTimezone } from "@/server/analytics/period";
 import { ResultsClient } from "@/components/results/results-client";
 
@@ -29,6 +30,7 @@ export default async function ResultsPage() {
     <ResultsClient
       currency={branding.currency}
       agenda={agendaEnabled()}
+      stampCard={stampCardEnabled()}
       today={todayInTz(new Date(), timezone)}
       timezone={timezone}
     />

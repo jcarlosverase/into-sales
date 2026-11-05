@@ -5,6 +5,7 @@ import { LICENSE_KEY_PATTERN } from "@/server/central/client";
 import { centralDisabledResponse, readConfigCentral } from "@/server/central/flag";
 import { beatNow } from "@/server/central/heartbeat";
 import { getPublicLicense, saveKey, removeKey } from "@/server/central/license";
+import { clearWalletConfigCache } from "@/server/central/wallet";
 
 export const dynamic = "force-dynamic";
 
@@ -41,6 +42,7 @@ export const PUT = withAuth(async (session, req: Request) => {
   const body = await parseBody(req, putSchema);
   if (!body.ok) return body.response;
   await saveKey(session.organizationId, body.data.key);
+  clearWalletConfigCache(session.organizationId);
   // AC3: late en ese momento; con el central caído responde igual (10 s de límite).
   await beatNow(session.organizationId);
   return Response.json(await view(session.organizationId));
@@ -50,6 +52,7 @@ export const DELETE = withAuth(async (session) => {
   if (!readConfigCentral().active) return centralDisabledResponse();
   if (!canConfigure(session.role)) return apiError(403, "forbidden", "Solo quien configura el negocio");
   await removeKey(session.organizationId);
+  clearWalletConfigCache(session.organizationId);
   return Response.json(await view(session.organizationId));
 });
 

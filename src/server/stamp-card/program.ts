@@ -1,4 +1,4 @@
-import { eq, ne } from "drizzle-orm";
+import { eq, exists, isNotNull, ne, or, sql } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db";
 import { newId } from "@/lib/db/ids";
 import { scoped } from "@/lib/db/tenant";
@@ -8,6 +8,7 @@ import {
   type ProgramInput,
 } from "@/lib/stamp-card";
 import { getBranding } from "@/server/branding";
+import { kickProgramSync } from "./wallet-sync";
 
 export type StampProgram = typeof schema.stampProgram.$inferSelect;
 
@@ -34,7 +35,34 @@ export async function programDefaults(organizationId: string): Promise<ProgramIn
     joinPhrase: DEFAULT_JOIN_PHRASE,
     joinReply: DEFAULT_JOIN_REPLY,
     status: "active",
+    notifyOnComplete: false,
+    completeTemplateId: null,
   };
+}
+
+/** D10 — Las plantillas aprobadas que puede usar el aviso al completar (ventana cerrada). */
+export async function approvedTemplates(organizationId: string): Promise<{ id: string; name: string; category: string; body: string }[]> {
+  return getDb()
+    .select({ id: schema.template.id, name: schema.template.name, category: schema.template.category, body: schema.template.body })
+    .from(schema.template)
+    .where(scoped(schema.template.organizationId, organizationId, eq(schema.template.status, "approved")))
+    .orderBy(schema.template.name);
+}
+
+export async function approvedTemplate(organizationId: string, templateId: string): Promise<boolean> {
+  const [row] = await getDb()
+    .select({ id: schema.template.id })
+    .from(schema.template)
+    .where(
+      scoped(
+        schema.template.organizationId,
+        organizationId,
+        eq(schema.template.id, templateId),
+        eq(schema.template.status, "approved")
+      )
+    )
+    .limit(1);
+  return !!row;
 }
 
 /**
@@ -42,7 +70,11 @@ export async function programDefaults(organizationId: string): Promise<ProgramIn
  * Google se actualiza por versión, corte 3). Cambiar los sellos no toca las
  * tarjetas en curso: cada una guarda los suyos hasta su canje (D3).
  */
-export async function saveProgram(organizationId: string, input: ProgramInput): Promise<StampProgram> {
+/** Lo que se guarda: el aviso al completar (D10) puede faltar y queda como estaba. */
+export type ProgramSave = Omit<ProgramInput, "notifyOnComplete" | "completeTemplateId"> &
+  Partial<Pick<ProgramInput, "notifyOnComplete" | "completeTemplateId">>;
+
+export async function saveProgram(organizationId: string, input: ProgramSave): Promise<StampProgram> {
   const db = getDb();
   return db.transaction(async (tx) => {
     const [current] = await tx
@@ -58,12 +90,41 @@ export async function saveProgram(organizationId: string, input: ProgramInput): 
         .returning();
       return created!;
     }
+    const now = new Date();
     const [updated] = await tx
       .update(schema.stampProgram)
-      .set({ ...input, version: current.version + 1, updatedAt: new Date() })
+      .set({ ...input, version: current.version + 1, updatedAt: now })
       .where(scoped(schema.stampProgram.organizationId, organizationId, eq(schema.stampProgram.id, current.id)))
       .returning();
+    // D9: el nombre, el premio o el color cambian el pase de las tarjetas que
+    // están en un wallet. Apple lo nota por `updated_at`; Google, por versión.
+    await tx
+      .update(schema.stampCard)
+      .set({
+        passVersion: sql`${schema.stampCard.passVersion} + 1`,
+        walletSyncPending: true,
+        updatedAt: now,
+      })
+      .where(
+        scoped(
+          schema.stampCard.organizationId,
+          organizationId,
+          eq(schema.stampCard.programId, current.id),
+          or(
+            isNotNull(schema.stampCard.googleLinkIssuedAt),
+            exists(
+              tx
+                .select({ one: sql`1` })
+                .from(schema.applePassRegistration)
+                .where(eq(schema.applePassRegistration.cardId, schema.stampCard.id))
+            )
+          )
+        )
+      );
     return updated!;
+  }).then((program) => {
+    kickProgramSync(organizationId);
+    return program;
   });
 }
 

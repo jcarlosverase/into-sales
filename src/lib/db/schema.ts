@@ -1443,7 +1443,13 @@ export const stampCard = pgTable(
     rewardsRedeemed: integer("rewards_redeemed").notNull().default(0),
     lastStampAt: timestamp("last_stamp_at", { withTimezone: true }),
     passVersion: integer("pass_version").notNull().default(1),
+    /** El cliente tiene la tarjeta en Google Wallet (lo dice el central al actualizarla). */
     googleObjectSaved: boolean("google_object_saved").notNull().default(false),
+    /**
+     * Cuándo se le dio por última vez el enlace «Guardar en Google Wallet»
+     * (migración 0028). Desde entonces cada cambio se le pasa al central.
+     */
+    googleLinkIssuedAt: timestamp("google_link_issued_at", { withTimezone: true }),
     walletSyncPending: boolean("wallet_sync_pending").notNull().default(false),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),

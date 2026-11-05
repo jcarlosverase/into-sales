@@ -45,6 +45,7 @@ Una por contacto y programa (D2).
 | `last_stamp_at` | timestamptz null | |
 | `pass_version` | integer | sube con cada cambio; Apple usa `updated_at` y Google este número |
 | `google_object_saved` | boolean | el cliente la guardó en Google Wallet (lo dice el central) |
+| `google_link_issued_at` | timestamptz null | migración `0028`: cuándo se dio el enlace «Guardar en Google Wallet»; desde entonces cada cambio se pasa al central |
 | `wallet_sync_pending` | boolean | hay una actualización de wallet por reintentar (D9) |
 | `created_at`, `updated_at` | timestamptz | |
 
