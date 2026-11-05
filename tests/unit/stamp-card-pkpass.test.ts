@@ -3,6 +3,7 @@ import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { stripLayout } from "@/server/stamp-card/images";
 import {
   assemblePkpass,
   buildManifest,
@@ -110,5 +111,12 @@ describe("1023 — pkpass", () => {
     writeFileSync(file, zipStore([["pass.json", Buffer.from('{"a":1}')], ["ñandú.png", Buffer.alloc(1000, 7)]]));
     const out = execFileSync("unzip", ["-t", file]).toString();
     expect(out).toMatch(/No errors detected/);
+  });
+
+  it("franja: una fila hasta 5 sellos, dos hasta 12 y tres después", () => {
+    expect(stripLayout(5)).toEqual({ rows: 1, columns: 5 });
+    expect(stripLayout(10)).toEqual({ rows: 2, columns: 5 });
+    expect(stripLayout(12)).toEqual({ rows: 2, columns: 6 });
+    expect(stripLayout(30)).toEqual({ rows: 3, columns: 10 });
   });
 });

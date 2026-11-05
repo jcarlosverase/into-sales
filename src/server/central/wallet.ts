@@ -214,12 +214,20 @@ export async function pushApple(
 type Image = { sourceUri: { uri: string } };
 type TextModule = { id?: string; header: string; body: string };
 
+type TemplateItem = { firstValue: { fields: { fieldPath: string }[] } };
+type CardRow =
+  | { oneItem: { item: TemplateItem } }
+  | { twoItems: { startItem: TemplateItem; endItem: TemplateItem } }
+  | { threeItems: { startItem: TemplateItem; middleItem: TemplateItem; endItem: TemplateItem } };
+
 export type GoogleClassBody = {
   programName: string;
   programLogo: Image;
   heroImage?: Image;
   hexBackgroundColor?: string;
   textModulesData?: TextModule[];
+  /** Filas en el frente de la tarjeta, arriba del QR (central 016, contrato). */
+  classTemplateInfo?: { cardTemplateOverride: { cardRowTemplateInfos: CardRow[] } };
 };
 
 export type GoogleObjectBody = {

@@ -59,14 +59,30 @@ function tile(size: number, name: string, color: string, ink: string, logo: stri
 
 export type StripInput = { stamps: number; stampsRequired: number; color: string; ink: string };
 
-/** La franja: un círculo por sello, llenos los que ya tiene. Hasta 10 por fila. */
+/**
+ * Filas y columnas de la franja: una fila hasta 5 sellos, dos hasta 12 y
+ * tres después (10 sellos son dos filas de 5).
+ */
+export function stripLayout(stampsRequired: number): { rows: number; columns: number } {
+  const required = Math.max(1, stampsRequired);
+  const rows = required <= 5 ? 1 : required <= 12 ? 2 : 3;
+  return { rows, columns: Math.ceil(required / rows) };
+}
+
+/**
+ * Lo que se dibuja ocupa solo el centro del ancho: iOS amplía la franja para
+ * llenar un área más alta que 375 × 123 y recorta los lados (en un iPhone
+ * reciente, cerca de un 14 % por lado).
+ */
+export const STRIP_SAFE_WIDTH = 0.66;
+
+/** La franja: un círculo por sello, llenos los que ya tiene. */
 export function renderStrip(input: StripInput, width: number, height: number): Promise<Buffer> {
   const required = Math.max(1, input.stampsRequired);
   const shown = Math.min(input.stamps, required);
-  const columns = Math.min(10, required);
-  const rows = Math.ceil(required / columns);
-  const pad = Math.round(height * 0.12);
-  const cell = Math.min((width - pad * 2) / columns, (height - pad * 2) / rows);
+  const { rows, columns } = stripLayout(required);
+  const pad = Math.round(height * 0.1);
+  const cell = Math.floor(Math.min((width * STRIP_SAFE_WIDTH) / columns, (height - pad * 2) / rows));
   const diameter = Math.floor(cell * 0.78);
   const ring = Math.max(2, Math.round(diameter * 0.09));
   return png(

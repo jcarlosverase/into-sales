@@ -163,3 +163,17 @@ export function renderJoinReply(
 export function waJoinLink(phoneDigits: string, phrase: string): string {
   return `https://wa.me/${phoneDigits.replace(/\D/g, "")}?text=${encodeURIComponent(phrase)}`;
 }
+
+export type WalletPlatform = "ios" | "android" | "other";
+
+/**
+ * El sistema del celular, por su `User-Agent`: en un iPhone solo se ofrece
+ * Apple Wallet y en un Android solo Google Wallet. En una computadora (o un
+ * iPad que se presenta como Mac) se ofrecen los dos.
+ */
+export function walletPlatform(userAgent: string | null | undefined): WalletPlatform {
+  const ua = userAgent ?? "";
+  if (/\b(iPhone|iPad|iPod)\b/.test(ua)) return "ios";
+  if (/\bAndroid\b/.test(ua)) return "android";
+  return "other";
+}

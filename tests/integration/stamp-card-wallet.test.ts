@@ -227,10 +227,15 @@ describe.skipIf(!TEST_DATABASE_URL)("1023 — stamp card wallets", () => {
   it("tras un sello avisa a los iPhone y borra los tokens que Apple rechazó (D9)", async () => {
     const { syncCard } = await import("@/server/stamp-card/wallet-sync");
     const { getDb, schema } = await import("@/lib/db");
+    // Sin depender de la prueba anterior: un token válido y uno que Apple rechaza.
+    await getDb().delete(schema.applePassRegistration).where(eq(schema.applePassRegistration.cardId, cardId));
     await getDb()
       .insert(schema.applePassRegistration)
-      .values({ id: "apr_ok", organizationId: org, cardId, deviceLibraryId: "dev3", pushToken: "0123456789abcdef0123" });
-    expect((await loadCard()).walletSyncPending).toBe(true);
+      .values([
+        { id: "apr_ok", organizationId: org, cardId, deviceLibraryId: "dev3", pushToken: "0123456789abcdef0123" },
+        { id: "apr_dead", organizationId: org, cardId, deviceLibraryId: "dev4", pushToken: "deadbeefdeadbeefdead" },
+      ]);
+    await getDb().update(schema.stampCard).set({ walletSyncPending: true }).where(eq(schema.stampCard.id, cardId));
     calls = [];
     expect(await syncCard(org, cardId)).toBe("done");
     const pushCall = calls.find((c) => c.path === "/v1/wallet/apple/push")!;
@@ -269,6 +274,17 @@ describe.skipIf(!TEST_DATABASE_URL)("1023 — stamp card wallets", () => {
     expect((cls.body as { class: { programName: string; programLogo: { sourceUri: { uri: string } } } }).class.programLogo.sourceUri.uri).toMatch(
       /^https:\/\/crm\.test\/api\/wallet\/images\/logo\?/
     );
+    // El premio va al frente, arriba del QR, y la versión de la clase lleva la revisión de la forma.
+    expect(cls.body).toMatchObject({
+      version: 1_000_000 + (await loadProgram()).version,
+      class: {
+        classTemplateInfo: {
+          cardTemplateOverride: {
+            cardRowTemplateInfos: [{ oneItem: { item: { firstValue: { fields: [{ fieldPath: "class.textModulesData['reward']" }] } } } }],
+          },
+        },
+      },
+    });
     const link = calls.find((c) => c.path === "/v1/wallet/google/save-link")!;
     expect(link.body).toMatchObject({ object_suffix: serial, object: { loyaltyPoints: { label: "Sellos", balance: { int: 2 } } } });
 
