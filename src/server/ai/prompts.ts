@@ -108,3 +108,31 @@ export function buildJudgePrompt(input: {
 
   return { system, user };
 }
+
+/**
+ * 1023, H7 — Lo que el agente sabe de la tarjeta de sellos del cliente, para
+ * contestar «¿cuántos sellos llevo?». Solo informa: sumar o canjear es del
+ * equipo en caja. Va como mensaje de sistema al final, como el estado de ahora.
+ */
+export function stampCardContext(input: {
+  programName: string;
+  reward: string;
+  stamps: number;
+  stampsRequired: number;
+  paused: boolean;
+  url: string;
+}): string {
+  const shown = Math.min(input.stamps, input.stampsRequired);
+  const left = Math.max(0, input.stampsRequired - input.stamps);
+  return [
+    `TARJETA DE SELLOS DE ESTE CLIENTE («${input.programName}»): lleva ${shown} de ${input.stampsRequired} sellos.`,
+    left === 0
+      ? `Ya la completó: puede canjear «${input.reward}» en su próxima visita.`
+      : `Le faltan ${left} para «${input.reward}».`,
+    input.paused ? "El programa está en pausa: ahora no se suman sellos." : null,
+    `Su tarjeta: ${input.url}`,
+    "Puedes darle estos datos si pregunta. NO prometas sellos ni canjes: los suma el equipo en caja al escanear su código.",
+  ]
+    .filter(Boolean)
+    .join("\n");
+}

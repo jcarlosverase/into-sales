@@ -137,3 +137,25 @@ describe("textos", () => {
     );
   });
 });
+
+describe("1023, H7 — contexto de la tarjeta para el agente", () => {
+  it("dice cuántos lleva, cuántos faltan y que no prometa sellos", async () => {
+    const { stampCardContext } = await import("@/server/ai/prompts");
+    const text = stampCardContext({
+      programName: "Café La Esquina",
+      reward: "1 bebida gratis",
+      stamps: 7,
+      stampsRequired: 10,
+      paused: false,
+      url: "https://crm.example/c/abc",
+    });
+    expect(text).toMatch(/lleva 7 de 10 sellos/);
+    expect(text).toMatch(/Le faltan 3 para «1 bebida gratis»/);
+    expect(text).toMatch(/https:\/\/crm\.example\/c\/abc/);
+    expect(text).toMatch(/NO prometas sellos/);
+    const done = stampCardContext({ programName: "X", reward: "R", stamps: 12, stampsRequired: 10, paused: true, url: "u" });
+    expect(done).toMatch(/lleva 10 de 10/);
+    expect(done).toMatch(/Ya la completó/);
+    expect(done).toMatch(/en pausa/);
+  });
+});

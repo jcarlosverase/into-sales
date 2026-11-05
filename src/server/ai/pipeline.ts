@@ -28,6 +28,7 @@ import {
 import { agendaEnabled } from "@/server/agenda/flag";
 import { bookSlot, offerSlots } from "@/server/agenda/agent";
 import { getOffers, slotsMapForModel } from "@/server/agenda/offers";
+import { stampCardContextFor } from "@/server/stamp-card/agent";
 import { metrics } from "@/lib/observability/metrics";
 
 /**
@@ -279,6 +280,7 @@ export async function runAgentTurn(
    */
   const offers = agenda ? await getOffers(organizationId, conversationId) : [];
   const slotsMap = slotsMapForModel(offers);
+  const stampCard = await stampCardContextFor(organizationId, conversation.contactId);
 
   const messages: ChatMessage[] = [
     {
@@ -298,6 +300,7 @@ export async function runAgentTurn(
     ...(slotsMap
       ? [{ role: "system" as const, content: slotsMap }]
       : []),
+    ...(stampCard ? [{ role: "system" as const, content: stampCard }] : []),
   ];
 
   const result = await chatJson(agentActionSchema(agenda), messages, {

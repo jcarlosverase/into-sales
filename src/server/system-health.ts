@@ -9,6 +9,8 @@ import { getBrainHealth } from "@/server/bot/status";
 import { checkCentral, checkDispatch, checkWhatsApp, type CheckResult, type CheckStatus } from "@/server/doctor/checks";
 import { mediaDirStatus, type MediaDirProbe } from "@/server/media-dir";
 import type { BrainHealthDto } from "@/lib/brain-status";
+import { parseStampCardFlag } from "@/server/stamp-card/flag";
+import { stampCardStuck, type StampCardStuck } from "@/server/stamp-card/health";
 
 /**
  * 1004 — «Ajustes → Salud»: cómo están el CRM y sus servicios ahora mismo.
@@ -17,7 +19,7 @@ import type { BrainHealthDto } from "@/lib/brain-status";
  * contraseña, ni tokens; de WhatsApp, a lo más los últimos 4.
  */
 
-export type HealthRowId = "database" | "migrations" | "media" | "whatsapp" | "ai" | "brain" | "central";
+export type HealthRowId = "database" | "migrations" | "media" | "whatsapp" | "ai" | "brain" | "central" | "stamp_card";
 
 export type HealthRow = {
   id: HealthRowId;
@@ -38,6 +40,7 @@ export type SystemHealthDeps = {
   ai?: (organizationId: string) => Promise<AiStatus>;
   brainHealth?: (url: string | undefined) => Promise<BrainHealthDto | null>;
   license?: (organizationId: string) => Promise<PublicLicense | null>;
+  stampCardStuck?: (organizationId: string) => Promise<StampCardStuck>;
 };
 
 const errorText = (error: unknown) => (error instanceof Error ? error.message : String(error)).slice(0, 200);
@@ -153,6 +156,28 @@ export function centralRow(config: CheckResult, license: PublicLicense | null): 
   return { id: "central", label, status, detail: text?.text ?? "Todavía no late", ...(status !== "ok" ? { fix: "Revisa Ajustes → Plan." } : {}) };
 }
 
+/**
+ * 1023, D9 — La tarjeta de sellos: apagada no es un fallo. Encendida, avisa
+ * si hay cambios que llevan más de una hora sin llegar a los wallets (el
+ * central no responde o la llave no sirve): el sello está guardado, pero el
+ * cliente aún ve el número viejo en su celular.
+ */
+export function stampCardRow(enabled: boolean, stuck: StampCardStuck | null): HealthRow {
+  const id = "stamp_card" as const;
+  const label = "Tarjeta de sellos";
+  if (!enabled) return { id, label, status: "skip", detail: "Apagada (STAMP_CARD)" };
+  if (!stuck || stuck.count === 0) {
+    return { id, label, status: "ok", detail: stuck ? "Encendida · los wallets están al día" : "Encendida" };
+  }
+  return {
+    id,
+    label,
+    status: "warn",
+    detail: `${stuck.count} tarjeta${stuck.count === 1 ? "" : "s"} con cambios sin llegar a Apple o Google Wallet desde hace más de una hora`,
+    fix: "Revisa «Servicio central de into» aquí arriba y Ajustes → Plan. Se reintenta solo cada minuto.",
+  };
+}
+
 async function guarded(id: HealthRowId, label: string, run: () => Promise<HealthRow>): Promise<HealthRow> {
   try {
     return await run();
@@ -177,6 +202,10 @@ export async function runSystemHealth(organizationId: string, deps: SystemHealth
     await guarded("brain", "Cerebro externo", async () => brainRow(checkDispatch(env), await (deps.brainHealth ?? getBrainHealth)(env.BRAIN_HEALTH_URL))),
     await guarded("central", "Servicio central de into", async () =>
       centralRow(checkCentral(env), readConfigCentral(env).active && !dbDown ? await (deps.license ?? getPublicLicense)(organizationId) : null)),
+    await guarded("stamp_card", "Tarjeta de sellos", async () => {
+      const on = parseStampCardFlag(env.STAMP_CARD);
+      return stampCardRow(on, on && !dbDown ? await (deps.stampCardStuck ?? stampCardStuck)(organizationId) : null);
+    }),
   ];
 }
 

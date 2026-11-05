@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
+import { Wallet } from "lucide-react";
 import { BrandTile } from "@/components/brand-mark";
 import { StampCardFace } from "@/components/stamp-card/card-face";
 import { qrSvg } from "@/lib/qr";
-import { loadPublicCard } from "@/server/stamp-card/public";
+import { loadPublicCard, type PublicCard } from "@/server/stamp-card/public";
 
 export const dynamic = "force-dynamic";
 
@@ -46,6 +47,8 @@ export default async function PublicStampCardPage({ params }: Props) {
         logo={<BrandTile branding={card.branding} className="h-10 w-10 rounded-xl bg-white text-lg" />}
       />
 
+      <WalletButtons token={token} wallet={card.wallet} />
+
       <figure className="flex flex-col items-center gap-2 rounded-2xl border bg-card p-4">
         <div
           className="w-52 max-w-full"
@@ -67,5 +70,38 @@ export default async function PublicStampCardPage({ params }: Props) {
         Guarda este enlace o agrégalo a tu pantalla de inicio para tenerla a mano.
       </p>
     </>
+  );
+}
+
+/**
+ * AC8 y AC10 — Los botones de wallet: solo con el central y un plan con
+ * wallet. Con el central caído, se dice en vez de ofrecer algo que falla.
+ */
+function WalletButtons({ token, wallet }: { token: string; wallet: PublicCard["wallet"] }) {
+  const offers = [
+    wallet.apple === "available" ? { href: `/c/${token}/apple`, label: "Agregar a Apple Wallet" } : null,
+    wallet.google === "available" ? { href: `/c/${token}/google`, label: "Guardar en Google Wallet" } : null,
+  ].filter((o): o is { href: string; label: string } => o !== null);
+  const down = wallet.apple === "unavailable" || wallet.google === "unavailable";
+  if (offers.length === 0 && !down) return null;
+  return (
+    <div className="space-y-2">
+      {offers.map((o) => (
+        <a
+          key={o.href}
+          href={o.href}
+          rel="nofollow noreferrer"
+          className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-black px-4 text-sm font-semibold text-white"
+        >
+          <Wallet className="h-5 w-5" aria-hidden="true" />
+          {o.label}
+        </a>
+      ))}
+      {down ? (
+        <p className="text-center text-xs text-muted-foreground">
+          Guardarla en tu wallet no está disponible en este momento. Tu tarjeta funciona igual en esta página.
+        </p>
+      ) : null}
+    </div>
   );
 }

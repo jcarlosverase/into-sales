@@ -86,6 +86,9 @@ if (!enabled) {
     `/api/stamp-card/cards?contactId=ct_x`,
     "/api/stamp-card/poster",
     "/api/wallet/apple/v1/log",
+    "/api/wallet/apple/v1/devices/dev1/registrations/pass.center.into.stamps",
+    "/api/wallet/images/logo",
+    "/api/analytics/stamp-card",
   ]) {
     const r = await req.get(`${BASE}${path}`);
     ok(`${path} → 404`, r.status() === 404, `fue ${r.status()}`);
@@ -94,7 +97,7 @@ if (!enabled) {
   ok("PUT del programa → 404", put.status() === 404);
   const anon = await browser.newContext();
   // Ajustes, como toda pantalla de (app), manda a «Entrar» sin sesión; con sesión da 404 (abajo).
-  for (const path of [`/c/${fakeToken}`, `/s/${fakeSerial}`, "/stamp-card/poster"]) {
+  for (const path of [`/c/${fakeToken}`, `/c/${fakeToken}/apple`, `/c/${fakeToken}/google`, `/s/${fakeSerial}`, "/stamp-card/poster"]) {
     const r = await anon.request.get(`${BASE}${path}`, { maxRedirects: 0 });
     ok(`${path} sin sesión → 404 (no a «Entrar»)`, r.status() === 404, `fue ${r.status()}`);
   }
@@ -225,7 +228,12 @@ if (!enabled) {
   ok("«Sumar sello» con confirmación desde el QR", viaQr);
   const [{ source }] = await sql`select source from stamp_event where card_id = ${card.id} order by created_at desc limit 1`;
   ok("queda registrado como sellado con el QR", source === "qr", source);
-  ok("con la tarjeta completa aparece «Canjear premio»", await anonPage.getByRole("button", { name: "Canjear premio" }).isVisible());
+  const redeemShown = await anonPage
+    .getByRole("button", { name: "Canjear premio" })
+    .waitFor({ timeout: 10000 })
+    .then(() => true)
+    .catch(() => false);
+  ok("con la tarjeta completa aparece «Canjear premio»", redeemShown);
   const horizontal = await anonPage.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   ok("la pantalla del equipo cabe a 360 px", horizontal <= 0, `${horizontal}px`);
   if (process.env.E2E_SCREENSHOTS) await anonPage.screenshot({ path: `${process.env.E2E_SCREENSHOTS}/stamp-card-staff-360.png`, fullPage: true });
@@ -258,11 +266,120 @@ if (!enabled) {
   ok("y canjea desde ahí", viaPanel);
   await page.close();
 
+  await walletChecks({ card, link, program });
+
+  console.log("\n== AC12: Resultados ==");
+  const today = new Date().toISOString().slice(0, 10);
+  const results = await json(await req.get(`${BASE}/api/analytics/stamp-card?from=${today}&to=${today}`));
+  ok(
+    "la sección cuenta tarjetas, sellos, canjes y a los que volvieron",
+    results && results.newCards.current >= 1 && results.stamps.current >= 3 && results.redeems.current >= 2 && results.returning.current >= 1,
+    JSON.stringify(results)
+  );
+
   console.log("\n== Pausa ==");
   await req.put(`${BASE}/api/stamp-card/program`, { data: { ...program, status: "paused" } });
   const paused = await stamp(`e2e-${S}-p1`, { force: true });
   ok("en pausa no se sella (409)", paused.status() === 409 && (await json(paused))?.error?.code === "program_paused");
   await req.put(`${BASE}/api/stamp-card/program`, { data: program });
+}
+
+/** Lee un zip «store» (el .pkpass): nombre → bytes. */
+function readZip(buf) {
+  const out = new Map();
+  let i = 0;
+  while (i + 30 <= buf.length && buf.readUInt32LE(i) === 0x04034b50) {
+    const size = buf.readUInt32LE(i + 18);
+    const nameLength = buf.readUInt16LE(i + 26);
+    const extra = buf.readUInt16LE(i + 28);
+    const name = buf.subarray(i + 30, i + 30 + nameLength).toString("utf8");
+    const start = i + 30 + nameLength + extra;
+    out.set(name, buf.subarray(start, start + size));
+    i = start + size;
+  }
+  return out;
+}
+
+/**
+ * Cortes 2 y 3 — Los wallets contra el mock del central
+ * (`INTO_CENTRAL_URL=${BASE}/api/dev/central-mock`). El final de la llave
+ * elige el caso del mock: `…1234` plan con wallet, `…4031` sin wallet.
+ */
+async function walletChecks({ card, link }) {
+  const central = (process.env.INTO_CENTRAL_URL ?? "").trim();
+  console.log(`\n== AC8, AC10 y AC11: wallets (${central ? "con el mock del central" : "sin central"}) ==`);
+  const pub = await browser.newContext({ viewport: { width: 360, height: 780 } });
+  const page = await pub.newPage();
+  if (!central) {
+    await page.goto(link);
+    ok("sin central no hay botones de wallet (D9)", (await page.getByText("Agregar a Apple Wallet").count()) === 0);
+    const apple = await pub.request.get(`${link}/apple`);
+    ok("…y pedir el pase lo explica (503)", apple.status() === 503, String(apple.status()));
+    await pub.close();
+    return;
+  }
+  const key = (end) => `into_live_${"E2e".repeat(9)}A${end}`;
+  await req.delete(`${BASE}/api/dev/central-mock/v1/wallet/log`);
+  const saved = await req.put(`${BASE}/api/settings/central`, { data: { key: key("1234") } });
+  ok("llave de licencia con plan Pyme", saved.ok(), String(saved.status()));
+
+  await page.goto(link);
+  ok("la tarjeta ofrece «Agregar a Apple Wallet» (AC8)", await page.getByText("Agregar a Apple Wallet").isVisible());
+  // http:// en el e2e: Google no puede bajar el logo, así que no se ofrece.
+  ok("sin HTTPS no ofrece Google Wallet", (await page.getByText("Guardar en Google Wallet").count()) === 0);
+  if (process.env.E2E_SCREENSHOTS) await page.screenshot({ path: `${process.env.E2E_SCREENSHOTS}/stamp-card-public-wallet-360.png`, fullPage: true });
+
+  const res = await pub.request.get(`${link}/apple`);
+  const zip = readZip(await res.body());
+  ok("descarga el .pkpass", res.ok() && res.headers()["content-type"] === "application/vnd.apple.pkpass", `${res.status()} ${res.headers()["content-type"]}`);
+  ok(
+    "con pass.json, manifiesto, firma e imágenes",
+    ["pass.json", "manifest.json", "signature", "icon.png", "logo@2x.png", "strip@3x.png"].every((n) => zip.has(n)),
+    [...zip.keys()].join(",")
+  );
+  const pass = JSON.parse(zip.get("pass.json")?.toString() ?? "{}");
+  const [{ serial }] = await sql`select serial from stamp_card where id = ${card.id}`;
+  ok("el serial lleva el prefijo del cliente", pass.serialNumber === `cmocktest-${serial}`, pass.serialNumber);
+  ok("el QR del pase es la pantalla del equipo", pass.barcodes?.[0]?.message === `${BASE}/s/${serial}`);
+  ok("sin HTTPS, sin servicio web", pass.webServiceURL === undefined);
+  const manifest = JSON.parse(zip.get("manifest.json")?.toString() ?? "{}");
+  const { createHash } = await import("node:crypto");
+  ok(
+    "cada archivo coincide con su SHA-1 del manifiesto",
+    Object.entries(manifest).every(([n, h]) => zip.has(n) && createHash("sha1").update(zip.get(n)).digest("hex") === h)
+  );
+
+  const log = await json(await req.get(`${BASE}/api/dev/central-mock/v1/wallet/log`));
+  const sent = JSON.stringify(log?.bodies ?? []);
+  ok("el central recibió la firma del manifiesto", (log?.bodies ?? []).some((b) => b.path === "apple/sign"), sent.slice(0, 200));
+  ok("al central no le llegó el nombre ni el teléfono (AC11)", !sent.includes(NAME) && !sent.includes(PHONE), sent.slice(0, 200));
+  const signedManifests = (log?.bodies ?? [])
+    .filter((b) => b.path === "apple/sign")
+    .map((b) => Buffer.from(b.body.manifest, "base64").toString());
+  ok("…ni dentro del manifiesto firmado", signedManifests.every((m) => !m.includes(NAME) && !m.includes(PHONE)));
+
+  // AC9 con el token del pase: el iPhone registra el pase y pide la última versión.
+  const auth = `ApplePass ${pass.authenticationToken ?? "sin-token-en-http-xxxxxx"}`;
+  if (pass.authenticationToken) {
+    const reg = await req.post(`${BASE}/api/wallet/apple/v1/devices/e2edev/registrations/${pass.passTypeIdentifier}/${pass.serialNumber}`, {
+      headers: { authorization: auth },
+      data: { pushToken: "a1b2c3d4e5f6a7b8c9d0" },
+    });
+    ok("registra el dispositivo (AC9)", reg.status() === 201, String(reg.status()));
+  }
+  const unauth = await req.post(`${BASE}/api/wallet/apple/v1/devices/e2edev/registrations/pass.center.into.stamps/cmocktest-${serial}`, {
+    headers: { authorization: "ApplePass AAAAAAAAAAAAAAAAAAAAAA" },
+    data: { pushToken: "a1b2c3d4e5f6a7b8c9d0" },
+  });
+  ok("un token ajeno no registra nada (AC9)", unauth.status() === 401, String(unauth.status()));
+
+  // AC10: con un plan sin wallet, la tarjeta sigue y los botones no salen.
+  await req.put(`${BASE}/api/settings/central`, { data: { key: key("4031") } });
+  await page.goto(link);
+  ok("plan sin wallet: sin botones (AC10)", (await page.getByText("Agregar a Apple Wallet").count()) === 0);
+  ok("…y la tarjeta se ve igual", (await page.locator("body").innerText()).includes("sellos"));
+  await req.put(`${BASE}/api/settings/central`, { data: { key: key("1234") } });
+  await pub.close();
 }
 
 await browser.close();

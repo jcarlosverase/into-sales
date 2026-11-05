@@ -9,6 +9,7 @@ import { readConfigCentral } from "@/server/central/flag";
 import { GENERATED_SECRETS, PLACEHOLDER_PREFIX } from "@/server/doctor/init-env";
 import { probeMediaDir } from "@/server/media-dir";
 import { testConnection, type ConnectionCheck } from "@/server/whatsapp/connect";
+import { parseStampCardFlag } from "@/server/stamp-card/flag";
 import {
   getCredentialsByOrg,
   tokenLast4,
@@ -597,6 +598,29 @@ export function checkCentral(source: Record<string, string | undefined>): CheckR
     };
   }
   return { status: "skip", label, detail: "no definida: el CRM no late a ningún servicio central" };
+}
+
+/**
+ * 1023 — La tarjeta de sellos. Apagada no es un fallo. Encendida sin central,
+ * funciona como página web; Apple y Google Wallet llegan por el central.
+ */
+export function checkStampCard(source: Record<string, string | undefined>): CheckResult {
+  const label = "STAMP_CARD";
+  if (!parseStampCardFlag(source.STAMP_CARD)) {
+    return { status: "skip", label, detail: "apagada: no hay tarjeta de sellos" };
+  }
+  if (!readConfigCentral(source).active) {
+    return {
+      status: "ok",
+      label,
+      detail: "encendida, solo como página web: sin INTO_CENTRAL_URL no hay Apple ni Google Wallet",
+    };
+  }
+  return {
+    status: "ok",
+    label,
+    detail: "encendida; los wallets dependen del plan del central (Ajustes → Plan) y de que APP_BASE_URL sea https://",
+  };
 }
 
 /* ---------- Salida ---------- */

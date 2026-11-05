@@ -88,6 +88,28 @@ Migración aditiva `0027_stamp_card` con las cuatro tablas de
   no si la contiene: «hola, quiero mi tarjeta de sellos por favor» va al
   agente.
 
+## Decisiones al implementar los cortes 2 y 3 (2026-11-05)
+
+- **El `.pkpass`** se arma en `pkpass.ts` (puro: `pass.json`, manifiesto y
+  zip «store» con CRC propio) e `images.tsx` (icono, logo y franja con
+  `next/og`). El `serialNumber` es `<scope>-<serial>`; el `scope` lo da
+  `GET /v1/wallet/config`, en caché 10 minutos (1 minuto si falló).
+- **Reintentos (D9)**: cada sello, canje o ajuste marca
+  `wallet_sync_pending` en la misma transacción; `wallet-sync.ts` lo intenta
+  al momento y un temporizador de 60 s reintenta con espera de 1 a 60 minutos.
+  Solo se limpia si nadie cambió la tarjeta mientras tanto (`pass_version`).
+  Editar el programa marca las tarjetas que están en un wallet.
+- **Google**: el objeto lleva solo sellos y QR, porque el contrato solo deja
+  actualizar los puntos; el aviso va en `message`. Para saber a qué tarjetas
+  pasarles los cambios, migración aditiva `0028` (`google_link_issued_at`).
+- **Sin HTTPS público** no se ofrece Google ni se pone `webServiceURL` en el
+  pase de Apple.
+- **Aviso al completar (D10)**: texto libre con la ventana abierta; si está
+  cerrada, la plantilla aprobada elegida con `{{1}}` nombre, `{{2}}` negocio y
+  `{{3}}` premio; sin plantilla no se manda.
+- **Agente (H7)**: un mensaje de sistema al final con sellos, premio y enlace;
+  sin acción nueva.
+
 ## Riesgos
 
 - **APNs y Google reales** no se pueden probar en el CI. Por eso existen el

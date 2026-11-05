@@ -25,6 +25,7 @@ describe.skipIf(!TEST_DATABASE_URL)("1004 — system health against PostgreSQL",
     expect(byId.database!.detail).toMatch(/Responde en \d+ ms · PostgreSQL/);
     expect(byId.migrations!.status).toBe("ok");
     expect(byId.central!.status).toBe("skip");
+    expect(byId.stamp_card!.status).toBe("skip");
     expect(JSON.stringify(rows)).not.toContain(process.env.DATABASE_URL!);
   });
 
@@ -38,6 +39,6 @@ describe.skipIf(!TEST_DATABASE_URL)("1004 — system health against PostgreSQL",
       brainHealth: async () => null,
     });
     expect(rows.find((r) => r.id === "media")).toMatchObject({ status: "fail", detail: "No se pudo comprobar: disco lleno" });
-    expect(rows).toHaveLength(7);
+    expect(rows).toHaveLength(8);
   });
 });

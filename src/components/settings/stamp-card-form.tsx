@@ -28,12 +28,15 @@ export function StampCardSettings({
   canEdit,
   whatsAppDigits,
   branding,
+  templates = [],
 }: {
   initial: ProgramInput;
   saved: boolean;
   canEdit: boolean;
   whatsAppDigits: string | null;
   branding: Pick<Branding, "name" | "accent" | "favicon">;
+  /** D10 — Plantillas aprobadas para el aviso con la ventana cerrada. */
+  templates?: { id: string; name: string; category: string }[];
 }) {
   const router = useRouter();
   const [form, setForm] = useState<ProgramInput>(initial);
@@ -190,6 +193,46 @@ export function StampCardSettings({
                 onChange={(e) => set("joinReply", e.target.value)}
               />
             </Field>
+
+            <div className="space-y-3 rounded-lg border p-3">
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium">Avisar por WhatsApp al completarla</p>
+                  <p className="text-xs text-muted-foreground">
+                    Cada sello ya lo avisa su wallet. Esto manda además un WhatsApp cuando junta todos los sellos.
+                  </p>
+                </div>
+                <Switch
+                  checked={form.notifyOnComplete}
+                  onCheckedChange={(on) => set("notifyOnComplete", on)}
+                  label="Avisar al completar"
+                  disabled={disabled}
+                />
+              </div>
+              {form.notifyOnComplete ? (
+                <Field
+                  id="sc-template"
+                  label="Plantilla si pasaron más de 24 horas"
+                  hint="Si el cliente escribió en las últimas 24 horas, va un texto libre. Si no, WhatsApp exige una plantilla aprobada (categoría Utilidad). Sin plantilla, ese aviso no se manda."
+                >
+                  <select
+                    id="sc-template"
+                    value={form.completeTemplateId ?? ""}
+                    disabled={disabled}
+                    onChange={(e) => set("completeTemplateId", e.target.value || null)}
+                    className="h-9 w-full max-w-sm rounded-md border border-input bg-card px-2 text-sm"
+                  >
+                    <option value="">Sin plantilla</option>
+                    {templates.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.name}
+                        {t.category.toLowerCase() === "utility" ? "" : ` (${t.category.toLowerCase()})`}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+              ) : null}
+            </div>
 
             {canEdit ? (
               <div className="flex flex-wrap items-center gap-3">

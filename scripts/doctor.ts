@@ -16,6 +16,7 @@ import { getSql } from "@/lib/db";
 import {
   checkAi,
   checkCentral,
+  checkStampCard,
   checkDispatch,
   checkDatabase,
   checkMediaDir,
@@ -84,6 +85,7 @@ if (!env) {
   section("IA (opcional)", [checkAi(env)]);
   section("Cerebro externo (opcional)", [checkDispatch(process.env)]);
   section("Servicio central (opcional)", [checkCentral(process.env)]);
+  section("Tarjeta de sellos (opcional)", [checkStampCard(process.env)]);
 }
 
 const s = summarize(all);

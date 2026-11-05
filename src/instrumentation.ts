@@ -7,13 +7,14 @@ import type { Instrumentation } from "next";
  */
 export async function register(): Promise<void> {
   if (process.env.NEXT_RUNTIME === "nodejs") {
-    const { startLogging, checkMediaDir, cleanupOrphanRuns, resumeDispatch, startHeartbeatCentral } =
+    const { startLogging, checkMediaDir, cleanupOrphanRuns, resumeDispatch, startHeartbeatCentral, startStampCardWalletSync } =
       await import("./instrumentation-node");
     startLogging();
     await checkMediaDir();
     await cleanupOrphanRuns();
     resumeDispatch();
     startHeartbeatCentral();
+    startStampCardWalletSync();
   }
 }
 

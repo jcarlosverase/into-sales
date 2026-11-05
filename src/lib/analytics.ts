@@ -278,3 +278,22 @@ export const HANDOFF_LABEL: Record<string, string> = {
   hostilidad: "El cliente se puso agresivo",
   manual_reply: "Respondiste desde el teléfono",
 };
+
+/**
+ * 1023, AC12 — La tarjeta de sellos en Resultados. Solo existe con la
+ * bandera `STAMP_CARD`; el Laboratorio no cuenta.
+ */
+export type StampCardBlockDto = {
+  period: PeriodDto;
+  /** Tarjetas creadas en el periodo. */
+  newCards: Comparable;
+  stamps: Comparable;
+  redeems: Comparable;
+  /** Clientes con dos sellos o más en el periodo: los que volvieron. */
+  returning: Comparable;
+  /** Ahora: tarjetas guardadas en Apple o Google Wallet. */
+  inWallet: number;
+  /** Ahora: tarjetas que existen. */
+  totalCards: number;
+  empty: boolean;
+};

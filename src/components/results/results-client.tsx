@@ -6,12 +6,14 @@ import type {
   BotBlockDto,
   HygieneBlockDto,
   SalesBlockDto,
+  StampCardBlockDto,
 } from "@/lib/analytics";
 import { AdsSection } from "./ads-section";
 import { BotSection } from "./bot-section";
 import { HygieneSection } from "./hygiene-section";
 import { defaultRange, RangePicker, type Range } from "./range-picker";
 import { SalesSection } from "./sales-section";
+import { StampCardSection } from "./stamp-card-section";
 
 type Block<T> = { data: T | null; loading: boolean; error: string | null };
 
@@ -63,11 +65,14 @@ async function load<T>(
 export function ResultsClient({
   currency,
   agenda,
+  stampCard = false,
   today,
   timezone,
 }: {
   currency: string;
   agenda: boolean;
+  /** 1023 — Con la bandera `STAMP_CARD`, la sección de la tarjeta de sellos. */
+  stampCard?: boolean;
   /** Hoy en la zona del negocio (`YYYY-MM-DD`), resuelto en el servidor. */
   today: string;
   timezone: string;
@@ -77,6 +82,7 @@ export function ResultsClient({
   const [ads, setAds] = useState<Block<AdsBlockDto>>(initial);
   const [bot, setBot] = useState<Block<BotBlockDto>>(initial);
   const [hygiene, setHygiene] = useState<Block<HygieneBlockDto>>(initial);
+  const [stamps, setStamps] = useState<Block<StampCardBlockDto>>(initial);
 
   useEffect(() => {
     const ctl = new AbortController();
@@ -84,8 +90,9 @@ export function ResultsClient({
     void load(`/api/analytics/sales?${q}`, setSales, ctl.signal);
     void load(`/api/analytics/ads?${q}`, setAds, ctl.signal);
     void load(`/api/analytics/bot?${q}`, setBot, ctl.signal);
+    if (stampCard) void load(`/api/analytics/stamp-card?${q}`, setStamps, ctl.signal);
     return () => ctl.abort();
-  }, [range]);
+  }, [range, stampCard]);
 
   // La higiene describe el AHORA: no depende del rango elegido.
   useEffect(() => {
@@ -110,6 +117,7 @@ export function ResultsClient({
         <SalesSection {...sales} currency={currency} />
         <AdsSection {...ads} />
         <BotSection {...bot} agenda={agenda} />
+        {stampCard ? <StampCardSection {...stamps} /> : null}
         <HygieneSection {...hygiene} currency={currency} />
       </div>
     </div>

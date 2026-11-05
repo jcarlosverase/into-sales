@@ -20,25 +20,38 @@ Spec: [spec.md](spec.md) · Plan: [plan.md](plan.md).
 Notas del corte 1 (2026-11-05):
 
 - El aviso por WhatsApp al completar la tarjeta (D10, opcional y apagado por
-  defecto) no está en ninguna tarea. Las columnas del programa ya existen;
-  falta la pantalla y el envío. Se propone hacerlo con el corte 3.
+  defecto) no estaba en ninguna tarea. Se hizo con el corte 3 (T025).
 - Verificación humana del corte 1: escanear el cartel impreso con un iPhone y
   un Android, y grabar el enlace en un sticker NFC.
 
 ## Corte 2 — Apple Wallet
 
-- [ ] T013 `src/server/central/wallet.ts` y el mock `api/dev/central-mock/wallet/*` con camino infeliz
-- [ ] T014 Imágenes del pase (`images.ts`) e `apple-pass.ts`: `pass.json`, manifiesto, firma y zip «store»
-- [ ] T015 Servicio web de Apple en `/api/wallet/apple/v1/*` (AC9), con integración
-- [ ] T016 `wallet-sync.ts` y su temporizador: avisos por APNs y reintentos (D9, AC10)
-- [ ] T017 Botón «Agregar a Apple Wallet» según `walletAvailability()` (AC8)
-- [ ] T018 Prueba de que ningún cuerpo al central lleva datos personales (AC11)
+- [x] T013 `src/server/central/wallet.ts` y el mock `api/dev/central-mock/wallet/*` con camino infeliz
+- [x] T014 Imágenes del pase (`images.ts`) e `apple-pass.ts`: `pass.json`, manifiesto, firma y zip «store»
+- [x] T015 Servicio web de Apple en `/api/wallet/apple/v1/*` (AC9), con integración
+- [x] T016 `wallet-sync.ts` y su temporizador: avisos por APNs y reintentos (D9, AC10)
+- [x] T017 Botón «Agregar a Apple Wallet» según `walletAvailability()` (AC8)
+- [x] T018 Prueba de que ningún cuerpo al central lleva datos personales (AC11)
 
 ## Corte 3 — Google, Resultados y agente
 
-- [ ] T019 `google-pass.ts`: clase y objeto; enlace y actualización por el central (AC8)
-- [ ] T020 Sección «Tarjeta de sellos» en Resultados (AC12)
-- [ ] T021 Contexto de la tarjeta en `src/server/ai/prompts.ts` (H7)
-- [ ] T022 Chequeo `stamp_card` en el doctor y en Salud
-- [ ] T023 E2E completo con el mock del central; `specs/README.md`, `CLAUDE.md` y `AGENTS.md` (mapa)
+- [x] T019 `google-pass.ts`: clase y objeto; enlace y actualización por el central (AC8)
+- [x] T020 Sección «Tarjeta de sellos» en Resultados (AC12)
+- [x] T021 Contexto de la tarjeta en `src/server/ai/prompts.ts` (H7)
+- [x] T022 Chequeo `stamp_card` en el doctor y en Salud
+- [x] T023 E2E completo con el mock del central; `specs/README.md`, `CLAUDE.md` y `AGENTS.md` (mapa)
 - [ ] T024 Verificación humana: iPhone real y Google Wallet con una cuenta de prueba contra el central de desarrollo
+- [x] T025 Aviso por WhatsApp al completar (D10): interruptor y plantilla en Ajustes, `src/server/stamp-card/complete.ts`
+
+Notas de los cortes 2 y 3 (2026-11-05):
+
+- Migración aditiva `0028`: `stamp_card.google_link_issued_at`. Desde que se
+  da el enlace de Google, cada cambio se pasa al central; `google_object_saved`
+  queda para lo que dice el central (la ficha muestra «en su wallet»).
+- El objeto de Google lleva solo los sellos y el QR: el contrato del central
+  solo deja actualizar los puntos, así que una imagen o un texto con los
+  sellos quedarían viejos. Premio y condiciones van en la clase.
+- Sin `APP_BASE_URL` https:// no hay servicio web de Apple (el pase no se
+  actualiza solo) ni Google Wallet (Google baja el logo del CRM).
+- T024 sigue pendiente: es la verificación humana con un iPhone y un Android.
+

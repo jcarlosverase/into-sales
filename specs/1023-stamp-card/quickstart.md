@@ -73,48 +73,134 @@ cliente ni a un chat. Los del CRM se repiten por cliente.
    funcionando: Google Wallet API → «Solicitar acceso de publicación». Pide
    capturas del pase y una descripción del uso. La aprobación tarda unos días.
 
-## 3. into-central
+## 3. into-central (una sola vez)
 
-Cuando exista la spec gemela y su código:
+Esto se hace en el VPS donde corre into-central. La carpeta del central es `/opt/into-central`.
 
-1. Copia al VPS del central, fuera del repo y con permisos `600`:
-   `pass-cert.pem`, `pass-key.pem`, `wwdr.pem` y el JSON de Google, por
-   ejemplo en `/opt/into-central/secrets/wallet/`.
-2. Agrega al `.env` del central (nombres propuestos; los fija su spec):
-   ```
-   APPLE_PASS_TYPE_ID=pass.center.into.stamps
-   APPLE_TEAM_ID=<tu Team ID>
-   APPLE_PASS_CERT_FILE=/run/secrets/wallet/pass-cert.pem
-   APPLE_PASS_KEY_FILE=/run/secrets/wallet/pass-key.pem
-   APPLE_PASS_KEY_PASSWORD=<la clave del .pem>
-   APPLE_WWDR_CERT_FILE=/run/secrets/wallet/wwdr.pem
-   GOOGLE_WALLET_ISSUER_ID=<tu Issuer ID>
-   GOOGLE_WALLET_SERVICE_ACCOUNT_FILE=/run/secrets/wallet/google-service-account.json
-   ```
-3. `pnpm run doctor` del central debe decir «Apple Wallet: ok» y «Google
-   Wallet: ok».
-4. En el panel del central, marca el wallet en los planes Pyme y Empresa
-   (Emprendedor y Comunidad quedan solo con la página web).
+### 3.1. Sube los 4 archivos al servidor
+
+Desde la Terminal de tu Mac, en la carpeta donde están los archivos (cambia `usuario` e `IP` por los de tu VPS):
+
+```bash
+scp pass-cert.pem pass-key.pem wwdr.pem google-service-account.json usuario@IP:~/
+```
+
+### 3.2. Ponlos en su carpeta con permisos cerrados
+
+El instalador deja el código del central en `/opt/into-central/src`, y ahí es donde Docker busca la carpeta `secrets/wallet`. Por eso los archivos van en `/opt/into-central/src/secrets/wallet`. Esa carpeta está en `.gitignore`, así que las actualizaciones no la tocan.
+
+Entra al servidor con `ssh usuario@IP` y corre:
+
+```bash
+cd /opt/into-central
+DC="sudo docker compose -p into-central --env-file .env -f src/docker-compose.yml -f src/deploy/docker-compose.vps.yml"
+sudo mkdir -p src/secrets/wallet
+sudo mv ~/pass-cert.pem ~/pass-key.pem ~/wwdr.pem ~/google-service-account.json src/secrets/wallet/
+CENTRAL_UID=$($DC run --rm --no-deps --entrypoint id app -u)
+echo "$CENTRAL_UID"     # debe mostrar un número, por ejemplo 100
+sudo chown -R "$CENTRAL_UID" src/secrets/wallet
+sudo sh -c 'chmod 600 src/secrets/wallet/* && chmod 700 src/secrets/wallet'
+sudo ls -l src/secrets/wallet   # 4 archivos -rw-------
+```
+
+Así solo el usuario del contenedor del central puede leer esos archivos. Dentro del contenedor, la carpeta aparece como `/run/secrets/wallet/`.
+
+### 3.3. Agrega las variables al `.env` del central
+
+```bash
+sudo nano /opt/into-central/.env
+```
+
+Al final del archivo, pega este bloque y cambia lo que está entre `< >` por tus valores de las secciones 1 y 2. Las rutas de los archivos van **tal cual**, porque son las de dentro del contenedor:
+
+```
+APPLE_PASS_TYPE_ID=pass.center.into.stamps
+APPLE_TEAM_ID=<tu Team ID>
+APPLE_PASS_CERT_FILE=/run/secrets/wallet/pass-cert.pem
+APPLE_PASS_KEY_FILE=/run/secrets/wallet/pass-key.pem
+APPLE_PASS_KEY_PASSWORD=<contraseña de pass-key.pem>
+APPLE_WWDR_CERT_FILE=/run/secrets/wallet/wwdr.pem
+GOOGLE_WALLET_ISSUER_ID=<tu Issuer ID>
+GOOGLE_WALLET_SERVICE_ACCOUNT_FILE=/run/secrets/wallet/google-service-account.json
+```
+
+Guarda con Ctrl+O, Enter, y sal con Ctrl+X.
+
+### 3.4. Reinicia y comprueba
+
+```bash
+cd /opt/into-central && sudo docker compose -p into-central --env-file .env -f src/docker-compose.yml -f src/deploy/docker-compose.vps.yml up -d
+```
+
+Abre el panel del central y ve a **Estado**. «Apple Wallet» y «Google Wallet» deben salir en verde. Si una sale en rojo, la página dice qué falló (un archivo que no se lee, una contraseña que no abre la llave) sin mostrar nada secreto.
+
+### 3.5. Activa el wallet en los planes
+
+En el panel del central, ve a **Planes** y abre **Pyme**. Marca «Incluye Apple y Google Wallet (tarjeta de sellos)» y guarda. Haz lo mismo con **Empresa**. Emprendedor y Comunidad quedan sin marcar.
 
 ## 4. Cada CRM IntoSales
 
-1. En el `.env` de la instancia: `STAMP_CARD=on`. Para los wallets, además
-   `INTO_CENTRAL_URL=https://api.into.center` y la llave de licencia pegada
-   en Ajustes → Plan. Reinicia el contenedor.
-2. El dominio del CRM debe tener HTTPS público (ya lo tiene si funciona el
-   webhook de WhatsApp). Apple exige HTTPS para el servicio web del pase.
-3. Ajustes → **Tarjeta de sellos**: nombre, sellos, premio, condiciones,
-   color, horas mínimas entre sellos, frase y respuesta de alta.
-4. Descarga el **cartel del mostrador** e imprímelo. Si quieres el «acerca tu
-   celular», compra stickers **NFC NTAG213** y graba en ellos el enlace que
-   muestra la pantalla, con una app como NFC Tools.
-5. **Opcional:** para avisar por WhatsApp al completar la tarjeta, crea en
-   WhatsApp Manager una plantilla de categoría **Utilidad** (por ejemplo,
-   «{{1}}, completaste tu tarjeta en {{2}}. Pide tu premio en tu próxima
-   visita.»), espera la aprobación y elígela en la pantalla.
-6. **Prueba:** escribe la frase desde otro WhatsApp, abre el enlace, guarda
-   la tarjeta en tu iPhone y en un Android de prueba, suma un sello desde el
-   panel y comprueba que ambos se actualizan.
+Cada cliente tiene su carpeta en el VPS: `/opt/into-sales/<cliente>`.
+
+### 4.1. La llave de licencia del cliente (en el central)
+
+En el panel del central, ve a **Clientes** y abre el cliente. Comprueba que su plan sea Pyme o Empresa si quieres wallet.
+
+- Si lo acabas de crear, la llave se mostró **una sola vez** al crearlo. Cópiala.
+- Si no la tienes guardada, usa **Rotar llave** en la tarjeta «Llave de licencia». Sale una llave nueva y la anterior deja de funcionar al instante.
+
+### 4.2. Enciende la tarjeta y actualiza el CRM
+
+En el servidor, un solo comando actualiza el código, guarda la bandera en el `.env`, aplica las migraciones 0027 y 0028 y reinicia:
+
+```bash
+sudo GITHUB_TOKEN=<tu token> bash /opt/into-sales/<cliente>/src/deploy/install.sh --update --client <cliente> --env STAMP_CARD=on --central https://api.into.center
+```
+
+`--central` solo hace falta la primera vez; para el wallet es obligatorio. La llave de licencia **no** va en el `.env`.
+
+Para reiniciar el CRM sin actualizarlo:
+
+```bash
+cd /opt/into-sales/<cliente>
+sudo docker compose -p into-sales-<cliente> --env-file .env -f src/docker-compose.yml -f src/deploy/docker-compose.vps.yml up -d
+```
+
+En tu Mac, en desarrollo, la migración se aplica con `pnpm db:migrate`.
+
+### 4.3. Pega la llave en el CRM
+
+Entra al CRM del cliente como administrador. Ve a **Ajustes → Plan**, pega la llave del paso 4.1 y guarda. Debe mostrar el plan del cliente.
+
+### 4.4. Configura la tarjeta
+
+En **Ajustes → Tarjeta de sellos**, llena el nombre, los sellos, el premio, las condiciones, el color, las horas mínimas entre sellos, la frase de alta y la respuesta de alta. Pulsa «Crear tarjeta».
+
+El cartel del mostrador aparece cuando el número de WhatsApp está conectado en **Ajustes → WhatsApp**.
+
+### 4.5. Cartel y sticker
+
+- Descarga el PNG o imprime el cartel desde la misma pantalla.
+- Para el sticker NFC (NTAG213), copia el enlace que muestra la pantalla y grábalo con la app NFC Tools: «Escribir → Agregar registro → URL».
+
+### 4.6. Aviso al completar (opcional)
+
+Cada sello ya lo avisa el wallet. Si además quieres un WhatsApp cuando el
+cliente junta todos los sellos, crea en WhatsApp Manager una plantilla de
+categoría **Utilidad** (por ejemplo «{{1}}, completaste tu tarjeta en {{2}}.
+Pide tu premio: {{3}}.»), espera la aprobación y elígela en Ajustes → Tarjeta
+de sellos → «Avisar por WhatsApp al completarla». Con la ventana de 24 horas
+abierta va un texto libre; sin plantilla y con la ventana cerrada, no se manda.
+
+### 4.7. Prueba
+
+1. Desde otro WhatsApp, escanea el cartel y envía la frase. Debe llegarte el enlace a tu tarjeta.
+2. Abre el enlace en tu iPhone: debe salir «Agregar a Apple Wallet». En un Android, «Guardar en Google Wallet».
+3. En la ficha del contacto, suma un sello. En menos de un minuto, la tarjeta del wallet debe mostrar el sello nuevo.
+
+Los botones de wallet solo salen con `INTO_CENTRAL_URL`, la llave pegada, un
+plan con wallet y el CRM en `https://`. Si no salen, revisa Ajustes → Salud
+(«Servicio central de into» y «Tarjeta de sellos»).
 
 ## 5. Pendientes que no son técnicos
 
