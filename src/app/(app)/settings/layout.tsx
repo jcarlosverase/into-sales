@@ -3,6 +3,7 @@ import { agendaEnabled } from "@/server/agenda/flag";
 import { attributionEnabled } from "@/server/attribution/flag";
 import { centralEnabled } from "@/server/central/flag";
 import { isChannelEnabled } from "@/server/channels/enabled";
+import { stampCardEnabled } from "@/server/stamp-card/flag";
 
 // La bandera se lee en cada petición: si esto se resolviera al construir, la
 // imagen quedaría con la agenda apagada para siempre y encenderla en la
@@ -26,6 +27,7 @@ export default function SettingsLayout({
           instagram={isChannelEnabled("instagram")}
           messenger={isChannelEnabled("messenger")}
           tiktok={isChannelEnabled("tiktok")}
+          stampCard={stampCardEnabled()}
         />
         <div className="min-w-0 flex-1 overflow-y-auto p-4 sm:p-6">{children}</div>
       </div>

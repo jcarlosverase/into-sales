@@ -32,8 +32,9 @@ export default function LoginPage() {
       return;
     }
     // A la raíz, no a la Bandeja: ahí se decide si toca la guía de inicio
-    // (#86) o la Bandeja de siempre.
-    router.push("/");
+    // (#86) o la Bandeja de siempre. 1023: salvo que se llegara desde una
+    // pantalla del CRM (el QR de una tarjeta de sellos), que vuelve a ella.
+    router.push(safeNextPath(window.location.search));
     router.refresh();
   }
 
@@ -79,4 +80,10 @@ export default function LoginPage() {
       </CardContent>
     </Card>
   );
+}
+
+/** Solo rutas propias (`/s/…`), nunca otro sitio (`//x.com`, `https://…`). */
+function safeNextPath(search: string): string {
+  const next = new URLSearchParams(search).get("next") ?? "";
+  return /^\/(?![/\\])/.test(next) ? next : "/";
 }

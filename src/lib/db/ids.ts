@@ -39,6 +39,11 @@ const prefixes = {
   forget: "olv",
   // 028 — la llave de licencia del servicio central de into
   centralLicense: "clic",
+  // 1023 — tarjeta de sellos
+  stampProgram: "spg",
+  stampCard: "stc",
+  stampEvent: "ste",
+  applePassRegistration: "apr",
 } as const;
 
 export type IdKind = keyof typeof prefixes;

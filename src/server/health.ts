@@ -3,6 +3,7 @@ import { CHANNEL_ORDER, type Channel } from "@/lib/channels";
 import { getDb } from "@/lib/db";
 import { APP_VERSION, resolveCommit } from "@/lib/version";
 import { parseAgendaFlag } from "@/server/agenda/flag";
+import { parseStampCardFlag } from "@/server/stamp-card/flag";
 import { parseAttributionFlag } from "@/server/attribution/flag";
 import { readConfigCentral } from "@/server/central/flag";
 import { parseChannels } from "@/server/channels/enabled";
@@ -46,6 +47,8 @@ export type HealthFeatures = {
   atribucion: boolean;
   /** Latido al servicio central de into (028): bandera `INTO_CENTRAL_URL` bien escrita. */
   central: boolean;
+  /** Tarjeta de sellos (1023): bandera `STAMP_CARD`. */
+  stampCard: boolean;
 };
 
 export type HealthOk = {
@@ -75,6 +78,7 @@ export type FlagEnv = {
   CHANNELS?: string;
   ATRIBUCION?: string;
   INTO_CENTRAL_URL?: string;
+  STAMP_CARD?: string;
   [other: string]: string | undefined;
 };
 
@@ -91,6 +95,7 @@ export function healthFeatures(env: FlagEnv = process.env): HealthFeatures {
     channels: CHANNEL_ORDER.filter((c) => channels.has(c)),
     atribucion: parseAttributionFlag(env.ATRIBUCION),
     central: readConfigCentral(env).active,
+    stampCard: parseStampCardFlag(env.STAMP_CARD),
   };
 }
 

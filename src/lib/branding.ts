@@ -126,6 +126,16 @@ function luminance({ r, g, b }: Rgb): number {
   return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b);
 }
 
+/**
+ * 1023 — La tinta legible sobre un color de fondo libre (la tarjeta de sellos
+ * usa el color del programa): blanco o casi negro, la de más contraste.
+ */
+export function readableInk(backgroundHex: string): "#ffffff" | "#0b1220" {
+  if (!isValidHex(backgroundHex)) return "#ffffff";
+  const bg = hexToRgb(backgroundHex);
+  return contrast(bg, WHITE) >= contrast(bg, hexToRgb("#0b1220")) ? "#ffffff" : "#0b1220";
+}
+
 /** Contraste WCAG entre dos colores. */
 function contrast(a: Rgb, b: Rgb): number {
   const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x) as [

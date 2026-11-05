@@ -1,5 +1,6 @@
 "use client";
 
+import { ContactStampCard } from "@/components/stamp-card/contact-stamp-card";
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import {
@@ -383,6 +384,9 @@ export function ContactPanel({
         {/* Ficha: lo que se SABE del lead. Va antes de Notas —lo que alguien
             OPINA— porque es lo que se consulta a mitad de una conversación. */}
         <QualificationPanel ficha={qualification} onSave={saveQualification} />
+
+        {/* 1023 — La tarjeta de sellos (solo con la bandera y un programa). */}
+        <ContactStampCard contactId={contactId} />
 
         {/* Notas */}
         <section className={cn("p-4", onDeleteConversation && "border-b")}>

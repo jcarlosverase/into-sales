@@ -26,6 +26,8 @@ export type SseEvent =
     }
   /** 015 — algo cambió en la agenda: la pantalla de Citas se refresca sola. */
   | { type: "booking.updated"; data: { bookingId: string } }
+  /** 1023 — una tarjeta de sellos cambió: la ficha y la pantalla del QR se refrescan. */
+  | { type: "stamp_card.updated"; data: { cardId: string; contactId: string } }
   | {
       type: "lab.run";
       data: {
