@@ -7,6 +7,10 @@ imagen `ghcr.io/kevinrivm/vocero-crm:X.Y.Z`.
 
 ## Sin publicar — IntoSales
 
+- **Datos de ejemplo de una clínica dental** (spec 023): `pnpm seed:dental`
+  carga Clínica Dental Calma con 6 pacientes, 3 plantillas en borrador y un
+  agente que agenda pero no diagnostica. En el VPS, los rubros se cargan con
+  `node seed-industry.mjs <rubro>` dentro del contenedor.
 - **Aviso cuando el proveedor de IA frena al agente** (spec 1027): con un límite
   de gasto, una cuenta suspendida o el cupo agotado, el agente dejaba de contestar
   sin decir nada. Ahora lo dicen la franja de arriba y Salud, y el aviso se va

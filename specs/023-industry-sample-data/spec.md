@@ -31,6 +31,7 @@ Los tres con los que empieza IntoSales, en Lima y en soles:
 | `pnpm seed:academy` | Academia | Academia Horizonte: preuniversitaria e inglés |
 | `pnpm seed:realestate` | Inmobiliaria | Inmobiliaria Altamira: departamentos en Lima |
 | `pnpm seed:fashion` | Tienda de moda en línea | Lúa Moda: vestidos para mujer por Instagram y WhatsApp |
+| `pnpm seed:dental` | Clínica dental | Clínica Dental Calma: endodoncia y odontología general en Pueblo Libre (añadido el 2026-11-06) |
 
 ## Decisiones
 
@@ -88,8 +89,8 @@ Los tres con los que empieza IntoSales, en Lima y en soles:
   dice; con `--overwrite-agent` las reemplaza.
 - **AC6** — Responder desde la Bandeja a una conversación de ejemplo muestra
   el error de destinatario y no llama a Meta.
-- **AC7** — `pnpm seed:realestate` y `pnpm seed:fashion` cumplen lo mismo con
-  sus datos; los tres pueden convivir.
+- **AC7** — `pnpm seed:realestate`, `pnpm seed:fashion` y `pnpm seed:dental`
+  cumplen lo mismo con sus datos; los cuatro pueden convivir.
 - **AC8** — `--reset` deja la organización sin contactos ni borradores de
   ejemplo de ese rubro.
 - **AC9** — Sin organización, el comando termina con un mensaje claro y no
@@ -107,3 +108,24 @@ Los tres con los que empieza IntoSales, en Lima y en soles:
 | Corridas de ejemplo del Laboratorio | Las da la primera corrida real con el conocimiento cargado. |
 | Botón en la app para cargar un rubro | El pedido es de comandos; la instalación los corre. Se puede añadir después. |
 | Mantener la ferretería como demo | Es otro producto y otro país; ver D10. |
+
+## Ampliación del 2026-11-06: clínica dental y comandos en el VPS
+
+**Input**: Juan Carlos el 2026-11-06, para el demo de un consultorio de
+endodoncia: «agrega un comando "clínica dental"», con un nombre inventado para
+el negocio y precios de referencia sacados de internet.
+
+- **D11 — Cuarto rubro, `pnpm seed:dental`**: Clínica Dental Calma, endodoncia
+  y odontología general en Pueblo Libre, con atención para pacientes con miedo
+  al dentista. Cumple los mismos AC1 a AC9 que los otros tres. Los precios son
+  de referencia de clínicas privadas de Lima (cuantomecuesta.com, abril de
+  2026), redondeados, y la dirección dice «de ejemplo».
+- **D12 — El agente de una clínica no diagnostica**: sus instrucciones le
+  prohíben diagnosticar, recetar o decidir el tratamiento, y sus reglas de
+  escalado pasan a una persona ante señales de urgencia (hinchazón, fiebre,
+  sangrado, golpe, dificultad para tragar o respirar).
+- **D13 — Los rubros también se cargan en el VPS**: la imagen trae
+  `seed-industry.mjs` además de `seed-demo.mjs`, así que en una instancia
+  instalada basta
+  `sudo docker compose -p into-sales-<cliente> exec app node seed-industry.mjs dental`
+  (con `--reset` u `--overwrite-agent` igual que en local).

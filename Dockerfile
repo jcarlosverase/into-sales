@@ -32,6 +32,10 @@ RUN pnpm exec esbuild scripts/migrate.mjs --bundle --platform=node \
 RUN pnpm exec esbuild scripts/seed/demo.ts --bundle --platform=node \
     --format=esm --outfile=seed-demo.bundle.mjs --alias:@=./src \
     --banner:js="import { createRequire } from 'module'; const require = createRequire(import.meta.url);"
+# 023: los rubros de ejemplo (`node seed-industry.mjs dental`) también en el VPS
+RUN pnpm exec esbuild scripts/seed/industry.ts --bundle --platform=node \
+    --format=esm --outfile=seed-industry.bundle.mjs --alias:@=./src \
+    --banner:js="import { createRequire } from 'module'; const require = createRequire(import.meta.url);"
 
 FROM node:22-alpine AS runner
 WORKDIR /app
@@ -55,6 +59,7 @@ COPY --from=builder --chown=sales:sales /app/.next/static ./.next/static
 COPY --from=builder --chown=sales:sales /app/public ./public
 COPY --from=builder --chown=sales:sales /app/migrate.bundle.mjs ./migrate.mjs
 COPY --from=builder --chown=sales:sales /app/seed-demo.bundle.mjs ./seed-demo.mjs
+COPY --from=builder --chown=sales:sales /app/seed-industry.bundle.mjs ./seed-industry.mjs
 COPY --from=builder --chown=sales:sales /app/drizzle ./drizzle
 # Nombre propio a propósito: la imagen de node ya trae su docker-entrypoint.sh
 # (antepone `node` si el primer argumento no es un comando) y el nuestro le

@@ -45,7 +45,7 @@ export type SampleAgent = {
 
 export type IndustrySample = {
   /** CLI key and identity prefix: `sample:<key>:<n>`. */
-  key: "academy" | "realestate" | "fashion";
+  key: "academy" | "realestate" | "fashion" | "dental";
   /** Business name shown in the summary. */
   businessName: string;
   currency: "PEN";

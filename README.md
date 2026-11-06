@@ -398,8 +398,8 @@ solas al arrancar.
 4. Opcional: en la Bandeja, pulsa **"Cargar datos de demostración"** para
    explorar con la **Academia Horizonte** (contactos, conversaciones,
    pipeline, plantillas en borrador y el conocimiento del agente). Para otro
-   rubro: `pnpm seed:realestate` (inmobiliaria) o `pnpm seed:fashion`
-   (moda en línea).
+   rubro: `pnpm seed:realestate` (inmobiliaria), `pnpm seed:fashion`
+   (moda en línea) o `pnpm seed:dental` (clínica dental).
    La demo deja configurado el agente (paso 1 listo); la llave de IA y el
    número siguen siendo tuyos.
 

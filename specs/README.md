@@ -24,7 +24,7 @@ producto** — y saberlo antes de leerla ahorra una confusión.
 | `026-eliminar-conversacion` | Ciclo completo | spec, plan, tasks (eliminar una conversación o el contacto entero y pedirle al cerebro que la olvide; puerto de Vocero Cloud #106; sin migración, enmienda el contrato del 021 con el evento `conversation.deleted`) |
 | `025-despacho-recuerda` | Ciclo completo | spec, plan, tasks (el despacho anota qué mensajes debe; puerto de Vocero Cloud #111, #116 y #117, migración aditiva `0017`; enmienda el contrato del 021) |
 | `026-reparto-de-leads` | Ciclo completo | spec, plan, data-model, 1 contrato, tasks (IntoSales: vendedor asignado a cada lead, reparto por turno y visibilidad por vendedor; migración aditiva `0017`) |
-| `027-datos-de-ejemplo-por-rubro` | Ligero | spec (comandos `seed:academy`, `seed:realestate` y `seed:fashion`; sin migración) |
+| `027-datos-de-ejemplo-por-rubro` | Ligero | spec (comandos `seed:academy`, `seed:realestate`, `seed:fashion` y `seed:dental`; sin migración) |
 | `1000-about` | Ligero | spec (pantalla «Acerca de»: versión, módulos encendidos, plan del servicio central, licencia y créditos) |
 | `1001-vps-installer` | Ligero | spec (`deploy/install.sh`: instalación y actualización en un comando en un VPS, con varias instancias y el central detrás de un Caddy compartido; `INTO_CENTRAL_URL` en el compose) |
 | `1002-lima-database-timezone` | Ciclo completo | spec, plan, tasks (las 83 columnas de fecha pasan a `timestamptz` sin mover ningún instante y la base queda en hora de Lima; la sesión de la app sigue en UTC; migración `0024`) |

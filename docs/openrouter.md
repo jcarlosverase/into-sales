@@ -136,7 +136,11 @@ entorno local.
 - Con menos de USD 10 comprados tienes 50 pedidos al día, y cada reintento por
   JSON inválido también cuenta: una corrida del Laboratorio casi los gasta.
 - No cargues conversaciones reales en tu base local mientras uses estos modelos.
-- Un 429 suele ser el límite gratuito o la cola del proveedor, no un error del CRM.
+- Un 429 con «Provider returned error» es el proveedor sin capacidad gratuita en ese
+  momento: la llave y el CRM están bien. Cada gratuito tiene un solo proveedor, y
+  los dos Gemma comparten Google AI Studio: si uno falla, prueba un Nemotron, que
+  va por Nvidia. Si en cambio el mensaje habla de `free-models-per-day`, se acabó
+  tu límite diario y vuelve al día siguiente.
 - La lista cambia: revísala en [modelos gratuitos](https://openrouter.ai/collections/free-models).
 
 ## 5. Conectarlo en el CRM
