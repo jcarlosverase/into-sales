@@ -5,7 +5,7 @@ import {
   type AiProvider,
   type AiStatus,
 } from "@/lib/ai/provider";
-import { markStatusFromResponse } from "@/server/ai/credentials";
+import { clearBlocked, markBlockedFromResponse, markStatusFromResponse } from "@/server/ai/credentials";
 
 /**
  * Adaptador LLM OpenRouter-compatible — ÚNICA frontera con el proveedor de IA
@@ -33,7 +33,7 @@ const RETRY_DELAY_MS = 500;
 export class ProviderHttpError extends Error {
   constructor(
     readonly status: number,
-    body: string
+    readonly body: string
   ) {
     super(`proveedor respondió ${status}: ${truncate(body)}`);
     this.name = "ProviderHttpError";
@@ -93,6 +93,10 @@ export async function chatJson<T>(
         attemptMessages,
         opts?.timeoutMs
       );
+      // 1027 — Contestó: si estaba frenado, ya no.
+      if (provider.source === "org" && opts?.organizationId) {
+        await clearBlocked(opts.organizationId).catch(() => undefined);
+      }
       const extracted = extractJson(raw);
       if (extracted === null) {
         lastDetail = `sin JSON extraíble (raw=${truncate(raw)})`;
@@ -129,6 +133,13 @@ export async function chatJson<T>(
           lastDetail
         ).catch(() => false);
         if (paused) break;
+        // 1027 — Frenado por límite o cupo: reintentar ahora tampoco sirve.
+        const blocked = await markBlockedFromResponse(
+          opts.organizationId,
+          err.status,
+          err.body
+        ).catch(() => false);
+        if (blocked) break;
       }
       if (attempt < MAX_ATTEMPTS) {
         await sleep(RETRY_DELAY_MS * attempt);

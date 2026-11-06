@@ -137,8 +137,8 @@ respaldo mientras no haya nada guardado ahí:
 
 ```bash
 OPENROUTER_API_TOKEN=sk-or-...
-OPENROUTER_MODEL=anthropic/claude-sonnet-4.5
-OPENROUTER_JUDGE_MODEL=anthropic/claude-haiku-4.5   # opcional: juez más barato
+OPENROUTER_MODEL=anthropic/claude-haiku-5.5
+OPENROUTER_JUDGE_MODEL=anthropic/claude-sonnet-5.5   # opcional: un juez más exigente
 ```
 
 Para el self-test local existe además el modo de pruebas interno (mocks) —

@@ -7,6 +7,12 @@ imagen `ghcr.io/kevinrivm/vocero-crm:X.Y.Z`.
 
 ## Sin publicar — IntoSales
 
+- **Aviso cuando el proveedor de IA frena al agente** (spec 1027): con un límite
+  de gasto, una cuenta suspendida o el cupo agotado, el agente dejaba de contestar
+  sin decir nada. Ahora lo dicen la franja de arriba y Salud, y el aviso se va
+  solo cuando vuelve a contestar. Migración `0031`.
+- **Modelo sugerido: `anthropic/claude-haiku-5.5`** en los textos de ejemplo. No
+  cambia el modelo de quien ya lo eligió en Ajustes → IA.
 - **La sesión vence a los 7 días aunque se use** (spec 1026), además de las 12
   horas sin uso. Toca volver a entrar una vez por semana.
 - **El token de Instagram se renueva solo** (spec 1025) antes de los 60 días. La

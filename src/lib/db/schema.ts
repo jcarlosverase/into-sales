@@ -1212,6 +1212,13 @@ export const aiCredentials = pgTable(
       .default("active"),
     statusReason: text("status_reason"),
     statusChangedAt: timestamp("status_changed_at", { withTimezone: true }),
+    /**
+     * 1027 — El proveedor está frenando los pedidos sin que la llave esté mal:
+     * un 403 (límite de gasto, cuenta suspendida) o el cupo agotado. No pausa:
+     * se levanta solo con la siguiente respuesta buena.
+     */
+    blockedAt: timestamp("blocked_at", { withTimezone: true }),
+    blockedReason: text("blocked_reason", { enum: ["forbidden", "quota"] }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },

@@ -3,6 +3,7 @@ import { last4, OPENROUTER_BASE_URL } from "@/lib/ai/presets";
 import {
   getAiCredentialPublic,
   getAiCredentialSecret,
+  type AiBlockReason,
   type AiCredentialPublic,
   type AiCredentialSecret,
 } from "@/server/ai/credentials";
@@ -147,6 +148,13 @@ export async function isAiConfiguredFor(
   organizationId: string
 ): Promise<boolean> {
   return (await aiStatusOf(organizationId)).active;
+}
+
+/** 1027 — El aviso cuando el proveedor frena los pedidos sin que la llave esté mal. */
+export function blockedMessage(reason: AiBlockReason): string {
+  return reason === "quota"
+    ? "Tu agente dejó de contestar: se agotó el cupo de IA de tu plan este mes. Los mensajes siguen entrando; escríbele a into para sumar cupo."
+    : "Tu agente dejó de contestar: el proveedor de IA está rechazando los pedidos. Revisa el límite de gasto de tu llave o si tu cuenta está suspendida.";
 }
 
 /** El mensaje que ve el dueño cuando su agente no puede contestar. */

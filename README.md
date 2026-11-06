@@ -660,7 +660,7 @@ en Ajustes → IA, y lo guardado manda sobre ellas.
 
 ```bash
 OPENROUTER_API_TOKEN=sk-or-...        # respaldo: tu key
-OPENROUTER_MODEL=anthropic/claude-sonnet-4.5
+OPENROUTER_MODEL=anthropic/claude-haiku-5.5
 OPENROUTER_JUDGE_MODEL=               # opcional: modelo distinto para el juez del Laboratorio
 OPENROUTER_BASE_URL=https://openrouter.ai/api   # o tu proveedor OpenAI-compatible
 ```
