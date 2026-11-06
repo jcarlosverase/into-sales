@@ -4,6 +4,9 @@
  *   pnpm seed:academy      Academia Horizonte
  *   pnpm seed:realestate   Inmobiliaria Altamira
  *   pnpm seed:fashion      Lúa Moda
+ *   pnpm seed:dental       Clínica Dental Calma
+ *
+ * In the production image (VPS): `node seed-industry.mjs <industry>`.
  *
  * Flags:
  *   --reset             remove this industry's sample contacts and template drafts

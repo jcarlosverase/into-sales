@@ -34,6 +34,8 @@ const ROW_ORG: AiCredentialSecret = {
   status: "active",
   statusReason: null,
   statusChangedAt: null,
+  blockedAt: null,
+  blockedReason: null,
   updatedAt: new Date(),
   token: "tok-org-1234",
 };

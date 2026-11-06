@@ -46,7 +46,7 @@ pnpm dev                                                   # http://localhost:30
 | `pnpm test:e2e` | `scripts/e2e-selftest.mjs` contra la app viva con mocks. `test:e2e:calendar` y `test:e2e:results` conducen sus guiones; el resto de `scripts/e2e-*.mjs` se corre con `node --env-file=.env scripts/<nombre>.mjs` |
 | `pnpm db:generate` | Genera una migración nueva en `drizzle/` a partir de `src/lib/db/schema.ts` |
 | `pnpm seed:demo` | Carga la academia de ejemplo (también desde la UI al primer arranque) |
-| `pnpm seed:academy` · `seed:realestate` · `seed:fashion` | Datos de ejemplo por rubro: contactos, plantillas en borrador y agente (spec 023). Repetibles; `--reset` los quita, `--overwrite-agent` reemplaza el perfil del agente |
+| `pnpm seed:academy` · `seed:realestate` · `seed:fashion` · `seed:dental` | Datos de ejemplo por rubro: contactos, plantillas en borrador y agente (spec 023). Repetibles; `--reset` los quita, `--overwrite-agent` reemplaza el perfil del agente. En el VPS: `node seed-industry.mjs <rubro>` dentro del contenedor |
 | `pnpm init-env [--domain x]` | Crea `.env` desde `.env.example` con los secretos generados y `DOMAIN=localhost` (o el dominio dado); nunca pisa uno existente. Lógica en `src/server/doctor/init-env.ts` |
 | `pnpm doctor` | Una línea ✓/✗ por comprobación con el arreglo exacto: variables (mismo esquema zod de `src/lib/env.ts`), `select 1` a `DATABASE_URL`, escritura en `MEDIA_DIR` y, si hay número conectado, el token contra Meta. Sale con 1 si algo obligatorio falla. Lógica en `src/server/doctor/checks.ts` |
 

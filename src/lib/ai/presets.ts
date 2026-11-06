@@ -34,7 +34,7 @@ export const AI_PROVIDER_PRESETS: Record<AiProviderId, AiProviderPreset> = {
     id: "openrouter",
     label: "OpenRouter",
     baseUrl: OPENROUTER_BASE_URL,
-    modelPlaceholder: "anthropic/claude-sonnet-4.5",
+    modelPlaceholder: "anthropic/claude-haiku-5.5",
     tokenPlaceholder: "sk-or-…",
   },
   openai_compatible: {

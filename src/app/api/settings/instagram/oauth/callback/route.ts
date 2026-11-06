@@ -81,6 +81,7 @@ export const GET = withAuth(async (session, req: Request) => {
     username: account.username,
     token: account.token,
     webhookSecret: previous?.source === "meta" ? previous.webhookSecret : null,
+    tokenExpiresAt: account.expiresIn ? new Date(Date.now() + account.expiresIn * 1000) : null,
   });
 
   const subscribed = await subscribeAccountToWebhook(account.token);

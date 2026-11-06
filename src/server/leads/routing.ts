@@ -80,12 +80,17 @@ async function ensureRoutingRow(db: Db | Tx, organizationId: string) {
  * Assigns `leadId` to the next rep in the rotation. Returns the chosen user,
  * or null when routing is off or nobody receives leads (the lead stays
  * unassigned and only supervisors see it).
+ *
+ * 1024 — With `onlyIfUnassigned`, a lead that already has an owner keeps it
+ * and spends no turn. It is checked after taking the row lock, so two
+ * messages at once from the same contact take a single turn.
  */
 export async function assignLeadByRotation(
   organizationId: string,
   leadId: string,
   /** The app's connection by default; CLI scripts (seeds) pass their own. */
-  db: Db = getDb()
+  db: Db = getDb(),
+  { onlyIfUnassigned = false }: { onlyIfUnassigned?: boolean } = {}
 ): Promise<string | null> {
   return db.transaction(async (tx) => {
     await ensureRoutingRow(tx, organizationId);
@@ -95,6 +100,15 @@ export async function assignLeadByRotation(
       .where(eq(schema.leadRouting.organizationId, organizationId))
       .for("update");
     if (!routing?.enabled) return null;
+
+    if (onlyIfUnassigned) {
+      const [lead] = await tx
+        .select({ assignedUserId: schema.lead.assignedUserId })
+        .from(schema.lead)
+        .where(scoped(schema.lead.organizationId, organizationId, eq(schema.lead.id, leadId)))
+        .limit(1);
+      if (!lead || lead.assignedUserId) return null;
+    }
 
     const reps = await listRotationReps(tx, organizationId);
     const userId = pickNextAssignee(reps, routing.lastAssignedUserId);

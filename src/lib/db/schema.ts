@@ -599,6 +599,10 @@ export const instagramCredentials = pgTable(
     tokenTag: text("token_tag").notNull(),
     /** Secreto HMAC de las entregas (Zernio); null en modo Meta. */
     webhookSecret: text("webhook_secret"),
+    /** 1025 — Cuándo vence el token de Meta (60 días); null si no se sabe. */
+    tokenExpiresAt: timestamp("token_expires_at", { withTimezone: true }),
+    /** 1025 — Última renovación automática. */
+    tokenRefreshedAt: timestamp("token_refreshed_at", { withTimezone: true }),
     status: text("status", { enum: ["connected", "reconnect_required"] })
       .notNull()
       .default("connected"),
@@ -1208,6 +1212,13 @@ export const aiCredentials = pgTable(
       .default("active"),
     statusReason: text("status_reason"),
     statusChangedAt: timestamp("status_changed_at", { withTimezone: true }),
+    /**
+     * 1027 — El proveedor está frenando los pedidos sin que la llave esté mal:
+     * un 403 (límite de gasto, cuenta suspendida) o el cupo agotado. No pausa:
+     * se levanta solo con la siguiente respuesta buena.
+     */
+    blockedAt: timestamp("blocked_at", { withTimezone: true }),
+    blockedReason: text("blocked_reason", { enum: ["forbidden", "quota"] }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
@@ -1450,6 +1461,12 @@ export const stampCard = pgTable(
      * (migración 0028). Desde entonces cada cambio se le pasa al central.
      */
     googleLinkIssuedAt: timestamp("google_link_issued_at", { withTimezone: true }),
+    /**
+     * D13 — Cuándo aceptó el cliente guardar la tarjeta en su celular y qué
+     * versión del texto vio (Ley 29733: el consentimiento se tiene que poder probar).
+     */
+    consentAt: timestamp("consent_at", { withTimezone: true }),
+    consentVersion: text("consent_version"),
     walletSyncPending: boolean("wallet_sync_pending").notNull().default(false),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),

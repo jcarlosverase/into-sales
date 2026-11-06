@@ -65,7 +65,28 @@ export type ConnectedAccount = {
   igUserId: string;
   username: string | null;
   token: string;
+  /** 1025 — Segundos que dura el token, si Instagram lo dice. */
+  expiresIn: number | null;
 };
+
+/** 1025 — Lo que dura un token de larga duración si Instagram no lo dice. */
+export const LONG_LIVED_TOKEN_SECONDS = 60 * 24 * 60 * 60;
+
+/**
+ * 1025 — Renueva un token de larga duración por otros 60 días. Instagram lo
+ * acepta si tiene al menos 24 horas y no venció. Lanza MetaApiError si no.
+ */
+export async function refreshLongLivedToken(token: string): Promise<{ token: string; expiresIn: number }> {
+  const url = new URL("/refresh_access_token", GRAPH_BASE());
+  url.searchParams.set("grant_type", "ig_refresh_token");
+  url.searchParams.set("access_token", token);
+  const res = (await fetchJson(url.toString(), { method: "GET" })) as {
+    access_token?: string;
+    expires_in?: number;
+  } | null;
+  if (!res?.access_token) throw new MetaApiError("Instagram no devolvió el token renovado", { status: 502 });
+  return { token: res.access_token, expiresIn: res.expires_in ?? LONG_LIVED_TOKEN_SECONDS };
+}
 
 /**
  * Código de la vuelta → token de larga duración → la cuenta. Lanza
@@ -100,6 +121,7 @@ export async function connectWithCode(
   longUrl.searchParams.set("access_token", shortToken);
   const long = (await fetchJson(longUrl.toString(), { method: "GET" })) as {
     access_token?: string;
+    expires_in?: number;
   } | null;
   const token = long?.access_token;
   if (!token) throw new MetaApiError("Instagram no devolvió el token de larga duración", { status: 502 });
@@ -107,7 +129,7 @@ export async function connectWithCode(
   const me = await fetchProfile(token);
   const igUserId = me.igUserId ?? (first?.user_id != null ? String(first.user_id) : null);
   if (!igUserId) throw new MetaApiError("Instagram no devolvió el ID de la cuenta", { status: 502 });
-  return { igUserId, username: me.username, token };
+  return { igUserId, username: me.username, token, expiresIn: long?.expires_in ?? LONG_LIVED_TOKEN_SECONDS };
 }
 
 type ShortTokenResponse =

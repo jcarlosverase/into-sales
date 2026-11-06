@@ -8,12 +8,12 @@ import {
   sampleIdentity,
 } from "@/server/seed/industry";
 
-/** 023 — the three industry samples are loadable and safe. */
+/** 023 — the four industry samples are loadable and safe. */
 const samples = Object.values(INDUSTRIES);
 
 describe("industry samples", () => {
-  it("has the three commands' industries", () => {
-    expect(Object.keys(INDUSTRIES).sort()).toEqual(["academy", "fashion", "realestate"]);
+  it("has the four commands' industries", () => {
+    expect(Object.keys(INDUSTRIES).sort()).toEqual(["academy", "dental", "fashion", "realestate"]);
     expect(isIndustryKey("academy")).toBe(true);
     expect(isIndustryKey("ferreteria")).toBe(false);
   });

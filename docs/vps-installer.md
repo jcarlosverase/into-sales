@@ -205,6 +205,14 @@ sudo docker compose -p into-sales-$CLIENT exec -T postgres \
   pg_dump -U postgres into_sales > $CLIENT-$(date +%F).sql             # respaldo de la base
 ```
 
+Datos de ejemplo de un rubro para una demo (spec 023: `academy`,
+`realestate`, `fashion` o `dental`), después de crear la cuenta en `/register`:
+
+```bash
+sudo docker compose -p into-sales-$CLIENT exec app node seed-industry.mjs dental            # carga
+sudo docker compose -p into-sales-$CLIENT exec app node seed-industry.mjs dental --reset    # los quita
+```
+
 La salud del CRM (base de datos, migraciones, archivos, WhatsApp, IA, cerebro
 y central) se ve en `https://demo.crm.into.center/settings/health`, como
 propietario o administrador.

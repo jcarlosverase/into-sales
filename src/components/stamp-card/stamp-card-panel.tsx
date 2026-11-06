@@ -202,6 +202,9 @@ export function StampCardPanel({
       {card.lastStampAt ? (
         <p className="text-xs text-muted-foreground">Último sello: {when(card.lastStampAt)}</p>
       ) : null}
+      {card.consentAt ? (
+        <p className="text-xs text-muted-foreground">Aceptó guardarla en su celular: {when(card.consentAt)}</p>
+      ) : null}
 
       {confirmAt ? (
         <div role="alertdialog" aria-label="Confirmar sello" className="space-y-2 rounded-lg border border-warning-soft bg-warning-tint p-3 text-sm text-warning-text">

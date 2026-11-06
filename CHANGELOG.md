@@ -7,6 +7,26 @@ imagen `ghcr.io/kevinrivm/vocero-crm:X.Y.Z`.
 
 ## Sin publicar — IntoSales
 
+- **Datos de ejemplo de una clínica dental** (spec 023): `pnpm seed:dental`
+  carga Clínica Dental Calma con 6 pacientes, 3 plantillas en borrador y un
+  agente que agenda pero no diagnostica. En el VPS, los rubros se cargan con
+  `node seed-industry.mjs <rubro>` dentro del contenedor.
+- **Aviso cuando el proveedor de IA frena al agente** (spec 1027): con un límite
+  de gasto, una cuenta suspendida o el cupo agotado, el agente dejaba de contestar
+  sin decir nada. Ahora lo dicen la franja de arriba y Salud, y el aviso se va
+  solo cuando vuelve a contestar. Migración `0031`.
+- **Modelo sugerido: `anthropic/claude-haiku-5.5`** en los textos de ejemplo. No
+  cambia el modelo de quien ya lo eligió en Ajustes → IA.
+- **La sesión vence a los 7 días aunque se use** (spec 1026), además de las 12
+  horas sin uso. Toca volver a entrar una vez por semana.
+- **El token de Instagram se renueva solo** (spec 1025) antes de los 60 días. La
+  migración `0030` se aplica sola al arrancar.
+- **Un lead sin asignar entra al reparto** cuando el cliente vuelve a escribir
+  (spec 1024).
+- **Tarjeta de sellos: tope por plan y consentimiento** (spec 1023). Comunidad
+  50 clientes, Emprendedor 300, Pyme 2,000 y Empresa sin tope; quien ya tiene
+  tarjeta sigue igual. Antes de guardarla en el celular, el cliente acepta y
+  puede leer la privacidad. Migración `0029`.
 - **Ajustes → Plan como en IntoCredit** (spec 1022): muestra el cliente en
   into, un aviso claro con cada resultado y «Comprobar ahora». El latido dice
   que es IntoSales: una llave de otro producto de into se rechaza y la pantalla

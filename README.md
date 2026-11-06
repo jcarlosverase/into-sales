@@ -398,8 +398,8 @@ solas al arrancar.
 4. Opcional: en la Bandeja, pulsa **"Cargar datos de demostración"** para
    explorar con la **Academia Horizonte** (contactos, conversaciones,
    pipeline, plantillas en borrador y el conocimiento del agente). Para otro
-   rubro: `pnpm seed:realestate` (inmobiliaria) o `pnpm seed:fashion`
-   (moda en línea).
+   rubro: `pnpm seed:realestate` (inmobiliaria), `pnpm seed:fashion`
+   (moda en línea) o `pnpm seed:dental` (clínica dental).
    La demo deja configurado el agente (paso 1 listo); la llave de IA y el
    número siguen siendo tuyos.
 
@@ -660,7 +660,7 @@ en Ajustes → IA, y lo guardado manda sobre ellas.
 
 ```bash
 OPENROUTER_API_TOKEN=sk-or-...        # respaldo: tu key
-OPENROUTER_MODEL=anthropic/claude-sonnet-4.5
+OPENROUTER_MODEL=anthropic/claude-haiku-5.5
 OPENROUTER_JUDGE_MODEL=               # opcional: modelo distinto para el juez del Laboratorio
 OPENROUTER_BASE_URL=https://openrouter.ai/api   # o tu proveedor OpenAI-compatible
 ```

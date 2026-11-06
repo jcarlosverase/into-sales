@@ -24,7 +24,7 @@ producto** — y saberlo antes de leerla ahorra una confusión.
 | `026-eliminar-conversacion` | Ciclo completo | spec, plan, tasks (eliminar una conversación o el contacto entero y pedirle al cerebro que la olvide; puerto de Vocero Cloud #106; sin migración, enmienda el contrato del 021 con el evento `conversation.deleted`) |
 | `025-despacho-recuerda` | Ciclo completo | spec, plan, tasks (el despacho anota qué mensajes debe; puerto de Vocero Cloud #111, #116 y #117, migración aditiva `0017`; enmienda el contrato del 021) |
 | `026-reparto-de-leads` | Ciclo completo | spec, plan, data-model, 1 contrato, tasks (IntoSales: vendedor asignado a cada lead, reparto por turno y visibilidad por vendedor; migración aditiva `0017`) |
-| `027-datos-de-ejemplo-por-rubro` | Ligero | spec (comandos `seed:academy`, `seed:realestate` y `seed:fashion`; sin migración) |
+| `027-datos-de-ejemplo-por-rubro` | Ligero | spec (comandos `seed:academy`, `seed:realestate`, `seed:fashion` y `seed:dental`; sin migración) |
 | `1000-about` | Ligero | spec (pantalla «Acerca de»: versión, módulos encendidos, plan del servicio central, licencia y créditos) |
 | `1001-vps-installer` | Ligero | spec (`deploy/install.sh`: instalación y actualización en un comando en un VPS, con varias instancias y el central detrás de un Caddy compartido; `INTO_CENTRAL_URL` en el compose) |
 | `1002-lima-database-timezone` | Ciclo completo | spec, plan, tasks (las 83 columnas de fecha pasan a `timestamptz` sin mover ningún instante y la base queda en hora de Lima; la sesión de la app sigue en UTC; migración `0024`) |
@@ -49,6 +49,10 @@ producto** — y saberlo antes de leerla ahorra una confusión.
 | `1021-design-system` | Ligero | spec (adoptar el sistema de diseño into: preset de Tailwind, componentes `ui/` reexportados, `Notice`, `Table`, logotipo, tema y pantalla de entrada compartidos con into-central; mismo aspecto y mismo white-label) |
 | `1022-plan-like-credit` | Ligero | spec (Ajustes → Plan igual que en IntoCredit: `LicenseStatus` del sistema de diseño, cliente y «Comprobar ahora», y el latido con `product`) |
 | `1023-stamp-card` | Ciclo completo | spec, data-model, 1 contrato (con into-central), quickstart, plan, tasks y la enmienda 1.6.0 ratificada (tarjeta de sellos virtual tras `STAMP_CARD`: alta por WhatsApp, página pública, Apple y Google Wallet firmados por el central; migración aditiva `0027`). **Los tres cortes implementados** el 2026-11-05 (migraciones `0027` y `0028`); falta la verificación humana con un iPhone y un Android |
+| `1024-unassigned-lead-rotation` | Ligero | spec (un lead abierto sin asignar entra al reparto cuando el cliente vuelve a escribir) |
+| `1025-instagram-token-refresh` | Ligero | spec (renovación automática del token de Instagram antes de los 60 días, migración `0030`) |
+| `1026-session-absolute-limit` | Ligero | spec (la sesión vence a los 7 días aunque se use, además de las 12 horas sin uso) |
+| `1027-ai-provider-block-notice` | Ligero | spec (aviso cuando el proveedor de IA frena los pedidos con 403 o cupo agotado, sin pausar la llave, migración `0031`) |
 | `031-ai-after-hours` | Ciclo completo | spec, plan, tasks («Cuándo responde la IA»: siempre o solo fuera del horario de atención del equipo, con su horario semanal y zona; el Laboratorio lo ignora; migración aditiva `0022`) |
 | `030-import-contacts` | Ciclo completo | spec, plan, tasks (Contactos → «Importar» desde `.xlsx` o CSV con vista previa, código de país, sin duplicar ni pisar, leads por turno; sin migración ni dependencias nuevas) |
 | `029-who-to-call-today` | Ciclo completo | spec, plan, tasks (pantalla «Hoy»: seguimientos vencidos, de hoy y leads sin primer contacto, por vendedor; próximo contacto en el cajón del trato; migración aditiva `0021`) |

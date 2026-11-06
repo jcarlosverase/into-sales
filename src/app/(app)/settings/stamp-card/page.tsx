@@ -4,6 +4,7 @@ import { canConfigure } from "@/lib/auth/roles";
 import { requireSession } from "@/lib/auth/session";
 import { getBranding } from "@/server/branding";
 import { stampCardEnabled } from "@/server/stamp-card/flag";
+import { cardUsage } from "@/server/stamp-card/limit";
 import { approvedTemplates, businessWhatsAppDigits, getProgram, programDefaults } from "@/server/stamp-card/program";
 
 export const dynamic = "force-dynamic";
@@ -12,12 +13,13 @@ export const dynamic = "force-dynamic";
 export default async function StampCardSettingsPage() {
   if (!stampCardEnabled()) notFound();
   const session = await requireSession();
-  const [program, defaults, phone, branding, templates] = await Promise.all([
+  const [program, defaults, phone, branding, templates, usage] = await Promise.all([
     getProgram(session.organizationId),
     programDefaults(session.organizationId),
     businessWhatsAppDigits(session.organizationId),
     getBranding(session.organizationId),
     approvedTemplates(session.organizationId),
+    cardUsage(session.organizationId),
   ]);
   return (
     <StampCardSettings
@@ -39,6 +41,7 @@ export default async function StampCardSettingsPage() {
           : defaults
       }
       saved={!!program}
+      usage={usage}
       canEdit={canConfigure(session.role)}
       whatsAppDigits={phone}
       branding={{ name: branding.name, accent: branding.accent, favicon: branding.favicon }}

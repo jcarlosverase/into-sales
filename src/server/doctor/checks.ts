@@ -518,7 +518,7 @@ export function checkAi(env: Env): CheckResult {
       status: "warn",
       label: "OPENROUTER_API_TOKEN",
       detail: "definida, pero sin OPENROUTER_MODEL el agente no sabe qué modelo pedir",
-      fix: "en .env: OPENROUTER_MODEL=anthropic/claude-sonnet-4.5 (u otro de openrouter.ai/models)",
+      fix: "en .env: OPENROUTER_MODEL=anthropic/claude-haiku-5.5 (u otro de openrouter.ai/models)",
     };
   }
   const judge = env.OPENROUTER_JUDGE_MODEL ? ` · juez ${env.OPENROUTER_JUDGE_MODEL}` : "";

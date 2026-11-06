@@ -28,6 +28,7 @@
     "seed:academy": "esbuild scripts/seed/industry.ts --bundle --platform=node --format=esm --outfile=.tmp-seed-industry.mjs --alias:@=./src --packages=external --log-level=warning && node .tmp-seed-industry.mjs academy",
     "seed:realestate": "esbuild scripts/seed/industry.ts --bundle --platform=node --format=esm --outfile=.tmp-seed-industry.mjs --alias:@=./src --packages=external --log-level=warning && node .tmp-seed-industry.mjs realestate",
     "seed:fashion": "esbuild scripts/seed/industry.ts --bundle --platform=node --format=esm --outfile=.tmp-seed-industry.mjs --alias:@=./src --packages=external --log-level=warning && node .tmp-seed-industry.mjs fashion",
+    "seed:dental": "esbuild scripts/seed/industry.ts --bundle --platform=node --format=esm --outfile=.tmp-seed-industry.mjs --alias:@=./src --packages=external --log-level=warning && node .tmp-seed-industry.mjs dental",
     "init-env": "esbuild scripts/init-env.ts --bundle --platform=node --format=esm --outfile=.tmp-init-env.mjs --alias:@=./src --log-level=warning && node .tmp-init-env.mjs",
     "doctor": "esbuild scripts/doctor.ts --bundle --platform=node --format=esm --outfile=.tmp-doctor.mjs --alias:@=./src --log-level=warning --banner:js=\"import { createRequire } from 'module'; const require = createRequire(import.meta.url);\" && node .tmp-doctor.mjs"
   },

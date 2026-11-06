@@ -4,8 +4,8 @@
 
 **Status**: Especificada antes de escribir código. Revisada por
 Juan Carlos el 2026-11-04. Plan en [plan.md](plan.md) y tareas en [tasks.md](tasks.md).
-Los tres cortes implementados el 2026-11-05. Falta la verificación humana
-con un iPhone y un Android (T024).
+Los tres cortes implementados el 2026-11-05 y verificados ese día en un
+iPhone y un Android reales (T024).
 
 **Input**: Juan Carlos, el 2026-11-04: «quiero agregar la funcionalidad de
 tarjeta de sellos virtual» y «quiero ampliar mi CRM a cualquier negocio, ya
@@ -149,6 +149,28 @@ con los círculos de los sellos dibujados por el CRM. En Google es una
 `LoyaltyClass` y un `LoyaltyObject` con los sellos como `loyaltyPoints` y la
 misma imagen. La página web usa el sistema de diseño into.
 
+**D12 — Tope de clientes con tarjeta por plan (2026-11-05, Juan Carlos).**
+Comunidad 50, Emprendedor 300, Pyme 2,000, Empresa sin tope. Sale del plan del
+último latido (`src/lib/stamp-card.ts`, por el final del código: `SH-PYM` y
+`CE-PYM` son Pyme). Sin central o sin llave es Comunidad. El tope frena solo
+las tarjetas **nuevas**: quien ya la tiene sigue sumando y canjeando, y bajar
+de plan no quita ninguna. Por WhatsApp, el cliente nuevo recibe una respuesta
+fija en vez de silencio; Ajustes muestra el uso y avisa desde el 90 %.
+*Decidido sin pedido expreso, a revisar:* Plan Esencial (`SH-ESE`) lleva el
+tope de Emprendedor, su equivalente propio, y un plan con un código que el CRM
+no conoce lleva 300, para no castigar a quien paga.
+
+**D13 — Consentimiento y privacidad al guardar la tarjeta (2026-11-05, Juan
+Carlos; Ley 29733).** La tarjeta en la página web no pide nada más: el cliente
+la pidió por WhatsApp. Guardarla en el celular sí: antes de los botones de
+wallet, la página pide marcar la aceptación, con enlace a
+`/c/<token>/privacy`, que dice quién es responsable, qué datos se usan, qué
+hacen into, Apple y Google, y cómo pedir que se borren. Se guardan la fecha de
+la primera aceptación y la versión del texto (`CONSENT_VERSION`). Sin aceptar,
+`/c/<token>/apple` y `/google` vuelven a la página y nada sale hacia el
+central. Las tarjetas ya guardadas en un wallet siguen actualizándose; si el
+cliente vuelve a descargarla, acepta entonces.
+
 ## Criterios de aceptación
 
 - **AC1** — Con `STAMP_CARD` apagada, `/c/*`, `/s/*`, `/api/stamp-card/*` y
@@ -197,6 +219,16 @@ misma imagen. La página web usa el sistema de diseño into.
   último sello, si está en un wallet) con «+ Sumar sello», «Canjear premio»
   y la bitácora.
 
+- **AC15** — Con wallet disponible y sin aceptar, `/c/<token>` muestra la
+  casilla y «Aceptar y guardar en mi celular» en vez de los botones.
+- **AC16** — Sin la casilla marcada no se registra nada, y sin aceptar
+  `/apple` y `/google` responden 303 a la tarjeta.
+- **AC17** — `/c/<token>/privacy` dice qué datos, para qué, qué recibe into y
+  cómo ejercer los derechos, sin datos del cliente.
+- **AC18** — Con el tope lleno, una tarjeta nueva responde 409
+  `limit_reached`, por WhatsApp llega la respuesta fija y la IA no contesta. Dos
+  altas a la vez no pasan el tope. Quien ya tiene tarjeta sigue igual.
+
 ## Qué se decidió NO hacer y por qué
 
 - **Una app aparte**: duplicaría contactos, WhatsApp, instalación y licencia
@@ -224,9 +256,10 @@ misma imagen. La página web usa el sistema de diseño into.
 - **Precio (decidido el 2026-11-04)**: Apple y Google Wallet entran en los
   planes Pyme y Empresa. En Emprendedor la tarjeta funciona solo como página
   web. Comunidad no tiene central, así que también queda solo con la página.
-  `NEEDS CLARIFICATION`: si hay un tope de tarjetas en wallet por plan.
+  El tope se decidió el 2026-11-05 y cuenta clientes con tarjeta (D12).
 - **Spec gemela en into-central**: escrita como
   `into-central/specs/016-wallet-passes` (2026-11-04). Ahí vive el contrato.
-- `NEEDS CLARIFICATION` — **Privacidad**: texto de consentimiento en la
-  respuesta de alta y si la política de into.center debe mencionar que into
-  firma pases de wallet (Ley 29733).
+- **Privacidad (decidido el 2026-11-05)**: el consentimiento va al guardar la
+  tarjeta, no en la respuesta de alta (D13). `NEEDS CLARIFICATION`: revisión
+  legal del texto, y que la política de into.center mencione que into firma
+  pases de wallet. Decide Juan Carlos.

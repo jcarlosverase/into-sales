@@ -40,8 +40,10 @@ Notas del corte 1 (2026-11-05):
 - [x] T021 Contexto de la tarjeta en `src/server/ai/prompts.ts` (H7)
 - [x] T022 Chequeo `stamp_card` en el doctor y en Salud
 - [x] T023 E2E completo con el mock del central; `specs/README.md`, `CLAUDE.md` y `AGENTS.md` (mapa)
-- [ ] T024 Verificación humana: iPhone real y Google Wallet con una cuenta de prueba contra el central de desarrollo
+- [x] T024 Verificación humana: iPhone real y Google Wallet con una cuenta de prueba contra el central de desarrollo
 - [x] T025 Aviso por WhatsApp al completar (D10): interruptor y plantilla en Ajustes, `src/server/stamp-card/complete.ts`
+- [x] T026 Tope de clientes con tarjeta por plan (D12): `stampCardLimitFor`, `src/server/stamp-card/limit.ts`, uso en Ajustes y respuesta fija por WhatsApp
+- [x] T027 Consentimiento y privacidad al guardar (D13): migración `0029`, `/c/<token>/consent`, `/c/<token>/privacy` y el freno en `/apple` y `/google`
 
 Notas de los cortes 2 y 3 (2026-11-05):
 
@@ -53,5 +55,5 @@ Notas de los cortes 2 y 3 (2026-11-05):
   sellos quedarían viejos. Premio y condiciones van en la clase.
 - Sin `APP_BASE_URL` https:// no hay servicio web de Apple (el pase no se
   actualiza solo) ni Google Wallet (Google baja el logo del CRM).
-- T024 sigue pendiente: es la verificación humana con un iPhone y un Android.
+- T024 hecha el 2026-11-05: Juan Carlos agregó la tarjeta en un iPhone y en un Android reales, contra el central de producción, y la dio por buena tras los ajustes de la franja, el premio al frente en Google y un solo botón por celular.
 

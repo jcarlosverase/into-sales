@@ -6,6 +6,8 @@ import { readConfigDispatch } from "@/server/brains/config";
 import { startWorker, batch } from "@/server/dispatch/worker";
 import { readConfigCentral } from "@/server/central/flag";
 import { startHeartbeats } from "@/server/central/heartbeat";
+import { isChannelEnabled } from "@/server/channels/enabled";
+import { startInstagramTokenRefresh } from "@/server/instagram/token-refresh";
 import { logger, routeConsoleToLogger } from "@/lib/observability/logger";
 import { metrics } from "@/lib/observability/metrics";
 import { safePath } from "@/lib/observability/safe-path";
@@ -149,4 +151,9 @@ export function startHeartbeatCentral(): void {
  */
 export function startStampCardWalletSync(): void {
   startWalletSync();
+}
+
+/** 1025 — Renovación del token de Instagram, solo con ese canal encendido. */
+export function startInstagramRefresh(): void {
+  if (isChannelEnabled("instagram")) startInstagramTokenRefresh();
 }

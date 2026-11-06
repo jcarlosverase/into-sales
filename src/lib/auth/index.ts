@@ -3,6 +3,7 @@ import { betterAuth } from "better-auth";
 import { APIError, createAuthMiddleware } from "better-auth/api";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { organization } from "better-auth/plugins";
+import { eq } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db";
 import { getEnv } from "@/lib/env";
 import { AUTH_RATE_LIMIT, checkRateLimit, clientIp } from "@/lib/rate-limit";
@@ -12,7 +13,7 @@ import {
   resolveActiveOrganizationId,
 } from "@/server/auth/on-signup";
 import { isPublicSignupAllowed } from "@/server/auth/registration";
-import { SESSION_EXPIRES_IN_SECONDS, SESSION_REFRESH_SECONDS } from "@/lib/auth/session-policy";
+import { SESSION_EXPIRES_IN_SECONDS, SESSION_REFRESH_SECONDS, sessionHardLimit } from "@/lib/auth/session-policy";
 
 /**
  * Contexto interno del proceso: permite que el alta de cuentas de equipo
@@ -113,6 +114,16 @@ function createAuth() {
             return {
               data: { ...session, activeOrganizationId: organizationId },
             };
+          },
+        },
+        update: {
+          // Spec 1026: cada renovación vuelve a contar 12 h, pero nunca más
+          // allá de 7 días desde que se entró. `before` no conoce `createdAt`,
+          // así que se recorta aquí, en la fila que decide si la sesión vale.
+          after: async (session) => {
+            const limit = sessionHardLimit(new Date(session.createdAt));
+            if (new Date(session.expiresAt) <= limit) return;
+            await getDb().update(schema.session).set({ expiresAt: limit }).where(eq(schema.session.id, session.id));
           },
         },
       },

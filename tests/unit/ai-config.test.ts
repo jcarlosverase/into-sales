@@ -14,7 +14,7 @@ import {
   resolve,
   type AiProvider,
 } from "@/lib/ai/provider";
-import { statusFromResponse } from "@/server/ai/credentials";
+import { blockFromResponse, statusFromResponse } from "@/server/ai/credentials";
 import {
   aiModelsSchema,
   aiProbeSchema,
@@ -37,6 +37,8 @@ const ROW: AiCredentialSecret = {
   status: "active",
   statusReason: null,
   statusChangedAt: new Date("2026-10-01T00:00:00Z"),
+  blockedAt: null,
+  blockedReason: null,
   updatedAt: new Date("2026-10-01T00:00:00Z"),
   token: "sk-or-fila-1234",
 };
@@ -253,5 +255,18 @@ describe("el respaldo del entorno", () => {
       judgeModel: "env/modelo",
       token: "tok-entorno-9999",
     });
+  });
+});
+
+describe("1027 — el proveedor frena sin que la llave esté mal", () => {
+  it("un 403 siempre, un 429 solo si es el cupo", () => {
+    expect(blockFromResponse(403, "Key limit exceeded")).toBe("forbidden");
+    expect(blockFromResponse(429, '{"error":{"code":"quota_exceeded"}}')).toBe("quota");
+    expect(blockFromResponse(429, "rate limited")).toBeNull();
+    expect(blockFromResponse(500, "quota_exceeded")).toBeNull();
+  });
+
+  it("no pausa la llave: se arregla del lado del proveedor", () => {
+    expect(statusFromResponse(403)).toBeNull();
   });
 });

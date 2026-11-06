@@ -24,6 +24,8 @@ export type CardView = {
   rewardsRedeemed: number;
   lastStampAt: string | null;
   inWallet: boolean;
+  /** D13 — Cuándo aceptó guardarla en su celular. */
+  consentAt: string | null;
   publicUrl: string;
   staffUrl: string;
   program: { name: string; reward: string; status: string; color: string; minHoursBetweenStamps: number };
@@ -66,6 +68,7 @@ export async function cardView(
     rewardsRedeemed: card.rewardsRedeemed,
     lastStampAt: card.lastStampAt?.toISOString() ?? null,
     inWallet: card.googleObjectSaved || registrations.length > 0,
+    consentAt: card.consentAt?.toISOString() ?? null,
     publicUrl: publicCardUrl(card.id),
     staffUrl: staffCardUrl(card.serial),
     program: {

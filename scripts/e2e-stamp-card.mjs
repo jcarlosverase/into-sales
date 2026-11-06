@@ -269,7 +269,8 @@ if (!enabled) {
   await walletChecks({ card, link, program });
 
   console.log("\n== AC12: Resultados ==");
-  const today = new Date().toISOString().slice(0, 10);
+  // El día del negocio, en Lima: de noche, en UTC ya es mañana.
+  const today = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Lima" }).format(new Date());
   const results = await json(await req.get(`${BASE}/api/analytics/stamp-card?from=${today}&to=${today}`));
   ok(
     "la sección cuenta tarjetas, sellos, canjes y a los que volvieron",
@@ -313,6 +314,7 @@ async function walletChecks({ card, link }) {
   if (!central) {
     await page.goto(link);
     ok("sin central no hay botones de wallet (D9)", (await page.getByText("Agregar a Apple Wallet").count()) === 0);
+    await pub.request.post(`${link}/consent`, { form: { accept: "on" } });
     const apple = await pub.request.get(`${link}/apple`);
     ok("…y pedir el pase lo explica (503)", apple.status() === 503, String(apple.status()));
     await pub.close();
@@ -323,7 +325,19 @@ async function walletChecks({ card, link }) {
   const saved = await req.put(`${BASE}/api/settings/central`, { data: { key: key("1234") } });
   ok("llave de licencia con plan Pyme", saved.ok(), String(saved.status()));
 
+  // D13 — Antes de guardarla hay que aceptar, y la privacidad está a un clic.
+  const consentCard = await pub.request.post(`${link}/consent`, { form: {} , maxRedirects: 0 });
+  ok("sin marcar la casilla no cuenta como aceptar (AC16)", consentCard.status() === 303, String(consentCard.status()));
   await page.goto(link);
+  ok("pide aceptar antes de mostrar los botones (AC15)", (await page.getByTestId("stamp-consent").count()) === 1 && (await page.getByText("Agregar a Apple Wallet").count()) === 0);
+  const early = await pub.request.get(`${link}/apple`, { maxRedirects: 0 });
+  ok("sin aceptar, el pase no sale (AC16)", early.status() === 303, String(early.status()));
+  const privacy = await pub.request.get(`${link}/privacy`);
+  const privacyText = await privacy.text();
+  ok("la privacidad dice qué datos y cómo pedir que se borren (AC17)", privacy.ok() && privacyText.includes("borrarlos") && privacyText.includes("nunca tu nombre ni tu teléfono"));
+  await page.getByRole("checkbox").check();
+  await page.getByRole("button", { name: "Aceptar y guardar en mi celular" }).click();
+  await page.getByText("Agregar a Apple Wallet").waitFor({ timeout: 10000 });
   ok("la tarjeta ofrece «Agregar a Apple Wallet» (AC8)", await page.getByText("Agregar a Apple Wallet").isVisible());
   // En el celular, solo el botón de su sistema.
   for (const [os, userAgent, apple] of [

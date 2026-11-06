@@ -1,3 +1,4 @@
+import { and, isNotNull } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db";
 import { newId } from "@/lib/db/ids";
 import { scoped } from "@/lib/db/tenant";
@@ -23,8 +24,13 @@ export type AiCredentialPublic = {
   status: AiStatus;
   statusReason: string | null;
   statusChangedAt: Date | null;
+  /** 1027 — El proveedor frena los pedidos: el agente no contesta, sin pausa. */
+  blockedAt: Date | null;
+  blockedReason: AiBlockReason | null;
   updatedAt: Date;
 };
+
+export type AiBlockReason = "forbidden" | "quota";
 
 /** Para el adaptador: la misma fila con el token en claro. */
 export type AiCredentialSecret = AiCredentialPublic & { token: string };
@@ -40,6 +46,8 @@ function toPublic(row: Row): AiCredentialPublic {
     status: row.status,
     statusReason: row.statusReason,
     statusChangedAt: row.statusChangedAt,
+    blockedAt: row.blockedAt,
+    blockedReason: row.blockedReason,
     updatedAt: row.updatedAt,
   };
 }
@@ -139,6 +147,8 @@ export async function saveAiCredential(input: {
     status: "active" as const,
     statusReason: null,
     statusChangedAt: now,
+    blockedAt: null,
+    blockedReason: null,
     updatedAt: now,
   };
   const rows = await db
@@ -185,6 +195,46 @@ export function statusFromResponse(httpStatus: number): AiStatus | null {
   return null;
 }
 
+/**
+ * 1027 — ¿El proveedor está frenando los pedidos? Un 403 es un límite de gasto
+ * o una cuenta suspendida; el 429 solo si el cuerpo dice que se agotó el cupo
+ * (el del central de into), porque el 429 común es una ráfaga y pasa solo.
+ * Ninguno pausa: se arregla del lado del proveedor y no hay que pulsar nada.
+ */
+export function blockFromResponse(httpStatus: number, body: string): AiBlockReason | null {
+  if (httpStatus === 403) return "forbidden";
+  if (httpStatus === 429 && body.includes("quota_exceeded")) return "quota";
+  return null;
+}
+
+/** Anota el freno, para que el dueño lo vea. Devuelve true si lo era. */
+export async function markBlockedFromResponse(
+  organizationId: string,
+  httpStatus: number,
+  body: string
+): Promise<boolean> {
+  const reason = blockFromResponse(httpStatus, body);
+  if (!reason) return false;
+  await getDb()
+    .update(schema.aiCredentials)
+    .set({ blockedAt: new Date(), blockedReason: reason })
+    .where(scoped(schema.aiCredentials.organizationId, organizationId));
+  return true;
+}
+
+/** 1027 — El proveedor volvió a contestar: el aviso se va solo. */
+export async function clearBlocked(organizationId: string): Promise<void> {
+  await getDb()
+    .update(schema.aiCredentials)
+    .set({ blockedAt: null, blockedReason: null })
+    .where(
+      and(
+        scoped(schema.aiCredentials.organizationId, organizationId),
+        isNotNull(schema.aiCredentials.blockedAt)
+      )
+    );
+}
+
 /** Aplica la pausa que dicte el proveedor. Devuelve true si pausó. */
 export async function markStatusFromResponse(
   organizationId: string,
@@ -219,6 +269,8 @@ export async function markActive(organizationId: string): Promise<void> {
       status: "active",
       statusReason: null,
       statusChangedAt: new Date(),
+      blockedAt: null,
+      blockedReason: null,
       updatedAt: new Date(),
     })
     .where(scoped(schema.aiCredentials.organizationId, organizationId));

@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   SESSION_EXPIRES_IN_SECONDS,
+  SESSION_MAX_DAYS,
   SESSION_REFRESH_SECONDS,
+  sessionHardLimit,
   shouldRefreshSession,
 } from "@/lib/auth/session-policy";
 
@@ -26,5 +28,13 @@ describe("la política de la sesión", () => {
 
   it("con actividad pero antes de 10 min, espera", () => {
     expect(shouldRefreshSession({ now: t0 + 9 * min, lastActivityAt: t0 + 8 * min, lastRefreshAt: t0 })).toBe(false);
+  });
+});
+
+/** Spec 1026 — y a los 7 días aunque se use. */
+describe("el tope absoluto de la sesión", () => {
+  it("son 7 días desde que se entró", () => {
+    expect(SESSION_MAX_DAYS).toBe(7);
+    expect(sessionHardLimit(new Date("2026-11-01T10:00:00Z"))).toEqual(new Date("2026-11-08T10:00:00Z"));
   });
 });

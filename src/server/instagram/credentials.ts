@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db";
 import { newId } from "@/lib/db/ids";
 import { decryptSecret, encryptSecret } from "@/lib/crypto";
@@ -21,6 +21,8 @@ export type InstagramCredentials = {
   webhookSecret: string | null;
   status: "connected" | "reconnect_required";
   token: string;
+  /** 1025 — Cuándo vence el token; null si no se sabe (pegado a mano). */
+  tokenExpiresAt: Date | null;
 };
 
 type Row = typeof schema.instagramCredentials.$inferSelect;
@@ -35,6 +37,7 @@ function toCredentials(row: Row): InstagramCredentials {
     username: row.username,
     webhookSecret: row.webhookSecret,
     status: row.status,
+    tokenExpiresAt: row.tokenExpiresAt,
     token: decryptSecret({
       cipher: row.tokenCipher,
       iv: row.tokenIv,
@@ -86,6 +89,8 @@ export async function saveInstagramCredentials(input: {
   username: string | null;
   token: string;
   webhookSecret: string | null;
+  /** 1025 — Conectar con Instagram lo sabe; un token pegado a mano, no. */
+  tokenExpiresAt?: Date | null;
 }): Promise<void> {
   const db = getDb();
   const enc = encryptSecret(input.token);
@@ -101,6 +106,8 @@ export async function saveInstagramCredentials(input: {
     tokenIv: enc.iv,
     tokenTag: enc.tag,
     webhookSecret: input.webhookSecret,
+    tokenExpiresAt: input.tokenExpiresAt ?? null,
+    tokenRefreshedAt: null,
     status: "connected" as const,
     updatedAt: new Date(),
   };
@@ -125,6 +132,41 @@ export async function markInstagramReconnectRequired(
     .update(schema.instagramCredentials)
     .set({ status: "reconnect_required", updatedAt: new Date() })
     .where(eq(schema.instagramCredentials.organizationId, organizationId));
+}
+
+/** 1025 — Guarda el token renovado. La cuenta y su estado no cambian. */
+export async function saveRefreshedInstagramToken(
+  id: string,
+  token: string,
+  expiresAt: Date,
+  now: Date
+): Promise<void> {
+  const enc = encryptSecret(token);
+  await getDb()
+    .update(schema.instagramCredentials)
+    .set({
+      tokenCipher: enc.cipher,
+      tokenIv: enc.iv,
+      tokenTag: enc.tag,
+      tokenExpiresAt: expiresAt,
+      tokenRefreshedAt: now,
+      updatedAt: now,
+    })
+    .where(eq(schema.instagramCredentials.id, id));
+}
+
+/** 1025 — Las cuentas conectadas con la app de Meta: las únicas que se renuevan. */
+export async function listConnectedMetaInstagram(): Promise<InstagramCredentials[]> {
+  const rows = await getDb()
+    .select()
+    .from(schema.instagramCredentials)
+    .where(
+      and(
+        eq(schema.instagramCredentials.source, "meta"),
+        eq(schema.instagramCredentials.status, "connected")
+      )
+    );
+  return rows.map(toCredentials);
 }
 
 export function tokenLast4(token: string): string {

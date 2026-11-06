@@ -1,6 +1,7 @@
 import path from "node:path";
 import { readMigrationFiles } from "drizzle-orm/migrator";
-import { aiStatusOf, type AiStatus } from "@/lib/ai/provider";
+import { aiStatusOf, blockedMessage, type AiStatus } from "@/lib/ai/provider";
+import { getAiCredentialPublic, type AiBlockReason } from "@/server/ai/credentials";
 import { getSql } from "@/lib/db";
 import { resultText } from "@/lib/central";
 import { readConfigCentral } from "@/server/central/flag";
@@ -109,8 +110,12 @@ export function whatsappRow(results: CheckResult[]): HealthRow {
   return { id: "whatsapp", label, status: results.length ? status : "skip", detail, ...(fix ? { fix } : {}) };
 }
 
-export function aiRow(status: AiStatus): HealthRow {
+export function aiRow(status: AiStatus, blocked: AiBlockReason | null = null): HealthRow {
   const label = "Inteligencia artificial";
+  // 1027 — La llave vale, pero el proveedor está frenando los pedidos.
+  if (status.active && blocked) {
+    return { id: "ai", label, status: "fail", detail: blockedMessage(blocked), fix: "Se quita solo con la siguiente respuesta buena del proveedor." };
+  }
   if (status.active) {
     return { id: "ai", label, status: "ok", detail: status.source === "org" ? `Llave guardada en Ajustes → IA (…${status.last4})` : `Llave del entorno (…${status.last4})` };
   }
@@ -198,7 +203,9 @@ export async function runSystemHealth(organizationId: string, deps: SystemHealth
     dbDown ? skip("migrations", "Migraciones") : await guarded("migrations", "Migraciones", () => checkMigrationsRow(sql, deps.migrationsFolder)),
     await guarded("media", "Archivos (adjuntos, logo)", async () => mediaRow(await (deps.media ?? mediaDirStatus)())),
     dbDown ? skip("whatsapp", "WhatsApp") : await guarded("whatsapp", "WhatsApp", async () => whatsappRow(await (deps.whatsapp ?? (() => checkWhatsApp()))())),
-    dbDown ? skip("ai", "Inteligencia artificial") : await guarded("ai", "Inteligencia artificial", async () => aiRow(await (deps.ai ?? aiStatusOf)(organizationId))),
+    dbDown ? skip("ai", "Inteligencia artificial") : await guarded("ai", "Inteligencia artificial", async () =>
+        aiRow(await (deps.ai ?? aiStatusOf)(organizationId), deps.ai ? null : ((await getAiCredentialPublic(organizationId))?.blockedReason ?? null))
+      ),
     await guarded("brain", "Cerebro externo", async () => brainRow(checkDispatch(env), await (deps.brainHealth ?? getBrainHealth)(env.BRAIN_HEALTH_URL))),
     await guarded("central", "Servicio central de into", async () =>
       centralRow(checkCentral(env), readConfigCentral(env).active && !dbDown ? await (deps.license ?? getPublicLicense)(organizationId) : null)),

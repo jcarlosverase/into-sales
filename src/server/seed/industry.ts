@@ -8,6 +8,7 @@ import type { IndustrySample } from "@/server/seed/industries/types";
 import { academy } from "@/server/seed/industries/academy";
 import { realEstate } from "@/server/seed/industries/real-estate";
 import { fashion } from "@/server/seed/industries/fashion";
+import { dental } from "@/server/seed/industries/dental";
 import {
   isLegacyDemoAgent,
   removeLegacyDemo,
@@ -35,6 +36,7 @@ export const INDUSTRIES: Record<IndustrySample["key"], IndustrySample> = {
   academy,
   realestate: realEstate,
   fashion,
+  dental,
 };
 
 export function isIndustryKey(value: string): value is IndustrySample["key"] {
