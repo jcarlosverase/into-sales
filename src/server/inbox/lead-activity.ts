@@ -9,6 +9,10 @@ import type { StageChangeSource } from "@/lib/types";
  * Actividad de lead al recibir un mensaje (US2): si el contacto no tiene lead,
  * se crea en la primera etapa del pipeline; si lo tiene, se actualiza su
  * última actividad.
+ *
+ * 1024 — Un lead abierto sin vendedor entra al reparto cuando el cliente vuelve
+ * a escribir. Un fallo aquí no tumba la ingesta: el lead sigue sin asignar y
+ * los supervisores lo ven.
  */
 export async function onLeadActivity(
   organizationId: string,
@@ -18,8 +22,13 @@ export async function onLeadActivity(
   const db = getDb();
 
   const existing = await db
-    .select({ id: schema.lead.id })
+    .select({
+      id: schema.lead.id,
+      assignedUserId: schema.lead.assignedUserId,
+      stageKind: schema.pipelineStage.kind,
+    })
     .from(schema.lead)
+    .innerJoin(schema.pipelineStage, eq(schema.pipelineStage.id, schema.lead.stageId))
     .where(eq(schema.lead.contactId, contactId))
     .limit(1);
 
@@ -28,6 +37,13 @@ export async function onLeadActivity(
       .update(schema.lead)
       .set({ lastActivityAt: at, updatedAt: new Date() })
       .where(eq(schema.lead.id, existing[0].id));
+    if (!existing[0].assignedUserId && existing[0].stageKind === "open") {
+      try {
+        await assignLeadByRotation(organizationId, existing[0].id, db, { onlyIfUnassigned: true });
+      } catch (err) {
+        console.error("[leads] could not assign the returning lead:", err);
+      }
+    }
     return;
   }
 

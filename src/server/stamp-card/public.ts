@@ -24,6 +24,8 @@ export type PublicCard = {
   branding: Pick<Branding, "name" | "accent" | "favicon">;
   /** D9 — Qué botones de wallet mostrar. */
   wallet: WalletOffer;
+  /** D13 — El cliente ya aceptó guardarla en su celular. */
+  consented: boolean;
 };
 
 export type PublicCardResult =
@@ -71,6 +73,7 @@ export async function loadPublicCard(token: string, headers: Headers | null): Pr
       staffUrl: staffCardUrl(card.serial),
       branding: { name: branding.name, accent: branding.accent, favicon: branding.favicon },
       wallet,
+      consented: card.consentAt !== null,
     },
   };
 }

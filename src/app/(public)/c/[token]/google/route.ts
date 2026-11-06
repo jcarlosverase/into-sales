@@ -1,6 +1,7 @@
 import { logger } from "@/lib/observability/logger";
 import { CentralWalletError } from "@/server/central/wallet";
 import { googleSaveUrl } from "@/server/stamp-card/google-pass";
+import { publicCardUrl } from "@/server/stamp-card/cards";
 import { findPublicCardFor } from "@/server/stamp-card/public";
 
 export const dynamic = "force-dynamic";
@@ -16,6 +17,10 @@ export async function GET(req: Request, { params }: Params) {
   const found = await findPublicCardFor(token, req.headers);
   if (found.kind === "not_found") return new Response(null, { status: 404 });
   if (found.kind === "rate_limited") return new Response("Demasiadas consultas. Espera un minuto.", { status: 429 });
+  // D13 — Sin aceptar, nada sale hacia el wallet: vuelve a la página, que lo pide.
+  if (!found.card.consentAt) {
+    return new Response(null, { status: 303, headers: { location: publicCardUrl(found.card.id), "referrer-policy": "no-referrer" } });
+  }
   try {
     const url = await googleSaveUrl(found.card, found.program);
     return new Response(null, { status: 303, headers: { location: url, "cache-control": "no-store", "referrer-policy": "no-referrer" } });

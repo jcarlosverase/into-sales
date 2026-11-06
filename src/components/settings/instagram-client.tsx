@@ -39,6 +39,7 @@ type Connection = {
   profilePictureUrl?: string | null;
   status: "connected" | "reconnect_required";
   tokenLast4: string;
+  tokenExpiresAt: string | null;
 };
 
 /** Spec 1017: si «Conectar con Instagram» está disponible y su URL de vuelta. */
@@ -243,6 +244,12 @@ export function InstagramClient() {
               · {connection.source === "zernio" ? "llave" : "token"} que termina en ····
               {connection.tokenLast4}
             </p>
+            {connection.source === "meta" && connection.tokenExpiresAt ? (
+              <p className="text-xs text-success-text opacity-80" data-testid="ig-token-expiry">
+                El token se renueva solo. Vence el{" "}
+                {new Date(connection.tokenExpiresAt).toLocaleDateString("es-PE", { timeZone: "America/Lima" })}.
+              </p>
+            ) : null}
           </div>
           <Badge variant="success">Instagram activo</Badge>
         </div>

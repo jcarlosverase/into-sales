@@ -5,12 +5,14 @@ import {
   applyRedeem,
   applyStamp,
   canStamp,
+  cardUsageLevel,
   DEFAULT_JOIN_PHRASE,
   DEFAULT_JOIN_REPLY,
   matchesJoinPhrase,
   normalizePhrase,
   programInputSchema,
   renderJoinReply,
+  stampCardLimitFor,
   stampsLeft,
   waJoinLink,
 } from "@/lib/stamp-card";
@@ -167,5 +169,31 @@ describe("botón de wallet según el celular", () => {
     expect(walletPlatform("Mozilla/5.0 (Linux; Android 14; SM-A546E) AppleWebKit/537.36 Chrome/130.0 Mobile Safari/537.36")).toBe("android");
     expect(walletPlatform("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 Safari/605.1.15")).toBe("other");
     expect(walletPlatform(null)).toBe("other");
+  });
+});
+
+describe("1023, D12 — tope de clientes con tarjeta por plan", () => {
+  it("cada plan tiene su tope, propio o centralizado", () => {
+    expect(stampCardLimitFor("SH-COM")).toBe(50);
+    expect(stampCardLimitFor("CE-EMD")).toBe(300);
+    expect(stampCardLimitFor("SH-ESE")).toBe(300);
+    expect(stampCardLimitFor("CE-PYM")).toBe(2000);
+    expect(stampCardLimitFor("SH-PYM")).toBe(2000);
+    expect(stampCardLimitFor("CE-EMP")).toBeNull();
+    expect(stampCardLimitFor("SH-EMP")).toBeNull();
+  });
+
+  it("sin plan es Comunidad; un plan desconocido no se queda en lo mínimo", () => {
+    expect(stampCardLimitFor(null)).toBe(50);
+    expect(stampCardLimitFor(undefined)).toBe(50);
+    expect(stampCardLimitFor("CE-VIP")).toBe(300);
+  });
+
+  it("avisa desde el 90 % y dice cuándo está lleno", () => {
+    expect(cardUsageLevel(10, 50)).toBe("ok");
+    expect(cardUsageLevel(45, 50)).toBe("near");
+    expect(cardUsageLevel(50, 50)).toBe("full");
+    expect(cardUsageLevel(60, 50)).toBe("full");
+    expect(cardUsageLevel(99_999, null)).toBe("ok");
   });
 });

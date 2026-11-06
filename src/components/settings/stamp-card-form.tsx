@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Download, Printer } from "lucide-react";
+import { Notice } from "@into/designsystem";
 import { BrandTile } from "@/components/brand-mark";
 import { StampCardFace } from "@/components/stamp-card/card-face";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -13,7 +14,7 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import type { Branding } from "@/lib/branding";
 import { qrSvg } from "@/lib/qr";
-import { PROGRAM_LIMITS, programInputSchema, waJoinLink, type ProgramInput } from "@/lib/stamp-card";
+import { cardUsageLevel, PROGRAM_LIMITS, programInputSchema, waJoinLink, type ProgramInput } from "@/lib/stamp-card";
 
 type Message = { kind: "ok" | "error"; text: string };
 
@@ -25,6 +26,7 @@ type Message = { kind: "ok" | "error"; text: string };
 export function StampCardSettings({
   initial,
   saved: initiallySaved,
+  usage,
   canEdit,
   whatsAppDigits,
   branding,
@@ -32,6 +34,8 @@ export function StampCardSettings({
 }: {
   initial: ProgramInput;
   saved: boolean;
+  /** D12 — Clientes con tarjeta y el tope del plan; `null` es sin tope. */
+  usage: { used: number; limit: number | null };
   canEdit: boolean;
   whatsAppDigits: string | null;
   branding: Pick<Branding, "name" | "accent" | "favicon">;
@@ -105,6 +109,8 @@ export function StampCardSettings({
             {!canEdit ? (
               <p className="text-sm text-muted-foreground">Solo quien administra el negocio puede cambiar la tarjeta.</p>
             ) : null}
+
+            <CardUsage used={usage.used} limit={usage.limit} />
 
             <div className="flex items-center justify-between gap-3 rounded-lg border p-3">
               <div className="min-w-0">
@@ -329,5 +335,24 @@ function Field({ id, label, hint, children }: { id: string; label: string; hint?
       {children}
       {hint ? <p className="text-xs text-muted-foreground">{hint}</p> : null}
     </div>
+  );
+}
+
+/** D12 — Cuántos clientes tienen tarjeta y cuánto queda del plan. */
+function CardUsage({ used, limit }: { used: number; limit: number | null }) {
+  const count = used.toLocaleString("en-US");
+  if (limit === null) {
+    return <p className="text-sm text-muted-foreground" data-testid="stamp-usage">{count} clientes con tarjeta · sin tope en tu plan</p>;
+  }
+  const text = `${count} de ${limit.toLocaleString("en-US")} clientes con tarjeta`;
+  const level = cardUsageLevel(used, limit);
+  if (level === "ok") return <p className="text-sm text-muted-foreground" data-testid="stamp-usage">{text}</p>;
+  return (
+    <Notice tone={level === "full" ? "danger" : "warning"} data-testid="stamp-usage">
+      {text}.{" "}
+      {level === "full"
+        ? "Llegaste al tope de tu plan: quien ya tiene tarjeta sigue sumando sellos, pero no entran clientes nuevos."
+        : "Te queda poco del tope de tu plan."}
+    </Notice>
   );
 }

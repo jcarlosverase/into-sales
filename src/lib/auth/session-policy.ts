@@ -10,6 +10,14 @@
 export const SESSION_IDLE_HOURS = 12;
 export const SESSION_EXPIRES_IN_SECONDS = SESSION_IDLE_HOURS * 60 * 60;
 
+/** Spec 1026 — Días tras los que la sesión vence aunque se use todos los días. */
+export const SESSION_MAX_DAYS = 7;
+
+/** El último instante que puede durar una sesión creada en `createdAt`. */
+export function sessionHardLimit(createdAt: Date): Date {
+  return new Date(createdAt.getTime() + SESSION_MAX_DAYS * 24 * 60 * 60 * 1000);
+}
+
 /**
  * Cada cuánto, como mucho, se renueva la sesión mientras alguien trabaja.
  * Better Auth no la toca antes de este tiempo desde la última renovación.

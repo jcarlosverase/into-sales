@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { headers } from "next/headers";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Wallet } from "lucide-react";
 import { BrandTile } from "@/components/brand-mark";
@@ -49,7 +50,13 @@ export default async function PublicStampCardPage({ params }: Props) {
         logo={<BrandTile branding={card.branding} className="h-10 w-10 rounded-xl bg-white text-lg" />}
       />
 
-      <WalletButtons token={token} wallet={card.wallet} platform={walletPlatform(requestHeaders.get("user-agent"))} />
+      <WalletButtons
+        token={token}
+        wallet={card.wallet}
+        consented={card.consented}
+        business={card.branding.name}
+        platform={walletPlatform(requestHeaders.get("user-agent"))}
+      />
 
       <figure className="flex flex-col items-center gap-2 rounded-2xl border bg-card p-4">
         <div
@@ -71,6 +78,11 @@ export default async function PublicStampCardPage({ params }: Props) {
       <p className="text-center text-xs text-muted-foreground">
         Guarda este enlace o agrégalo a tu pantalla de inicio para tenerla a mano.
       </p>
+      <p className="text-center text-xs">
+        <Link href={`/c/${token}/privacy`} className="text-muted-foreground underline underline-offset-2">
+          Privacidad
+        </Link>
+      </p>
     </>
   );
 }
@@ -79,8 +91,21 @@ export default async function PublicStampCardPage({ params }: Props) {
  * AC8 y AC10 — Los botones de wallet: solo con el central y un plan con
  * wallet. Con el central caído, se dice en vez de ofrecer algo que falla.
  * En el celular, solo el de su sistema; en una computadora, los dos.
+ * D13 — Antes de guardarla, el cliente acepta: la página sin wallet no lo pide.
  */
-function WalletButtons({ token, wallet, platform }: { token: string; wallet: PublicCard["wallet"]; platform: WalletPlatform }) {
+function WalletButtons({
+  token,
+  wallet,
+  consented,
+  business,
+  platform,
+}: {
+  token: string;
+  wallet: PublicCard["wallet"];
+  consented: boolean;
+  business: string;
+  platform: WalletPlatform;
+}) {
   const apple = platform === "android" ? "hidden" : wallet.apple;
   const google = platform === "ios" ? "hidden" : wallet.google;
   const offers = [
@@ -89,6 +114,26 @@ function WalletButtons({ token, wallet, platform }: { token: string; wallet: Pub
   ].filter((o): o is { href: string; label: string } => o !== null);
   const down = apple === "unavailable" || google === "unavailable";
   if (offers.length === 0 && !down) return null;
+  if (offers.length > 0 && !consented) {
+    return (
+      <form method="post" action={`/c/${token}/consent`} className="space-y-3 rounded-2xl border bg-card p-4" data-testid="stamp-consent">
+        <label className="flex items-start gap-2 text-sm">
+          <input type="checkbox" name="accept" required className="mt-0.5 h-4 w-4 shrink-0 accent-black" />
+          <span>
+            Acepto que {business} use mi nombre, mi número de WhatsApp y mis sellos para llevar esta tarjeta en mi
+            celular.{" "}
+            <Link href={`/c/${token}/privacy`} className="underline underline-offset-2">
+              Ver privacidad
+            </Link>
+          </span>
+        </label>
+        <button type="submit" className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-black px-4 text-sm font-semibold text-white">
+          <Wallet className="h-5 w-5" aria-hidden="true" />
+          Aceptar y guardar en mi celular
+        </button>
+      </form>
+    );
+  }
   return (
     <div className="space-y-2">
       {offers.map((o) => (

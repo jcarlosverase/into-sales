@@ -7,6 +7,16 @@ imagen `ghcr.io/kevinrivm/vocero-crm:X.Y.Z`.
 
 ## Sin publicar — IntoSales
 
+- **La sesión vence a los 7 días aunque se use** (spec 1026), además de las 12
+  horas sin uso. Toca volver a entrar una vez por semana.
+- **El token de Instagram se renueva solo** (spec 1025) antes de los 60 días. La
+  migración `0030` se aplica sola al arrancar.
+- **Un lead sin asignar entra al reparto** cuando el cliente vuelve a escribir
+  (spec 1024).
+- **Tarjeta de sellos: tope por plan y consentimiento** (spec 1023). Comunidad
+  50 clientes, Emprendedor 300, Pyme 2,000 y Empresa sin tope; quien ya tiene
+  tarjeta sigue igual. Antes de guardarla en el celular, el cliente acepta y
+  puede leer la privacidad. Migración `0029`.
 - **Ajustes → Plan como en IntoCredit** (spec 1022): muestra el cliente en
   into, un aviso claro con cada resultado y «Comprobar ahora». El latido dice
   que es IntoSales: una llave de otro producto de into se rechaza y la pantalla

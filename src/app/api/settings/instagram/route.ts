@@ -49,6 +49,7 @@ export const GET = withAuth(async (session) => {
       profilePictureUrl: profile?.pictureUrl ?? null,
       status: creds.status,
       tokenLast4: tokenLast4(creds.token),
+      tokenExpiresAt: creds.tokenExpiresAt?.toISOString() ?? null,
     },
     oauth,
   });

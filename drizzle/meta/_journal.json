@@ -204,6 +204,20 @@
       "when": 1793900799457,
       "tag": "0028_stamp_card_google",
       "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1793933678211,
+      "tag": "0029_stamp_card_consent",
+      "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1793933894273,
+      "tag": "0030_instagram_token_expiry",
+      "breakpoints": true
     }
   ]
 }

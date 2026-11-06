@@ -1,7 +1,7 @@
 import { matchesJoinPhrase, renderJoinReply } from "@/lib/stamp-card";
 import { logger } from "@/lib/observability/logger";
 import { sendText } from "@/server/inbox/send";
-import { ensureCard, publicCardUrl } from "./cards";
+import { ensureCard, publicCardUrl, StampCardError } from "./cards";
 import { stampCardEnabled } from "./flag";
 import { getProgram } from "./program";
 
@@ -37,6 +37,16 @@ export async function handleJoinPhrase(input: {
     });
     await sendText({ conversationId: input.conversationId, organizationId: input.organizationId, text });
   } catch (err) {
+    // D12 — Con el tope lleno, el cliente recibe una respuesta y no silencio.
+    if (err instanceof StampCardError && err.code === "limit_reached") {
+      logger.warn({ organizationId: input.organizationId }, "[stamp-card] tope de tarjetas del plan");
+      await sendText({
+        conversationId: input.conversationId,
+        organizationId: input.organizationId,
+        text: FULL_REPLY,
+      }).catch(() => undefined);
+      return true;
+    }
     // La tarjeta ya quedó (o no se pudo crear); lo que falló no tumba la
     // ingesta. El equipo ve el mensaje en la bandeja y puede responder a mano.
     logger.warn(
@@ -46,6 +56,9 @@ export async function handleJoinPhrase(input: {
   }
   return true;
 }
+
+/** D12 — Lo que recibe un cliente nuevo cuando el plan ya no admite más tarjetas. */
+export const FULL_REPLY = "Por ahora no podemos crear tu tarjeta de sellos. Consúltalo con nosotros en tu próxima visita.";
 
 /** «Luz María Pérez» → «Luz»; un nombre vacío o que es un teléfono queda vacío. */
 export function firstName(name: string): string {

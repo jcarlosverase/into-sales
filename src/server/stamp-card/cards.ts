@@ -1,4 +1,4 @@
-import { and, desc, eq } from "drizzle-orm";
+import { and, count, desc, eq, isNull } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db";
 import { newId } from "@/lib/db/ids";
 import { scoped } from "@/lib/db/tenant";
@@ -7,9 +7,11 @@ import {
   applyRedeem,
   applyStamp,
   canStamp,
+  CONSENT_VERSION,
   isComplete,
 } from "@/lib/stamp-card";
 import { publish } from "@/server/events/bus";
+import { cardLimit } from "./limit";
 import { getProgram, type StampProgram } from "./program";
 import { appleAuthTokenFor, hashToken, newSerial, publicTokenFor } from "./tokens";
 import { kickWalletSync } from "./wallet-sync";
@@ -20,7 +22,7 @@ export type StampSource = "whatsapp" | "panel" | "qr";
 /** Errores del dominio que la API traduce a un código HTTP. */
 export class StampCardError extends Error {
   constructor(
-    readonly code: "no_program" | "program_paused" | "not_found" | "not_complete",
+    readonly code: "no_program" | "program_paused" | "not_found" | "not_complete" | "limit_reached",
     message: string
   ) {
     super(message);
@@ -42,6 +44,10 @@ function notify(organizationId: string, card: StampCard) {
  * tiene. El único (programa, contacto) hace que dos altas a la vez terminen
  * en la misma tarjeta. Por WhatsApp hace falta el programa activo; desde la
  * ficha basta con que exista.
+ *
+ * D12 — El tope del plan frena solo las tarjetas nuevas: quien ya tiene la
+ * suya sigue igual. El programa se bloquea mientras se cuenta, para que dos
+ * altas a la vez no pasen el tope.
  */
 export async function ensureCard(
   organizationId: string,
@@ -53,6 +59,7 @@ export async function ensureCard(
   if (source === "whatsapp" && program.status !== "active") {
     throw new StampCardError("program_paused", "La tarjeta de sellos está en pausa");
   }
+  const limit = await cardLimit(organizationId);
   const db = getDb();
   return db.transaction(async (tx) => {
     const [contact] = await tx
@@ -61,6 +68,33 @@ export async function ensureCard(
       .where(scoped(schema.contact.organizationId, organizationId, eq(schema.contact.id, contactId)))
       .limit(1);
     if (!contact) throw new StampCardError("not_found", "Contacto no encontrado");
+
+    const ofContact = scoped(
+      schema.stampCard.organizationId,
+      organizationId,
+      eq(schema.stampCard.programId, program.id),
+      eq(schema.stampCard.contactId, contactId)
+    );
+    const [current] = await tx.select().from(schema.stampCard).where(ofContact).limit(1);
+    if (current) return { card: current, program, created: false };
+
+    if (limit !== null) {
+      await tx
+        .select({ id: schema.stampProgram.id })
+        .from(schema.stampProgram)
+        .where(scoped(schema.stampProgram.organizationId, organizationId, eq(schema.stampProgram.id, program.id)))
+        .for("update");
+      const [row] = await tx
+        .select({ used: count() })
+        .from(schema.stampCard)
+        .where(scoped(schema.stampCard.organizationId, organizationId));
+      if ((row?.used ?? 0) >= limit) {
+        throw new StampCardError(
+          "limit_reached",
+          `Llegaste al tope de ${limit.toLocaleString("en-US")} clientes con tarjeta de tu plan. Quien ya la tiene sigue sumando sellos; para sumar clientes nuevos, cambia de plan.`
+        );
+      }
+    }
 
     const id = newId("stampCard");
     const [inserted] = await tx
@@ -94,18 +128,7 @@ export async function ensureCard(
       });
       return { card: inserted, program, created: true };
     }
-    const [existing] = await tx
-      .select()
-      .from(schema.stampCard)
-      .where(
-        scoped(
-          schema.stampCard.organizationId,
-          organizationId,
-          eq(schema.stampCard.programId, program.id),
-          eq(schema.stampCard.contactId, contactId)
-        )
-      )
-      .limit(1);
+    const [existing] = await tx.select().from(schema.stampCard).where(ofContact).limit(1);
     return { card: existing!, program, created: false };
   }).then((result) => {
     if (result.created) notify(organizationId, result.card);
@@ -352,4 +375,22 @@ export async function findPublicCard(token: string): Promise<{ card: StampCard; 
     .where(eq(schema.stampCard.publicTokenHash, hashToken(token)))
     .limit(1);
   return row ?? null;
+}
+
+/**
+ * D13 — El cliente aceptó guardar la tarjeta en su celular. Se queda con la
+ * primera aceptación: repetirla no cambia la fecha ni la versión.
+ */
+export async function recordConsent(card: StampCard, now = new Date()): Promise<void> {
+  await getDb()
+    .update(schema.stampCard)
+    .set({ consentAt: now, consentVersion: CONSENT_VERSION, updatedAt: now })
+    .where(
+      scoped(
+        schema.stampCard.organizationId,
+        card.organizationId,
+        eq(schema.stampCard.id, card.id),
+        isNull(schema.stampCard.consentAt)
+      )
+    );
 }

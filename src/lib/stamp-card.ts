@@ -10,6 +10,39 @@ export const DEFAULT_JOIN_REPLY =
   "¡Hola {nombre}! Esta es tu tarjeta de sellos de {negocio}: {enlace}\nGuárdala en tu celular y muéstrala en cada visita.";
 export const DEFAULT_PROGRAM_COLOR = "#0070e0";
 
+/** D13 — La versión del texto de consentimiento: cambia cuando cambia lo que se acepta. */
+export const CONSENT_VERSION = "2026-11";
+
+/** D12 — Sin plan del central (Comunidad, o sin llave todavía). */
+export const COMMUNITY_CARD_LIMIT = 50;
+/** D12 — Un plan que este CRM no conoce (creado a mano en el central). */
+export const UNKNOWN_PLAN_CARD_LIMIT = 300;
+
+/** D12 — Tope por el final del código del plan: `SH-PYM` y `CE-PYM` son Pyme. */
+const CARD_LIMIT_BY_TIER: Record<string, number | null> = {
+  COM: COMMUNITY_CARD_LIMIT,
+  EMD: 300,
+  ESE: 300,
+  PYM: 2000,
+  EMP: null,
+};
+
+/** Cuántos clientes pueden tener tarjeta con este plan; `null` es sin tope. */
+export function stampCardLimitFor(planCode: string | null | undefined): number | null {
+  if (!planCode) return COMMUNITY_CARD_LIMIT;
+  const tier = planCode.split("-").at(-1)?.toUpperCase() ?? "";
+  return tier in CARD_LIMIT_BY_TIER ? CARD_LIMIT_BY_TIER[tier]! : UNKNOWN_PLAN_CARD_LIMIT;
+}
+
+export type CardUsageLevel = "ok" | "near" | "full";
+
+/** Desde el 90 % se avisa; lleno, ya no entran clientes nuevos. */
+export function cardUsageLevel(used: number, limit: number | null): CardUsageLevel {
+  if (limit === null) return "ok";
+  if (used >= limit) return "full";
+  return used >= limit * 0.9 ? "near" : "ok";
+}
+
 export const PROGRAM_LIMITS = {
   name: 40,
   reward: 60,

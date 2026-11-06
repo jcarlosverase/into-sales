@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { DEFAULT_JOIN_PHRASE, DEFAULT_JOIN_REPLY } from "@/lib/stamp-card";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { CONSENT_VERSION, DEFAULT_JOIN_PHRASE, DEFAULT_JOIN_REPLY } from "@/lib/stamp-card";
 import { TEST_DATABASE_URL, useTestDatabase } from "./test-db";
 
 /** 1023 — Programa y tarjetas contra PostgreSQL: alta, sellos, canje, ajuste e idempotencia. */
@@ -160,5 +160,80 @@ describe.skipIf(!TEST_DATABASE_URL)("1023 — stamp card domain", () => {
     await getDb().delete(schema.contact).where(eq(schema.contact.id, "ct_max"));
     const rows = await getDb().select().from(schema.stampCard).where(eq(schema.stampCard.contactId, "ct_max"));
     expect(rows).toHaveLength(0);
+  });
+
+  it("D12 — el tope frena solo a los clientes nuevos, también con altas a la vez", async () => {
+    const { getDb, schema } = await import("@/lib/db");
+    const { ensureCard } = await import("@/server/stamp-card/cards");
+    const { cardUsage } = await import("@/server/stamp-card/limit");
+    const { saveProgram } = await import("@/server/stamp-card/program");
+    const db = getDb();
+    const orgCap = "org_cap";
+    await db.insert(schema.organization).values({ id: orgCap, name: "Tope" });
+    await saveProgram(orgCap, program);
+    const contacts = Array.from({ length: 54 }, (_, i) => ({
+      id: `ct_cap${i}`,
+      organizationId: orgCap,
+      waIdentity: `5199${String(i).padStart(7, "0")}`,
+      name: `Cliente ${i}`,
+    }));
+    await db.insert(schema.contact).values(contacts);
+
+    // Sin central es Comunidad: 50. Cuatro de más a la vez no pasan.
+    const results = await Promise.allSettled(contacts.map((c) => ensureCard(orgCap, c.id, { source: "panel" })));
+    const refused = results.filter((r) => r.status === "rejected");
+    expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(50);
+    expect(refused).toHaveLength(4);
+    const reason = (refused[0] as PromiseRejectedResult).reason as { code: string; message: string };
+    expect(reason.code).toBe("limit_reached");
+    expect(reason.message).toContain("tope de 50 clientes");
+    expect(await cardUsage(orgCap)).toEqual({ used: 50, limit: 50 });
+
+    // Quien ya tiene tarjeta sigue igual.
+    const fulfilled = results.findIndex((r) => r.status === "fulfilled");
+    const again = await ensureCard(orgCap, contacts[fulfilled]!.id, { source: "panel" });
+    expect(again.created).toBe(false);
+  });
+
+  it("D12 — con el tope lleno, la frase de alta responde y la IA no contesta", async () => {
+    const { getDb, schema } = await import("@/lib/db");
+    const sent: string[] = [];
+    vi.doMock("@/server/inbox/send", () => ({ sendText: async (i: { text: string }) => void sent.push(i.text) }));
+    vi.resetModules();
+    const { handleJoinPhrase, FULL_REPLY } = await import("@/server/stamp-card/join");
+    const prior = process.env.STAMP_CARD;
+    process.env.STAMP_CARD = "on";
+    try {
+      const contact = await getDb()
+        .select()
+        .from(schema.contact)
+        .where(eq(schema.contact.organizationId, "org_cap"));
+      const withoutCard = (await getDb().select().from(schema.stampCard).where(eq(schema.stampCard.organizationId, "org_cap"))).map((c) => c.contactId);
+      const fresh = contact.find((c) => !withoutCard.includes(c.id))!;
+      const handled = await handleJoinPhrase({
+        organizationId: "org_cap",
+        contact: { id: fresh.id, name: fresh.name, channel: "whatsapp" },
+        conversationId: "cv_cap",
+        text: DEFAULT_JOIN_PHRASE,
+      });
+      expect(handled).toBe(true);
+      expect(sent).toEqual([FULL_REPLY]);
+    } finally {
+      process.env.STAMP_CARD = prior;
+      vi.doUnmock("@/server/inbox/send");
+      vi.resetModules();
+    }
+  });
+
+  it("D13 — el consentimiento guarda la primera fecha y la versión del texto", async () => {
+    const { getDb, schema } = await import("@/lib/db");
+    const { recordConsent } = await import("@/server/stamp-card/cards");
+    const [card] = await getDb().select().from(schema.stampCard).where(eq(schema.stampCard.organizationId, "org_cap")).limit(1);
+    expect(card!.consentAt).toBeNull();
+    await recordConsent(card!, t0);
+    await recordConsent(card!, hours(5));
+    const [row] = await getDb().select().from(schema.stampCard).where(eq(schema.stampCard.id, card!.id));
+    expect(row!.consentAt).toEqual(t0);
+    expect(row!.consentVersion).toBe(CONSENT_VERSION);
   });
 });
