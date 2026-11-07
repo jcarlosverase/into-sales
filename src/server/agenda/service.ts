@@ -1,15 +1,22 @@
-import { and, asc, eq, gte, inArray } from "drizzle-orm";
+import { and, asc, eq, gte, inArray, isNull, or, sql } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db";
 import { newId } from "@/lib/db/ids";
 import { scoped } from "@/lib/db/tenant";
 import { labelInTz } from "@/lib/time/slots";
 import { CONNECTOR_META, type ConnectorId } from "@/lib/agenda-connectors";
+import { offerMatches, pickResource } from "@/lib/agenda-resources";
 import {
   computeAvailability,
   findSlot,
   type AvailableSlot,
 } from "@/server/agenda/availability";
 import { getSettings, type CalendarSettings } from "@/server/agenda/settings";
+import {
+  getResource,
+  listActiveResources,
+  resourceNames,
+  type AgendaResource,
+} from "@/server/agenda/resources";
 import {
   clearOffers,
   findOffered,
@@ -45,7 +52,9 @@ export type BookingErrorCode =
   | "slot_taken"
   | "slot_not_offered"
   | "not_found"
-  | "invalid";
+  | "invalid"
+  | "resource_not_found"
+  | "resource_archived";
 
 export class BookingError extends Error {
   code: BookingErrorCode;
@@ -75,10 +84,55 @@ export type BookingResult = {
   meetingLink: string | null;
   linkPending: boolean;
   label: string;
+  /** 1029 — Con quién quedó la cita. */
+  resource: { id: string; name: string } | null;
 };
 
 /** Cuántas alternativas se devuelven cuando el hueco se ocupó. */
 const FRESH_ALTERNATIVES = 3;
+
+/**
+ * 1029 — Revalidar y escribir sin que nadie se cuele en medio. Los índices
+ * únicos solo ven el mismo instante y la misma persona; un bloqueo general
+ * contra una cita con profesional, o dos citas que se solapan sin empezar igual,
+ * pasarían. Es por organización porque un bloqueo general toca a todos. Todo lo
+ * que se lea aquí va por `tx`: esperar el candado ocupa una conexión, y salir a
+ * pedir otra del pool puede trabarse. Nunca se llama a un tercero aquí dentro.
+ */
+function withAgendaLock<T>(
+  organizationId: string,
+  run: (tx: Parameters<Parameters<ReturnType<typeof getDb>["transaction"]>[0]>[0]) => Promise<T>
+): Promise<T> {
+  return getDb().transaction(async (tx) => {
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`agenda:${organizationId}`}))`);
+    return run(tx);
+  });
+}
+
+/** El profesional pedido, si existe y sigue activo. */
+async function requireResource(
+  organizationId: string,
+  resourceId: string
+): Promise<AgendaResource> {
+  const resource = await getResource(organizationId, resourceId);
+  if (!resource) {
+    throw new BookingError("resource_not_found", "No encontramos a esa persona");
+  }
+  if (!resource.active) {
+    throw new BookingError("resource_archived", "Esa persona ya no atiende");
+  }
+  return resource;
+}
+
+async function resourceOf(
+  organizationId: string,
+  resourceId: string | null
+): Promise<BookingResult["resource"]> {
+  if (!resourceId) return null;
+  const names = await resourceNames(organizationId, [resourceId]);
+  const name = names.get(resourceId);
+  return name ? { id: resourceId, name } : null;
+}
 
 export async function createSessionBooking(input: {
   organizationId: string;
@@ -89,6 +143,8 @@ export async function createSessionBooking(input: {
   /** Camino manual del operador. */
   contactId?: string | null;
   notes?: string | null;
+  /** 1029 — Con quién. Sin él, lo que diga la oferta o el primero libre. */
+  resourceId?: string | null;
   /**
    * true ⇒ exige que el instante figure entre los ofrecidos a la conversación
    * (agente/bot). El operador elige de la disponibilidad que está viendo, así
@@ -134,7 +190,8 @@ export async function createSessionBooking(input: {
   }
   contactName = await getContactName(input.organizationId, contactId);
 
-  // REGLA 1: solo se reserva lo que se ofreció.
+  // REGLA 1: solo se reserva lo que se ofreció, y con quien se ofreció.
+  let wanted = input.resourceId ?? null;
   if (input.requireOffer) {
     if (!input.conversationId) {
       throw new BookingError(
@@ -143,29 +200,30 @@ export async function createSessionBooking(input: {
       );
     }
     const offers = await getOffers(input.organizationId, input.conversationId);
-    if (!findOffered(offers, input.startUtc)) {
+    const offered = findOffered(offers, input.startUtc);
+    if (!offered || !offerMatches(offered.resourceId, wanted)) {
       throw new BookingError(
         "slot_not_offered",
         "Ese horario no se ofreció en esta conversación",
         offers
       );
     }
+    wanted = wanted ?? offered.resourceId ?? null;
   }
+  if (wanted) await requireResource(input.organizationId, wanted);
 
-  // REGLA 2 (primera mitad): el hueco debe seguir libre AHORA.
-  const slot = await findSlot(input.organizationId, input.startUtc, {
-    now: input.now,
-    settings,
-  });
-  if (!slot) {
-    throw new BookingError(
+  // Solo una conversación del agente recibe la oferta nueva: el operador elige
+  // de lo que ve, y registrarla ahí le cambiaría la oferta al cliente.
+  const offerTo = input.requireOffer ? input.conversationId : null;
+  const taken = async (message: string) =>
+    new BookingError(
       "slot_taken",
-      "Ese horario ya no está disponible",
-      await refreshOffer(input.organizationId, input.conversationId, {
+      message,
+      await refreshOffer(input.organizationId, offerTo, {
         now: input.now,
+        resourceId: wanted,
       })
     );
-  }
 
   const leadRows = await db
     .select({ id: schema.lead.id })
@@ -179,43 +237,51 @@ export async function createSessionBooking(input: {
     )
     .limit(1);
 
-  let booking: BookingRow;
+  let booked: { booking: BookingRow; slot: AvailableSlot } | null;
   try {
-    const inserted = await db
-      .insert(schema.booking)
-      .values({
-        id: newId("booking"),
-        organizationId: input.organizationId,
-        kind: "session",
-        source: input.source === "ai" ? "ai" : "manual",
-        contactId,
-        conversationId: input.conversationId ?? null,
-        leadId: leadRows[0]?.id ?? null,
-        scheduledAt: new Date(slot.startUtc),
-        durationMinutes: settings.slotMinutes,
-        // Copia histórica: si el negocio cambia de conector, esta cita conserva
-        // el que le tocó y sigue hablando con él al moverse o cancelarse.
-        connector: settings.connector,
-        isTest,
-        notes: input.notes ?? null,
-      })
-      .returning();
-    booking = inserted[0]!;
+    booked = await withAgendaLock(input.organizationId, async (tx) => {
+      // REGLA 2 (primera mitad): el hueco debe seguir libre AHORA.
+      const slot = await findSlot(input.organizationId, input.startUtc, {
+        now: input.now,
+        settings,
+        resourceId: wanted,
+        reader: tx,
+      });
+      if (!slot) return null;
+
+      const resources = await listActiveResources(input.organizationId, tx);
+      const inserted = await tx
+        .insert(schema.booking)
+        .values({
+          id: newId("booking"),
+          organizationId: input.organizationId,
+          kind: "session",
+          source: input.source === "ai" ? "ai" : "manual",
+          contactId,
+          conversationId: input.conversationId ?? null,
+          leadId: leadRows[0]?.id ?? null,
+          // 1029 — Sin nadie pedido, uno libre al azar; sin profesionales, null.
+          resourceId: wanted ?? pickResource(slot.resourceIds ?? [], resources)?.id ?? null,
+          scheduledAt: new Date(slot.startUtc),
+          durationMinutes: settings.slotMinutes,
+          // Copia histórica: si el negocio cambia de conector, esta cita conserva
+          // el que le tocó y sigue hablando con él al moverse o cancelarse.
+          connector: settings.connector,
+          isTest,
+          notes: input.notes ?? null,
+        })
+        .returning();
+      return { booking: inserted[0]!, slot };
+    });
   } catch (err) {
     // REGLA 2 (segunda mitad): la llave única cierra la carrera exacta. Dos
     // confirmaciones simultáneas del mismo instante — la perdedora sale por
     // aquí, sin cita creada.
-    if (isUniqueViolation(err)) {
-      throw new BookingError(
-        "slot_taken",
-        "Ese horario acaba de ocuparse",
-        await refreshOffer(input.organizationId, input.conversationId, {
-          now: input.now,
-        })
-      );
-    }
+    if (isUniqueViolation(err)) throw await taken("Ese horario acaba de ocuparse");
     throw err;
   }
+  if (!booked) throw await taken("Ese horario ya no está disponible");
+  const { booking, slot } = booked;
 
   // La oferta cumplió su propósito.
   if (input.conversationId) {
@@ -246,7 +312,33 @@ export async function createSessionBooking(input: {
     meetingLink: delivered.meetingLink,
     linkPending: delivered.linkPending,
     label: labelInTz(slot.startUtc, settings.timezone),
+    resource: await resourceOf(input.organizationId, delivered.resourceId),
   };
+}
+
+/**
+ * 1029 — La conversación del contacto, para que una cita creada a mano tenga
+ * «Abrir conversación». Hay una real por contacto; las del Laboratorio no cuentan.
+ */
+export async function contactConversationId(
+  organizationId: string,
+  contactId: string
+): Promise<string | null> {
+  const rows = await getDb()
+    .select({ id: schema.conversation.id })
+    .from(schema.conversation)
+    .where(
+      scoped(
+        schema.conversation.organizationId,
+        organizationId,
+        and(
+          eq(schema.conversation.contactId, contactId),
+          eq(schema.conversation.isTest, false)
+        )
+      )
+    )
+    .limit(1);
+  return rows[0]?.id ?? null;
 }
 
 export async function createBlock(input: {
@@ -254,25 +346,57 @@ export async function createBlock(input: {
   startUtc: string;
   durationMinutes: number;
   notes?: string | null;
+  /** 1029 — De una persona. Sin él, de todo el negocio. */
+  resourceId?: string | null;
 }): Promise<BookingRow> {
   if (Number.isNaN(Date.parse(input.startUtc))) {
     throw new BookingError("invalid", "Instante inválido");
   }
-  const db = getDb();
+  const resourceId = input.resourceId ?? null;
+  if (resourceId) await requireResource(input.organizationId, resourceId);
+  const scheduledAt = new Date(input.startUtc);
   try {
-    const inserted = await db
-      .insert(schema.booking)
-      .values({
-        id: newId("booking"),
-        organizationId: input.organizationId,
-        kind: "block",
-        source: "manual",
-        scheduledAt: new Date(input.startUtc),
-        durationMinutes: input.durationMinutes,
-        notes: input.notes ?? null,
-      })
-      .returning();
-    const block = inserted[0]!;
+    const block = await withAgendaLock(input.organizationId, async (tx) => {
+      // Los índices ya no ven un bloqueo general encima de una cita con
+      // profesional, y hoy eso se rechaza: la regla sigue aquí.
+      const clash = await tx
+        .select({ id: schema.booking.id })
+        .from(schema.booking)
+        .where(
+          scoped(
+            schema.booking.organizationId,
+            input.organizationId,
+            and(
+              eq(schema.booking.scheduledAt, scheduledAt),
+              inArray(schema.booking.status, [...ACTIVE_STATUSES]),
+              eq(schema.booking.isTest, false),
+              resourceId
+                ? or(
+                    eq(schema.booking.resourceId, resourceId),
+                    isNull(schema.booking.resourceId)
+                  )
+                : undefined
+            )
+          )
+        )
+        .limit(1);
+      if (clash[0]) throw new BookingError("slot_taken", "Ese horario ya está ocupado");
+
+      const inserted = await tx
+        .insert(schema.booking)
+        .values({
+          id: newId("booking"),
+          organizationId: input.organizationId,
+          kind: "block",
+          source: "manual",
+          resourceId,
+          scheduledAt,
+          durationMinutes: input.durationMinutes,
+          notes: input.notes ?? null,
+        })
+        .returning();
+      return inserted[0]!;
+    });
     publish(input.organizationId, {
       type: "booking.updated",
       data: { bookingId: block.id },
@@ -290,39 +414,52 @@ export async function rescheduleBooking(input: {
   organizationId: string;
   bookingId: string;
   startUtc: string;
+  /** 1029 — Cambiarle el profesional. Sin él, conserva el que tiene. */
+  resourceId?: string | null;
   now?: Date;
 }): Promise<BookingResult> {
-  const db = getDb();
   const booking = await getOwnBooking(input.organizationId, input.bookingId);
   if (booking.status === "cancelada") {
     throw new BookingError("invalid", "La cita está cancelada");
   }
 
   const settings = await getSettings(input.organizationId);
-  // excludeBookingId: la propia cita no debe bloquearse a sí misma.
-  const slot = await findSlot(input.organizationId, input.startUtc, {
-    excludeBookingId: booking.id,
-    now: input.now,
-    settings,
-  });
-  if (!slot) {
-    throw new BookingError("slot_taken", "Ese horario ya no está disponible");
-  }
+  const resourceId = input.resourceId ?? booking.resourceId;
+  if (input.resourceId) await requireResource(input.organizationId, input.resourceId);
 
-  let next: BookingRow;
+  let moved: { next: BookingRow; slot: AvailableSlot } | null;
   try {
-    const updated = await db
-      .update(schema.booking)
-      .set({ scheduledAt: new Date(slot.startUtc), updatedAt: new Date() })
-      .where(eq(schema.booking.id, booking.id))
-      .returning();
-    next = updated[0]!;
+    moved = await withAgendaLock(input.organizationId, async (tx) => {
+      // excludeBookingId: la propia cita no debe bloquearse a sí misma.
+      const slot = await findSlot(input.organizationId, input.startUtc, {
+        excludeBookingId: booking.id,
+        now: input.now,
+        settings,
+        resourceId,
+        reader: tx,
+      });
+      if (!slot) return null;
+      const updated = await tx
+        .update(schema.booking)
+        .set({
+          scheduledAt: new Date(slot.startUtc),
+          resourceId,
+          updatedAt: new Date(),
+        })
+        .where(eq(schema.booking.id, booking.id))
+        .returning();
+      return { next: updated[0]!, slot };
+    });
   } catch (err) {
     if (isUniqueViolation(err)) {
       throw new BookingError("slot_taken", "Ese horario acaba de ocuparse");
     }
     throw err;
   }
+  if (!moved) {
+    throw new BookingError("slot_taken", "Ese horario ya no está disponible");
+  }
+  const { next, slot } = moved;
 
   // Mover la reunión en el proveedor conserva el enlace: es la MISMA reunión,
   // en otra hora. Un fallo aquí no deshace nada — el enlace anterior sigue
@@ -344,6 +481,7 @@ export async function rescheduleBooking(input: {
     meetingLink: next.meetingLink,
     linkPending: next.linkPending,
     label: labelInTz(slot.startUtc, settings.timezone),
+    resource: await resourceOf(input.organizationId, next.resourceId),
   };
 }
 
@@ -356,6 +494,7 @@ export async function rescheduleForConversation(input: {
   organizationId: string;
   conversationId: string;
   startUtc: string;
+  resourceId?: string | null;
   now?: Date;
 }): Promise<BookingResult> {
   const db = getDb();
@@ -377,7 +516,8 @@ export async function rescheduleForConversation(input: {
 
   // Mismas reglas que al crear: el instante nuevo tiene que haberse ofrecido.
   const offers = await getOffers(input.organizationId, input.conversationId);
-  if (!findOffered(offers, input.startUtc)) {
+  const offered = findOffered(offers, input.startUtc);
+  if (!offered || !offerMatches(offered.resourceId, input.resourceId)) {
     throw new BookingError(
       "slot_not_offered",
       "Ese horario no se ofreció en esta conversación",
@@ -412,6 +552,7 @@ export async function rescheduleForConversation(input: {
     organizationId: input.organizationId,
     bookingId: target.id,
     startUtc: input.startUtc,
+    resourceId: input.resourceId ?? offered.resourceId,
     now: input.now,
   });
   await clearOffers(input.organizationId, input.conversationId).catch(() => {});
@@ -497,6 +638,7 @@ export async function retryMeetingLink(input: {
     booking: delivered,
     meetingLink: delivered.meetingLink,
     linkPending: delivered.linkPending,
+    resource: await resourceOf(input.organizationId, delivered.resourceId),
     label: labelInTz(delivered.scheduledAt.toISOString(), settings.timezone),
   };
 }
@@ -622,14 +764,18 @@ async function withConnector(
 async function refreshOffer(
   organizationId: string,
   conversationId: string | null | undefined,
-  opts: { now?: Date }
+  opts: { now?: Date; resourceId?: string | null }
 ): Promise<OfferedSlot[]> {
   let fresh: AvailableSlot[] = [];
+  // 1029 — Primero, de la misma persona; si ya no tiene huecos, de las demás.
+  let resourceId = opts.resourceId ?? null;
   try {
-    fresh = (await computeAvailability(organizationId, { now: opts.now })).slice(
-      0,
-      FRESH_ALTERNATIVES
-    );
+    fresh = await computeAvailability(organizationId, { now: opts.now, resourceId });
+    if (fresh.length === 0 && resourceId) {
+      resourceId = null;
+      fresh = await computeAvailability(organizationId, { now: opts.now });
+    }
+    fresh = fresh.slice(0, FRESH_ALTERNATIVES);
   } catch (err) {
     console.warn(`[agenda] no pude calcular alternativas: ${err}`);
     return [];
@@ -637,6 +783,7 @@ async function refreshOffer(
   const offers: OfferedSlot[] = fresh.map((s) => ({
     startUtc: s.startUtc,
     label: s.label,
+    resourceId,
   }));
   if (conversationId && offers.length > 0) {
     await replaceOffers(organizationId, conversationId, offers).catch((err) => {

@@ -13,6 +13,11 @@ import {
   type SlotUtc,
 } from "@/lib/time/slots";
 import { getSettings, type CalendarSettings } from "@/server/agenda/settings";
+import {
+  listActiveResources,
+  type AgendaResource,
+  type Reader,
+} from "@/server/agenda/resources";
 
 /**
  * 015 — Motor de disponibilidad:
@@ -24,7 +29,13 @@ import { getSettings, type CalendarSettings } from "@/server/agenda/settings";
  * se reflejan con bloqueos manuales.
  */
 
-export type AvailableSlot = SlotUtc & { label: string };
+export type AvailableSlot = SlotUtc & {
+  label: string;
+  /** 1029 — Quién está libre en ese instante; vacío sin profesionales. */
+  resourceIds?: string[];
+};
+
+type BusyInterval = SlotUtc & { resourceId: string | null };
 
 /**
  * PURA: expande el horario semanal a slots candidatos en UTC. Sin BD, sin
@@ -33,14 +44,16 @@ export type AvailableSlot = SlotUtc & { label: string };
 export function buildCandidateSlots(
   settings: CalendarSettings,
   fromISO: string,
-  toISO: string
+  toISO: string,
+  /** 1029 — El horario de un profesional; sin él, el del negocio. */
+  weeklyHours: CalendarSettings["weeklyHours"] = settings.weeklyHours
 ): SlotUtc[] {
   const tz = settings.timezone;
   const candidates: SlotUtc[] = [];
   for (const date of eachDateInRange(fromISO, toISO)) {
     const weekday = weekdayKeyOf(date, tz);
     if (!weekday) continue;
-    const intervals = settings.weeklyHours[weekday] ?? [];
+    const intervals = weeklyHours[weekday] ?? [];
     if (intervals.length === 0) continue; // día cerrado
     candidates.push(
       ...expandWorkingDayToUtc(
@@ -64,15 +77,97 @@ export function filterFreeSlots(
   busy: SlotUtc[],
   opts: { now: Date; minNoticeHours: number; timezone: string }
 ): AvailableSlot[] {
+  return freeCandidates(candidates, busy, opts)
+    .sort((a, b) => Date.parse(a.startUtc) - Date.parse(b.startUtc))
+    .map((c) => ({ ...c, label: labelInTz(c.startUtc, opts.timezone) }));
+}
+
+function freeCandidates(
+  candidates: SlotUtc[],
+  busy: SlotUtc[],
+  opts: { now: Date; minNoticeHours: number }
+): SlotUtc[] {
   const minStartMs = opts.now.getTime() + opts.minNoticeHours * 3_600_000;
   return candidates
     .filter((c) => Date.parse(c.startUtc) >= minStartMs)
     .filter(
       (c) =>
         !busy.some((b) => overlaps(c.startUtc, c.endUtc, b.startUtc, b.endUtc))
-    )
+    );
+}
+
+/**
+ * PURA: 1029 — Las horas de un profesional dentro de las del negocio: su horario
+ * no puede salirse del horario general.
+ */
+export function intersectWeeklyHours(
+  own: CalendarSettings["weeklyHours"],
+  limit: CalendarSettings["weeklyHours"]
+): CalendarSettings["weeklyHours"] {
+  const out: CalendarSettings["weeklyHours"] = {};
+  for (const day of Object.keys(own) as (keyof typeof own)[]) {
+    const intervals = (own[day] ?? []).flatMap((a) =>
+      (limit[day] ?? []).flatMap((b) => {
+        const start = a.start > b.start ? a.start : b.start;
+        const end = a.end < b.end ? a.end : b.end;
+        return start < end ? [{ start, end }] : [];
+      })
+    );
+    if (intervals.length > 0) out[day] = intervals;
+  }
+  return out;
+}
+
+/** Los candidatos de un profesional, ya dentro del horario del negocio. */
+export function resourceCandidates(
+  settings: CalendarSettings,
+  resource: { weeklyHours: CalendarSettings["weeklyHours"] },
+  fromISO: string,
+  toISO: string
+): SlotUtc[] {
+  return buildCandidateSlots(
+    settings,
+    fromISO,
+    toISO,
+    intersectWeeklyHours(resource.weeklyHours, settings.weeklyHours)
+  );
+}
+
+/**
+ * PURA: 1029 — Los huecos de cada profesional, unidos sin repetir instantes. A
+ * cada uno le ocupa lo suyo y lo que no tiene profesional.
+ */
+export function resourceSlots(
+  settings: CalendarSettings,
+  resources: AgendaResource[],
+  busy: BusyInterval[],
+  opts: { fromISO: string; toISO: string; now: Date }
+): AvailableSlot[] {
+  // Expandir un horario y etiquetar son lo caro (zonas horarias): lo primero se
+  // hace una vez por horario distinto, y lo segundo una vez por instante.
+  const candidatesOf = new Map<string, SlotUtc[]>();
+  const byInstant = new Map<string, SlotUtc & { resourceIds: string[] }>();
+  for (const resource of resources) {
+    const key = JSON.stringify(resource.weeklyHours);
+    let candidates = candidatesOf.get(key);
+    if (!candidates) {
+      candidates = resourceCandidates(settings, resource, opts.fromISO, opts.toISO);
+      candidatesOf.set(key, candidates);
+    }
+    const free = freeCandidates(
+      candidates,
+      busy.filter((b) => b.resourceId === null || b.resourceId === resource.id),
+      { now: opts.now, minNoticeHours: settings.minNoticeHours }
+    );
+    for (const slot of free) {
+      const seen = byInstant.get(slot.startUtc);
+      if (seen) seen.resourceIds.push(resource.id);
+      else byInstant.set(slot.startUtc, { ...slot, resourceIds: [resource.id] });
+    }
+  }
+  return [...byInstant.values()]
     .sort((a, b) => Date.parse(a.startUtc) - Date.parse(b.startUtc))
-    .map((c) => ({ ...c, label: labelInTz(c.startUtc, opts.timezone) }));
+    .map((s) => ({ ...s, label: labelInTz(s.startUtc, settings.timezone) }));
 }
 
 export async function computeAvailability(
@@ -83,6 +178,10 @@ export async function computeAvailability(
     excludeBookingId?: string;
     now?: Date;
     settings?: CalendarSettings;
+    /** 1029 — Solo los huecos de este profesional. */
+    resourceId?: string | null;
+    /** Dentro de una transacción con candado, las lecturas van por ella. */
+    reader?: Reader;
   }
 ): Promise<AvailableSlot[]> {
   const settings = opts?.settings ?? (await getSettings(organizationId));
@@ -92,22 +191,35 @@ export async function computeAvailability(
   const from = opts?.fromISO ?? todayInTz(now, tz);
   const to = opts?.toISO ?? addDaysISO(from, settings.maxDaysAhead);
 
+  const reader = opts?.reader ?? getDb();
+  const resources = await listActiveResources(organizationId, reader);
+  const busy = await getBusyIntervals(
+    organizationId,
+    {
+      fromUtc: zonedWallClockToUtc(from, "00:00", tz) ?? new Date(0),
+      toUtc:
+        zonedWallClockToUtc(addDaysISO(to, 1), "00:00", tz) ??
+        new Date(now.getTime() + 86_400_000 * 61),
+      excludeBookingId: opts?.excludeBookingId,
+    },
+    reader
+  );
+
+  if (resources.length > 0) {
+    const targets = opts?.resourceId
+      ? resources.filter((r) => r.id === opts.resourceId)
+      : resources;
+    return resourceSlots(settings, targets, busy, { fromISO: from, toISO: to, now });
+  }
+
+  // Sin profesionales, la agenda es la del negocio: todo lo activo ocupa.
   const candidates = buildCandidateSlots(settings, from, to);
   if (candidates.length === 0) return [];
-
-  const busy = await getBusyIntervals(organizationId, {
-    fromUtc: zonedWallClockToUtc(from, "00:00", tz) ?? new Date(0),
-    toUtc:
-      zonedWallClockToUtc(addDaysISO(to, 1), "00:00", tz) ??
-      new Date(now.getTime() + 86_400_000 * 61),
-    excludeBookingId: opts?.excludeBookingId,
-  });
-
   return filterFreeSlots(candidates, busy, {
     now,
     minNoticeHours: settings.minNoticeHours,
     timezone: tz,
-  });
+  }).map((s) => ({ ...s, resourceIds: [] }));
 }
 
 /**
@@ -125,7 +237,13 @@ export async function computeAvailability(
 export async function findSlot(
   organizationId: string,
   whenISO: string,
-  opts?: { excludeBookingId?: string; now?: Date; settings?: CalendarSettings }
+  opts?: {
+    excludeBookingId?: string;
+    now?: Date;
+    settings?: CalendarSettings;
+    resourceId?: string | null;
+    reader?: Reader;
+  }
 ): Promise<AvailableSlot | null> {
   const target = Date.parse(whenISO);
   if (Number.isNaN(target)) return null;
@@ -139,18 +257,21 @@ export async function findSlot(
     excludeBookingId: opts?.excludeBookingId,
     now: opts?.now,
     settings,
+    resourceId: opts?.resourceId,
+    reader: opts?.reader,
   });
   return slots.find((s) => Date.parse(s.startUtc) === target) ?? null;
 }
 
 async function getBusyIntervals(
   organizationId: string,
-  input: { fromUtc: Date; toUtc: Date; excludeBookingId?: string }
-): Promise<SlotUtc[]> {
-  const db = getDb();
-  const rows = await db
+  input: { fromUtc: Date; toUtc: Date; excludeBookingId?: string },
+  reader: Reader
+): Promise<BusyInterval[]> {
+  const rows = await reader
     .select({
       id: schema.booking.id,
+      resourceId: schema.booking.resourceId,
       scheduledAt: schema.booking.scheduledAt,
       durationMinutes: schema.booking.durationMinutes,
     })
@@ -173,6 +294,7 @@ async function getBusyIntervals(
   return rows
     .filter((r) => r.id !== input.excludeBookingId)
     .map((r) => ({
+      resourceId: r.resourceId,
       startUtc: r.scheduledAt.toISOString(),
       endUtc: new Date(
         r.scheduledAt.getTime() + r.durationMinutes * 60_000

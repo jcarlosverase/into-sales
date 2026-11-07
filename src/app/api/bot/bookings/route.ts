@@ -27,11 +27,13 @@ const createSchema = z.object({
   conversationId: z.string().min(1),
   startUtc: z.string().min(1),
   notes: z.string().nullish(),
+  resourceId: z.string().min(1).nullish(),
 });
 
 const rescheduleSchema = z.object({
   conversationId: z.string().min(1),
   startUtc: z.string().min(1),
+  resourceId: z.string().min(1).nullish(),
 });
 
 export async function POST(req: Request) {
@@ -47,6 +49,7 @@ export async function POST(req: Request) {
       conversationId: body.data.conversationId,
       startUtc: body.data.startUtc,
       notes: body.data.notes ?? null,
+      resourceId: body.data.resourceId ?? null,
       source: "ai",
       // La regla innegociable: el agente solo reserva lo que ya ofreció.
       requireOffer: true,
@@ -69,6 +72,7 @@ export async function PATCH(req: Request) {
       organizationId: gate.organizationId,
       conversationId: body.data.conversationId,
       startUtc: body.data.startUtc,
+      resourceId: body.data.resourceId,
     });
     // 200 y no 201: mover una cita no crea un recurso nuevo.
     return Response.json(bookingPayload(result));

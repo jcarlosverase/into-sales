@@ -225,6 +225,13 @@
       "when": 1793976966886,
       "tag": "0031_ai_block_notice",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1794006969310,
+      "tag": "0032_agenda_resources",
+      "breakpoints": true
     }
   ]
 }

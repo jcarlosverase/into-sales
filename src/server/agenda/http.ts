@@ -1,3 +1,4 @@
+import { ResourceError } from "@/server/agenda/resources";
 import { BookingError, type BookingResult } from "@/server/agenda/service";
 
 /**
@@ -22,6 +23,8 @@ export type BookingPayload = {
   meetingLink: string | null;
   linkPending: boolean;
   label: string;
+  /** 1029 — Con quién quedó la cita. */
+  resource: { id: string; name: string } | null;
 };
 
 export function bookingPayload(result: BookingResult): BookingPayload {
@@ -35,17 +38,20 @@ export function bookingPayload(result: BookingResult): BookingPayload {
      */
     linkPending: result.linkPending,
     label: result.label,
+    resource: result.resource,
   };
 }
 
 export function bookingErrorStatus(code: BookingError["code"]): number {
   switch (code) {
     case "not_found":
+    case "resource_not_found":
       return 404;
     case "invalid":
       return 422;
     case "slot_taken":
     case "slot_not_offered":
+    case "resource_archived":
       return 409;
   }
 }
@@ -57,5 +63,24 @@ export function bookingErrorResponse(err: unknown): Response {
   return Response.json(
     { error: { code, message: err.message }, slots: err.slots },
     { status: bookingErrorStatus(err.code) }
+  );
+}
+
+/** 1029 — Traduce un `ResourceError` al sobre estándar. */
+export function resourceErrorResponse(err: unknown): Response {
+  if (!(err instanceof ResourceError)) throw err;
+  const status = {
+    resource_not_found: 404,
+    resource_has_bookings: 409,
+    resource_name_taken: 409,
+    invalid: 422,
+  }[err.code];
+  const code = err.code === "invalid" ? "invalid_body" : err.code;
+  return Response.json(
+    {
+      error: { code, message: err.message },
+      ...(err.code === "resource_has_bookings" ? { count: err.count } : {}),
+    },
+    { status }
   );
 }

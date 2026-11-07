@@ -1,3 +1,7 @@
+import {
+  DEFAULT_AGENT_RESOURCE_MODE,
+  type AgentResourceMode,
+} from "@/lib/agenda-resources";
 import { getDb, schema } from "@/lib/db";
 import { newId } from "@/lib/db/ids";
 import { scoped } from "@/lib/db/tenant";
@@ -43,6 +47,8 @@ export type CalendarSettings = {
   connector: ConnectorId;
   /** Sala fija del conector `enlace-fijo`; null ⇒ citas sin link. */
   meetingLink: string | null;
+  /** 1029 — Con 2 o más profesionales: el agente pregunta o asigna. */
+  agentResourceMode: AgentResourceMode;
 };
 
 /** Lo que ve una instancia recién encendida: útil sin configurar nada. */
@@ -55,6 +61,7 @@ export const DEFAULT_CALENDAR_SETTINGS: CalendarSettings = {
   timezone: DEFAULT_TIMEZONE,
   connector: DEFAULT_CONNECTOR,
   meetingLink: null,
+  agentResourceMode: DEFAULT_AGENT_RESOURCE_MODE,
 };
 
 export const LIMITS = {
@@ -89,6 +96,7 @@ export async function getSettings(
     // puede dejar la agenda inservible: se degrada al soberano.
     connector: isConnectorId(row.connector) ? row.connector : DEFAULT_CONNECTOR,
     meetingLink: row.meetingLink,
+    agentResourceMode: row.agentResourceMode,
   };
 }
 
@@ -158,6 +166,7 @@ export async function upsertSettings(
     meetingLink: normalizeLink(
       input.meetingLink !== undefined ? input.meetingLink : current.meetingLink
     ),
+    agentResourceMode: input.agentResourceMode ?? current.agentResourceMode,
   };
 
   const db = getDb();
@@ -170,6 +179,7 @@ export async function upsertSettings(
     timezone: next.timezone,
     connector: next.connector,
     meetingLink: next.meetingLink,
+    agentResourceMode: next.agentResourceMode,
   };
   await db
     .insert(schema.calendarSettings)

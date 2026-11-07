@@ -204,8 +204,8 @@ plan con wallet y el CRM en `https://`. Si no salen, revisa Ajustes → Salud
 
 ## 5. Pendientes que no son técnicos
 
-- Precio: si hay un tope de tarjetas en wallet por plan (el wallet ya se
-  decidió para Pyme y Empresa).
+- Precio: el wallet va en todos los planes desde el 2026-11-06; lo que cambia
+  por plan es el tope de clientes con tarjeta (D12).
 - Texto de consentimiento en la respuesta de alta y revisión de la política
   de privacidad de into.center (into firma los pases).
 - Rubros nuevos en el catálogo del central (cafetería, barbería, salón,

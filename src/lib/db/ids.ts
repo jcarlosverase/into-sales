@@ -21,6 +21,7 @@ const prefixes = {
   mediaAsset: "ma",
   // 015 — motor de agenda
   calendarSettings: "cal",
+  agendaResource: "res",
   booking: "bk",
   offeredSlot: "ofs",
   zoomCredentials: "zcred",

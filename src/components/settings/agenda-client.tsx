@@ -17,16 +17,17 @@ import {
   CONNECTOR_ORDER,
   type ConnectorId,
 } from "@/lib/agenda-connectors";
+import { AgendaResources } from "@/components/settings/agenda-resources";
 import { ConnectorCredentials } from "@/components/settings/connector-credentials";
+import {
+  WeeklyHoursEditor,
+  type WeeklyHours,
+} from "@/components/settings/weekly-hours-editor";
 
 /**
  * 015 — Ajustes → Agenda: cuándo atiende el negocio y cómo se entrega la
  * reunión.
  */
-
-type Interval = { start: string; end: string };
-type DayKey = "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun";
-type WeeklyHours = Partial<Record<DayKey, Interval[]>>;
 
 type Settings = {
   weeklyHours: WeeklyHours;
@@ -39,24 +40,13 @@ type Settings = {
   meetingLink: string | null;
 };
 
-const DAYS: { key: DayKey; label: string }[] = [
-  { key: "mon", label: "Lunes" },
-  { key: "tue", label: "Martes" },
-  { key: "wed", label: "Miércoles" },
-  { key: "thu", label: "Jueves" },
-  { key: "fri", label: "Viernes" },
-  { key: "sat", label: "Sábado" },
-  { key: "sun", label: "Domingo" },
-];
-
-const DEFAULT_INTERVAL: Interval = { start: "09:00", end: "18:00" };
-
 export function AgendaClient() {
   const [settings, setSettings] = useState<Settings | null>(null);
   const [slots, setSlots] = useState<{ label: string }[] | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  const [activeResources, setActiveResources] = useState(0);
 
   useEffect(() => {
     void (async () => {
@@ -87,42 +77,6 @@ export function AgendaClient() {
   function patch(next: Partial<Settings>) {
     setSettings((s) => (s ? { ...s, ...next } : s));
     setSaved(false);
-  }
-
-  function toggleDay(day: DayKey) {
-    if (!settings) return;
-    const current = settings.weeklyHours[day];
-    const weeklyHours = { ...settings.weeklyHours };
-    if (current && current.length > 0) delete weeklyHours[day];
-    else weeklyHours[day] = [{ ...DEFAULT_INTERVAL }];
-    patch({ weeklyHours });
-  }
-
-  function setIntervalAt(day: DayKey, index: number, next: Partial<Interval>) {
-    if (!settings) return;
-    const intervals = [...(settings.weeklyHours[day] ?? [])];
-    const current = intervals[index];
-    if (!current) return;
-    intervals[index] = { ...current, ...next };
-    patch({ weeklyHours: { ...settings.weeklyHours, [day]: intervals } });
-  }
-
-  function addInterval(day: DayKey) {
-    if (!settings) return;
-    const intervals = [...(settings.weeklyHours[day] ?? [])];
-    intervals.push({ start: "16:00", end: "18:00" });
-    patch({ weeklyHours: { ...settings.weeklyHours, [day]: intervals } });
-  }
-
-  function removeInterval(day: DayKey, index: number) {
-    if (!settings) return;
-    const intervals = (settings.weeklyHours[day] ?? []).filter(
-      (_, i) => i !== index
-    );
-    const weeklyHours = { ...settings.weeklyHours };
-    if (intervals.length === 0) delete weeklyHours[day];
-    else weeklyHours[day] = intervals;
-    patch({ weeklyHours });
   }
 
   async function save() {
@@ -168,74 +122,25 @@ export function AgendaClient() {
         <CardHeader>
           <CardTitle>Horario de atención</CardTitle>
           <CardDescription>
-            En qué franjas puede agendarte un cliente. Las horas son las de tu
-            zona; un día sin franjas está cerrado.
+            {activeResources > 0
+              ? "Es el límite: cada profesional atiende en su horario, siempre dentro de estas franjas."
+              : "En qué franjas puede agendarte un cliente. Las horas son las de tu zona; un día sin franjas está cerrado."}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
-          {DAYS.map((day) => {
-            const intervals = settings.weeklyHours[day.key] ?? [];
-            const open = intervals.length > 0;
-            return (
-              <div key={day.key} className="flex flex-col gap-1.5 sm:flex-row sm:items-start sm:gap-3">
-                <button
-                  type="button"
-                  onClick={() => toggleDay(day.key)}
-                  className={cn(
-                    "w-24 shrink-0 rounded-sm px-2 py-1 text-left text-sm font-medium transition-colors sm:mt-1",
-                    open
-                      ? "bg-brand-tint text-brand-text"
-                      : "text-text-3 hover:bg-accent"
-                  )}
-                >
-                  {day.label}
-                </button>
-                <div className="flex-1 space-y-1.5">
-                  {!open && <span className="text-sm text-text-3">Cerrado</span>}
-                  {intervals.map((iv, i) => (
-                    <div key={i} className="flex items-center gap-2">
-                      <Input
-                        type="time"
-                        value={iv.start}
-                        onChange={(e) =>
-                          setIntervalAt(day.key, i, { start: e.target.value })
-                        }
-                        className="min-w-0 flex-1 sm:w-36 sm:flex-none"
-                      />
-                      <span className="text-text-3">a</span>
-                      <Input
-                        type="time"
-                        value={iv.end}
-                        onChange={(e) =>
-                          setIntervalAt(day.key, i, { end: e.target.value })
-                        }
-                        className="min-w-0 flex-1 sm:w-36 sm:flex-none"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => removeInterval(day.key, i)}
-                        className="text-sm text-text-3 hover:text-foreground"
-                        aria-label="Quitar franja"
-                      >
-                        ×
-                      </button>
-                    </div>
-                  ))}
-                  {open && (
-                    <button
-                      type="button"
-                      onClick={() => addInterval(day.key)}
-                      className="text-xs text-brand-text hover:underline"
-                    >
-                      + otra franja
-                    </button>
-                  )}
-                </div>
-              </div>
-            );
-          })}
+          <WeeklyHoursEditor
+            value={settings.weeklyHours}
+            onChange={(weeklyHours) => patch({ weeklyHours })}
+          />
         </CardContent>
       </Card>
+
+      <AgendaResources
+        onChanged={(count) => {
+          setActiveResources(count);
+          void refreshPreview();
+        }}
+      />
 
       <Card>
         <CardHeader>

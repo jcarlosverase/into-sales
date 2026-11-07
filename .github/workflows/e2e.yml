@@ -107,29 +107,47 @@ jobs:
       - name: migrate
         run: pnpm db:migrate
 
-      # La app en segundo plano; el siguiente paso espera a que responda.
-      - name: app
-        run: |
-          pnpm exec next dev --port 3000 > app.log 2>&1 &
-          for i in $(seq 1 90); do curl -sf localhost:3000/api/health > /dev/null && exit 0; sleep 2; done
-          cat app.log; exit 1
-
+      # Cada guion arranca con la app recién levantada: `next dev` acumula memoria y,
+      # al acercarse a su tope, se reinicia solo en medio del guion. Eso tumbó la
+      # tarjeta de sellos en `completo` (scripts/e2e-app.sh).
       - name: e2e
-        run: node scripts/e2e-selftest.mjs
+        run: |
+          bash scripts/e2e-app.sh
+          node scripts/e2e-selftest.mjs
 
       # 1023: apagada en `default` (todo 404) y encendida en `completo`.
-      - name: e2e · tarjeta de sellos
+      - name: e2e · stamp card
         if: ${{ !cancelled() }}
-        run: node scripts/e2e-stamp-card.mjs
+        run: |
+          bash scripts/e2e-app.sh
+          node scripts/e2e-stamp-card.mjs
 
-      - name: e2e · calendario, Resultados y ficha
+      # 1029: apagada en `default` (todo 404) y encendida en `completo`.
+      - name: e2e · agenda resources
+        if: ${{ !cancelled() }}
+        run: |
+          bash scripts/e2e-app.sh
+          node scripts/e2e-agenda-resources.mjs
+
+      - name: e2e · calendar, results and lead card
         if: ${{ !cancelled() && matrix.config.name == 'completo' }}
         run: |
+          bash scripts/e2e-app.sh
           node scripts/e2e-calendar.mjs
+          bash scripts/e2e-app.sh
           node scripts/e2e-results.mjs
+          bash scripts/e2e-app.sh
           node scripts/e2e-qualification.mjs
 
+      # Un reinicio deja los guiones pasando o fallando por casualidad: que se note.
+      - name: app did not restart
+        if: ${{ !cancelled() }}
+        run: |
+          if grep -q "memory threshold" app.log; then
+            echo "next dev restarted for memory during the E2E"; exit 1
+          fi
+
       # Solo si algo falló: el registro de la app dice el porqué.
-      - name: registro de la app
+      - name: app log
         if: ${{ failure() }}
         run: tail -200 app.log

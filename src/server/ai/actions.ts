@@ -38,11 +38,13 @@ const baseActions = [
 const agendaActions = [
   z.object({
     action: z.literal("offer_slots"),
+    resourceId: z.string().min(1).optional(),
     reply: z.string().optional(),
   }),
   z.object({
     action: z.literal("book_slot"),
     startUtc: z.string().min(1),
+    resourceId: z.string().min(1).optional(),
     reply: z.string().optional(),
   }),
 ] as const;

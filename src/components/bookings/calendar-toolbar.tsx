@@ -1,9 +1,10 @@
 "use client";
 
 import { useRef } from "react";
-import { ChevronDown, ChevronLeft, ChevronRight, Plus } from "lucide-react";
+import { Ban, ChevronDown, ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { MAX_RANGE_DAYS, type CalendarView } from "@/lib/time/calendar";
 import { Button } from "@/components/ui/button";
+import type { ResourceOption } from "./booking-look";
 import { cn } from "@/lib/utils";
 
 /**
@@ -38,6 +39,10 @@ export function CalendarToolbar({
   onJump,
   onView,
   onListRange,
+  resources,
+  resourceFilter,
+  onResourceFilter,
+  onNewBooking,
   onBlock,
 }: {
   view: CalendarView;
@@ -50,6 +55,10 @@ export function CalendarToolbar({
   onJump: (day: string) => void;
   onView: (view: CalendarView) => void;
   onListRange: (from: string, to: string) => void;
+  resources: ResourceOption[];
+  resourceFilter: string | null;
+  onResourceFilter: (id: string | null) => void;
+  onNewBooking: () => void;
   onBlock: () => void;
 }) {
   const picker = useRef<HTMLInputElement>(null);
@@ -133,7 +142,23 @@ export function CalendarToolbar({
         <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-border-strong border-t-brand" aria-label="Cargando" />
       )}
 
-      <div className="ml-auto flex items-center gap-2">
+      <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
+        {/* 1029 — Con una sola persona no hay nada que filtrar. */}
+        {resources.length >= 2 && (
+          <select
+            aria-label="Ver la agenda de"
+            value={resourceFilter ?? ""}
+            onChange={(e) => onResourceFilter(e.target.value || null)}
+            className="h-10 max-w-[11rem] truncate rounded-md border border-input bg-background px-2 text-sm shadow-sm focus-visible:border-brand focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-brand-soft sm:h-8"
+          >
+            <option value="">Todos</option>
+            {resources.map((r) => (
+              <option key={r.id} value={r.id}>
+                {r.name}
+              </option>
+            ))}
+          </select>
+        )}
         <div role="group" aria-label="Vista" className="inline-flex rounded-full border bg-secondary p-0.5">
           {(Object.keys(VIEW_LABEL) as CalendarView[]).map((v) => (
             <button
@@ -150,8 +175,12 @@ export function CalendarToolbar({
             </button>
           ))}
         </div>
-        <Button size="sm" onClick={onBlock} aria-label="Bloquear horario">
+        <Button size="sm" onClick={onNewBooking} aria-label="Nueva cita">
           <Plus className="h-4 w-4" />
+          <span className="hidden sm:inline">Nueva cita</span>
+        </Button>
+        <Button size="sm" variant="outline" onClick={onBlock} aria-label="Bloquear horario">
+          <Ban className="h-4 w-4" />
           <span className="hidden sm:inline">Bloquear horario</span>
         </Button>
       </div>

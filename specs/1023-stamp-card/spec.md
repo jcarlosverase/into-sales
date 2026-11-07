@@ -253,9 +253,12 @@ cliente vuelve a descargarla, acepta entonces.
 
 ## Pendiente de decidir (Principio VII)
 
-- **Precio (decidido el 2026-11-04)**: Apple y Google Wallet entran en los
-  planes Pyme y Empresa. En Emprendedor la tarjeta funciona solo como página
-  web. Comunidad no tiene central, así que también queda solo con la página.
+- **Precio (decidido el 2026-11-04, cambiado el 2026-11-06)**: ~~Apple y Google
+  Wallet entran en los planes Pyme y Empresa; en Emprendedor y Comunidad, solo
+  la página web.~~ Desde el 2026-11-06, Apple y Google Wallet van en **todos**
+  los planes de IntoSales que pasan por el central (spec 016 del central, D10);
+  lo que separa a los planes es el tope de clientes con tarjeta (D12). Un
+  Comunidad de código abierto, sin central, sigue solo con la página.
   El tope se decidió el 2026-11-05 y cuenta clientes con tarjeta (D12).
 - **Spec gemela en into-central**: escrita como
   `into-central/specs/016-wallet-passes` (2026-11-04). Ahí vive el contrato.

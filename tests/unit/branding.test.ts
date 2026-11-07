@@ -211,8 +211,8 @@ describe("tema oscuro: las superficies se distinguen", () => {
     }
   });
 
-  it("en claro, chips y hover se ven igual que antes", () => {
-    expect(light["--chip-bg"]).toBe(light["--bg"]);
+  it("in light mode, chips match raised surfaces and hover is the subtle background", () => {
+    expect(light["--chip-bg"]).toBe(light["--bg-raised"]);
     expect(light["--row-hover"]).toBe(light["--bg-subtle"]);
   });
 });

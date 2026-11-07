@@ -1058,7 +1058,7 @@ packages:
     os: [win32]
 
   '@into/designsystem@file:vendor/into-designsystem-0.1.0.tgz':
-    resolution: {integrity: sha512-DW8KwzrXH2fAkp8/D6sraBFyr+/XiUWmSzEiKGEsGMyK4/97af1KteKeKMI/ou1k1uiwhgeluNC5y8mWjh1HPg==, tarball: file:vendor/into-designsystem-0.1.0.tgz}
+    resolution: {integrity: sha512-hpWLuef84JYFa6vy7tHFLvaxprm3W8U3qYQDh0piGhiIfSRiCzhtDPpLACyDKEFt1gnpguvStLqcVjCb0c3KRA==, tarball: file:vendor/into-designsystem-0.1.0.tgz}
     version: 0.1.0
     peerDependencies:
       lucide-react: '>=0.469.0'
@@ -1067,7 +1067,7 @@ packages:
       tailwindcss: ^3.4.0
 
   '@into/tokens@file:vendor/into-tokens-0.1.0.tgz':
-    resolution: {integrity: sha512-JycvJZNeVso1pOscMpd9XYE5T1WHOTYcBPmW/o4/qf0qtlNAWEdLqHTCkkH7HwX7Y+vQKxEg8Yy1yIuOOeud5A==, tarball: file:vendor/into-tokens-0.1.0.tgz}
+    resolution: {integrity: sha512-gooBmnX7/XmDjm2g3qB7bkxqq1+C0H5A2Ufkgi2wFTuDnCwI7BeZf7/Cb6wkB/soNJQLpeMHslrrda9Buf/8RA==, tarball: file:vendor/into-tokens-0.1.0.tgz}
     version: 0.1.0
 
   '@jridgewell/gen-mapping@0.3.13':

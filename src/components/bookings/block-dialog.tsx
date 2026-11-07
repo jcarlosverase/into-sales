@@ -5,6 +5,7 @@ import { blockStartUtc } from "@/lib/time/calendar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { SELECT_CLASS, type ResourceOption } from "./booking-look";
 
 /**
  * 215 — Bloquear un horario: para compromisos que viven fuera del CRM. Ese
@@ -25,12 +26,16 @@ export function BlockDialog({
   initialDay,
   initialTime,
   timezone,
+  resources,
+  initialResourceId,
   onCancel,
   onCreated,
 }: {
   initialDay: string;
   initialTime: string;
   timezone: string;
+  resources: ResourceOption[];
+  initialResourceId: string | null;
   onCancel: () => void;
   onCreated: (day: string) => void;
 }) {
@@ -38,6 +43,8 @@ export function BlockDialog({
   const [time, setTime] = useState(initialTime);
   const [minutes, setMinutes] = useState(60);
   const [notes, setNotes] = useState("");
+  // 1029 — Vacío: de todo el negocio.
+  const [resourceId, setResourceId] = useState(initialResourceId ?? "");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -67,6 +74,7 @@ export function BlockDialog({
         kind: "block",
         startUtc,
         durationMinutes: minutes,
+        resourceId: resourceId || null,
         notes: notes.trim() || null,
       }),
     }).catch(() => null);
@@ -125,7 +133,7 @@ export function BlockDialog({
             id="bloqueo-duracion"
             value={minutes}
             onChange={(e) => setMinutes(Number(e.target.value))}
-            className="flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm shadow-sm focus-visible:border-brand focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-brand-soft"
+            className={SELECT_CLASS}
           >
             {DURATIONS.map((d) => (
               <option key={d} value={d}>
@@ -134,6 +142,25 @@ export function BlockDialog({
             ))}
           </select>
         </div>
+
+        {resources.length >= 1 && (
+          <div className="space-y-1.5">
+            <Label htmlFor="block-resource">A quién bloquea</Label>
+            <select
+              id="block-resource"
+              value={resourceId}
+              onChange={(e) => setResourceId(e.target.value)}
+              className={SELECT_CLASS}
+            >
+              <option value="">Todo el negocio</option>
+              {resources.map((r) => (
+                <option key={r.id} value={r.id}>
+                  {r.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
 
         <div className="space-y-1.5">
           <Label htmlFor="bloqueo-nota">Motivo (opcional)</Label>

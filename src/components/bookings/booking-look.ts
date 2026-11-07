@@ -23,6 +23,18 @@ export function bookingTitle(b: Booking): string {
   return b.contact?.name.trim() || "Sin contacto";
 }
 
+/** 1029 — El título, y con quién es si tiene profesional. */
+export function bookingLine(b: Booking): string {
+  return b.resource ? `${bookingTitle(b)} · ${b.resource.name}` : bookingTitle(b);
+}
+
+/** Un select con el aspecto de los campos del sistema de diseño. */
+export const SELECT_CLASS =
+  "flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm shadow-sm focus-visible:border-brand focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-brand-soft sm:h-9";
+
+/** 1029 — Lo que necesitan las pantallas de Citas para elegir. */
+export type ResourceOption = { id: string; name: string };
+
 /**
  * Color por estado, solo con tokens (regla 1 de `tailwind.config.ts`). Lo que
  * viene es relleno del acento, como un evento de Google; lo que ya pasó se

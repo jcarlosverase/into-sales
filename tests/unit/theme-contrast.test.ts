@@ -231,7 +231,9 @@ describe("tema oscuro: acento", () => {
 
 describe("tema claro: no cambia", () => {
   it("lo que flota, la tinta y el anillo del acento son los de siempre", () => {
-    expect(light["--bg-raised"]).toBe(light["--bg"]);
+    // Ninguna superficie es blanco puro: cansa la vista en jornadas largas.
+    expect(light["--bg"]).not.toBe("#ffffff");
+    expect(light["--bg-raised"]).not.toBe("#ffffff");
     expect(light["--accent-ink"]).toBe("var(--accent)");
     expect(light["--ring"]).toBe("var(--accent)");
   });

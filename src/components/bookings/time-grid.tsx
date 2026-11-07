@@ -5,7 +5,9 @@ import { AlertTriangle, Sparkles } from "lucide-react";
 import {
   bookingSegments,
   dayHeading,
+  clock12,
   hhmm,
+  hourLabel,
   layoutOverlaps,
   offHoursBands,
   workingBands,
@@ -13,7 +15,7 @@ import {
 } from "@/lib/time/calendar";
 import type { WeeklyHours } from "@/server/agenda/settings";
 import { cn } from "@/lib/utils";
-import { bookingTitle, bookingTone, hasDeliveryIssue, type Booking } from "./booking-look";
+import { bookingLine, bookingTone, hasDeliveryIssue, type Booking } from "./booking-look";
 
 /**
  * 215 — La rejilla de horas de las vistas Día y Semana, como Google Calendar:
@@ -97,7 +99,7 @@ export function TimeGrid({
   }, [ready, rangeKey, days, weeklyHours, byDay]);
 
   const multi = days.length > 1;
-  const columns = `3.5rem repeat(${days.length}, minmax(${multi ? "5.5rem" : "0"}, 1fr))`;
+  const columns = `4rem repeat(${days.length}, minmax(${multi ? "5.5rem" : "0"}, 1fr))`;
 
   return (
     <div
@@ -141,10 +143,10 @@ export function TimeGrid({
           {Array.from({ length: 23 }, (_, i) => i + 1).map((h) => (
             <span
               key={h}
-              className="absolute right-1.5 -translate-y-1/2 font-mono text-[10.5px] text-text-3"
+              className="absolute right-1.5 -translate-y-1/2 whitespace-nowrap font-mono text-[10.5px] text-text-3"
               style={{ top: h * HOUR_PX }}
             >
-              {hhmm(h * 60)}
+              {hourLabel(h)}
             </span>
           ))}
         </div>
@@ -246,9 +248,9 @@ function EventBlock({
   const { booking: b, startMin, endMin, col, cols } = placed;
   const top = (startMin / 60) * HOUR_PX;
   const height = Math.max(MIN_EVENT_PX, ((endMin - startMin) / 60) * HOUR_PX - 2);
-  const title = bookingTitle(b);
-  const start = hhmm(startMin);
-  const end = hhmm(endMin);
+  const title = bookingLine(b);
+  const start = clock12(startMin);
+  const end = clock12(endMin);
   const range = `${placed.continuesBefore ? "…" : start} – ${placed.continuesAfter ? "…" : end}`;
   // Una cita corta cabe en una línea: "Nombre, 10:00", como en Google. Si
   // además comparte el ancho, el nombre manda y la hora queda en el panel.

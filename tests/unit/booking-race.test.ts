@@ -43,6 +43,12 @@ vi.mock("@/server/agenda/settings", () => ({
   getSettings: async () => settings,
 }));
 
+vi.mock("@/server/agenda/resources", () => ({
+  listActiveResources: async () => [],
+  getResource: async () => null,
+  resourceNames: async () => new Map(),
+}));
+
 vi.mock("@/server/agenda/availability", () => ({
   // El hueco se ve libre al re-validar: la otra confirmación aún no escribía.
   findSlot: async () => ({ startUtc: SLOT, endUtc: "…", label: "mié 5 ago, 09:00" }),
@@ -88,8 +94,14 @@ function chain(rows: unknown[]) {
   return c;
 }
 
+/** La transacción de `withAgendaLock` corre sobre la misma base falsa. */
+function withTransaction<T extends object>(db: T) {
+  const tx = { ...db, execute: async () => [] };
+  return { ...tx, transaction: async <R,>(run: (t: typeof tx) => Promise<R>) => run(tx) };
+}
+
 vi.mock("@/lib/db", () => ({
-  getDb: () => ({
+  getDb: () => withTransaction({
     select: () => chain(selectRows.shift() ?? []),
     insert: () => ({
       values: (v: unknown) => ({

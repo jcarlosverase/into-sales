@@ -46,7 +46,7 @@ describe("la forma de una cita en el contexto", () => {
     // esa cita es la de hoy.
     const before = new Date("2026-09-14T14:00:00.000Z"); // 09:00 del mismo lunes
     expect(bookingsInContext([booking()], TZ, before).next?.label).toBe(
-      "hoy lunes, 14 de septiembre, 10:30"
+      "hoy lunes, 14 de septiembre, 10:30 a. m."
     );
     const sunday = new Date("2026-09-13T17:00:00.000Z");
     expect(bookingsInContext([booking()], TZ, sunday).next?.label).toMatch(/^mañana lunes/);
@@ -59,7 +59,7 @@ describe("la forma de una cita en el contexto", () => {
       status: "agendada",
       startUtc: "2026-09-14T15:30:00.000Z",
       endUtc: "2026-09-14T16:00:00.000Z",
-      label: "hoy lunes, 14 de septiembre, 10:30",
+      label: "hoy lunes, 14 de septiembre, 10:30 a. m.",
       meetingLink: "https://meet.google.com/aza-iftw-wxp",
       linkPending: false,
     });
@@ -182,6 +182,11 @@ describe("qué citas salen", () => {
 // existir antes de que ese import resuelva `@/lib/db`.
 const { getDb } = vi.hoisted(() => ({ getDb: vi.fn() }));
 
+vi.mock("@/server/agenda/resources", () => ({
+  listActiveResources: async () => [],
+  getResource: async () => null,
+}));
+
 vi.mock("@/lib/db", async (importOriginal) => {
   const original = await importOriginal<typeof import("@/lib/db")>();
   return { ...original, getDb };
@@ -206,6 +211,7 @@ function baseWith(rows: BookingRow[] | Error) {
     resolve: (v: unknown) => void,
     reject: (e: unknown) => void
   ) => (rows instanceof Error ? Promise.reject(rows) : Promise.resolve(rows)).then(resolve, reject);
+  (chain as Record<string, unknown>).leftJoin = () => chain;
   return { select: () => chain };
 }
 
@@ -233,7 +239,7 @@ describe("bookingsForContext", () => {
     expect(r?.timezone).toBe("America/Bogota");
     expect(r?.next?.id).toBe("bk_real");
     // 15:00Z es 10:00 en Bogotá (UTC-5).
-    expect(r?.next?.label).toBe("miércoles, 16 de septiembre, 10:00");
+    expect(r?.next?.label).toBe("miércoles, 16 de septiembre, 10:00 a. m.");
     vi.unstubAllEnvs();
   });
 

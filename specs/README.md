@@ -53,6 +53,8 @@ producto** — y saberlo antes de leerla ahorra una confusión.
 | `1025-instagram-token-refresh` | Ligero | spec (renovación automática del token de Instagram antes de los 60 días, migración `0030`) |
 | `1026-session-absolute-limit` | Ligero | spec (la sesión vence a los 7 días aunque se use, además de las 12 horas sin uso) |
 | `1027-ai-provider-block-notice` | Ligero | spec (aviso cuando el proveedor de IA frena los pedidos con 403 o cupo agotado, sin pausar la llave, migración `0031`) |
+| `1029-agenda-resources` | Ciclo completo | spec, plan, data-model, 1 contrato, tasks (agenda con profesionales o recursos: crear citas a mano, horario propio, anti doble cita por persona, elegir con quién en Citas y agente que pregunta o asigna; migración `0032`) |
+| `1030-twelve-hour-clock` | Ligero | spec (las horas de las citas se leen en am/pm, en pantalla y en lo que recibe el cliente; los datos siguen en 24 horas) |
 | `031-ai-after-hours` | Ciclo completo | spec, plan, tasks («Cuándo responde la IA»: siempre o solo fuera del horario de atención del equipo, con su horario semanal y zona; el Laboratorio lo ignora; migración aditiva `0022`) |
 | `030-import-contacts` | Ciclo completo | spec, plan, tasks (Contactos → «Importar» desde `.xlsx` o CSV con vista previa, código de país, sin duplicar ni pisar, leads por turno; sin migración ni dependencias nuevas) |
 | `029-who-to-call-today` | Ciclo completo | spec, plan, tasks (pantalla «Hoy»: seguimientos vencidos, de hoy y leads sin primer contacto, por vendedor; próximo contacto en el cajón del trato; migración aditiva `0021`) |

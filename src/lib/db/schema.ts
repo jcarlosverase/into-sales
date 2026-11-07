@@ -807,6 +807,39 @@ export const agentTestRun = pgTable(
  * misma estructura y la misma cadena de migraciones (ADR-001).
  * ============================================================ */
 
+/**
+ * 1029 — Un profesional o recurso con su propio horario. Sin filas activas, la
+ * agenda es la del negocio, como siempre. No se borra: se archiva, porque las
+ * citas pasadas conservan el nombre.
+ */
+export const agendaResource = pgTable(
+  "agenda_resource",
+  {
+    id: text("id").primaryKey(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    kind: text("kind", { enum: ["person", "resource"] })
+      .notNull()
+      .default("person"),
+    /** Es lo que lee el cliente cuando el agente pregunta con quién. */
+    name: text("name").notNull(),
+    /** La forma de `calendar_settings.weekly_hours`: hora de PARED. */
+    weeklyHours: jsonb("weekly_hours").notNull(),
+    /** El orden en que se muestran. */
+    position: integer("position").notNull().default(0),
+    active: boolean("active").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("agenda_resource_org_position_idx").on(t.organizationId, t.position),
+    uniqueIndex("agenda_resource_org_name_uq")
+      .on(t.organizationId, sql`lower(${t.name})`)
+      .where(sql`${t.active} = true`),
+  ]
+);
+
 /** Configuración de la agenda del negocio: una fila por organización. */
 export const calendarSettings = pgTable(
   "calendar_settings",
@@ -830,6 +863,10 @@ export const calendarSettings = pgTable(
     connector: text("connector").notNull().default("enlace-fijo"),
     /** Sala fija del conector `enlace-fijo`; null ⇒ citas sin link. */
     meetingLink: text("meeting_link"),
+    /** 1029 — Con 2 o más profesionales: el agente pregunta o asigna. */
+    agentResourceMode: text("agent_resource_mode", { enum: ["first_free", "ask"] })
+      .notNull()
+      .default("first_free"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
@@ -865,6 +902,15 @@ export const booking = pgTable(
       onDelete: "set null",
     }),
     leadId: text("lead_id").references(() => lead.id, { onDelete: "set null" }),
+    /**
+     * 1029 — Con quién es. Null: sin profesional, y entonces ocupa a todos.
+     * `no action` y no `set null`: dos citas del mismo instante chocarían en el
+     * índice de las citas sin profesional. No hay borrado, solo archivo; esto
+     * solo aplica al borrar la organización, y se revisa después de la cascada.
+     */
+    resourceId: text("resource_id").references(() => agendaResource.id, {
+      onDelete: "no action",
+    }),
     /** Instante UTC. El horario semanal es de pared; esto ya está resuelto. */
     scheduledAt: timestamp("scheduled_at", { withTimezone: true }).notNull(),
     /** Capturada al crear: cambiar la configuración no reescribe el pasado. */
@@ -903,12 +949,23 @@ export const booking = pgTable(
      * la perdedora recibe un 23505 que el servicio traduce a `slot_taken` con
      * alternativas frescas. Las citas de prueba quedan fuera: no consumen la
      * agenda real.
+     *
+     * 1029 — Dos índices, porque PostgreSQL trata los null como distintos: uno
+     * para lo que no tiene profesional y otro por profesional. Lo que estos no
+     * ven (un bloqueo general contra una cita con profesional) lo cubre el
+     * candado de `service.ts`.
      */
     uniqueIndex("booking_org_active_slot_uq")
       .on(t.organizationId, t.scheduledAt)
       .where(
-        sql`${t.status} in ('agendada','realizada') and ${t.isTest} = false`
+        sql`${t.status} in ('agendada','realizada') and ${t.isTest} = false and ${t.resourceId} is null`
       ),
+    uniqueIndex("booking_resource_active_slot_uq")
+      .on(t.organizationId, t.resourceId, t.scheduledAt)
+      .where(
+        sql`${t.status} in ('agendada','realizada') and ${t.isTest} = false and ${t.resourceId} is not null`
+      ),
+    index("booking_org_resource_when_idx").on(t.organizationId, t.resourceId, t.scheduledAt),
   ]
 );
 
@@ -932,6 +989,10 @@ export const offeredSlot = pgTable(
       .notNull()
       .references(() => conversation.id, { onDelete: "cascade" }),
     startUtc: timestamp("start_utc", { withTimezone: true }).notNull(),
+    /** 1029 — Con quién se ofreció. Null: con cualquiera que esté libre. */
+    resourceId: text("resource_id").references(() => agendaResource.id, {
+      onDelete: "cascade",
+    }),
     /** La etiqueta EXACTA que se le mostró al cliente. */
     label: text("label").notNull(),
     offeredAt: timestamp("offered_at", { withTimezone: true }).notNull().defaultNow(),

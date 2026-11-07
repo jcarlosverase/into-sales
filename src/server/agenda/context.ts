@@ -1,8 +1,10 @@
 import { eq, gte, or } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db";
 import { scoped } from "@/lib/db/tenant";
-import { dayLabelInTz, timeInTz } from "@/lib/time/slots";
+import { dayLabelInTz, time12, timeInTz } from "@/lib/time/slots";
+import type { AgentResourceMode, ResourceKind } from "@/lib/agenda-resources";
 import { agendaEnabled } from "@/server/agenda/flag";
+import { listActiveResources } from "@/server/agenda/resources";
 import { getSettings } from "@/server/agenda/settings";
 
 /**
@@ -44,7 +46,10 @@ export const CLOSED_DAYS = 7;
 
 const DAY_MS = 86_400_000;
 
-export type BookingInContext = {
+/** 1029 — Con quién es la cita, si tiene profesional. */
+type WithResource = { resource?: { id: string; name: string } };
+
+export type BookingInContext = WithResource & {
   id: string;
   /** Siempre `agendada`: las cerradas van en `lastClosed`. */
   status: "agendada";
@@ -59,7 +64,7 @@ export type BookingInContext = {
 
 export type ClosedStatus = "cancelada" | "no_show" | "realizada";
 
-export type ClosedBooking = {
+export type ClosedBooking = WithResource & {
   id: string;
   status: ClosedStatus;
   startUtc: string;
@@ -84,6 +89,9 @@ export type BookingsInContext = {
   next: BookingInContext | null;
   unresolved: BookingInContext | null;
   lastClosed: ClosedBooking | null;
+  /** 1029 — Solo con profesionales: cómo decide el agente y con quién puede. */
+  resourceMode?: AgentResourceMode;
+  resources?: { id: string; name: string; kind: ResourceKind }[];
 };
 
 /** La cita tal cual sale de la base, antes de elegir y dar forma. */
@@ -97,6 +105,7 @@ export type BookingRow = {
   meetingLink: string | null;
   linkPending: boolean;
   updatedAt: Date;
+  resource?: { id: string; name: string } | null;
 };
 
 function shape(row: BookingRow, timezone: string, now: Date) {
@@ -107,7 +116,8 @@ function shape(row: BookingRow, timezone: string, now: Date) {
     endUtc: new Date(
       row.scheduledAt.getTime() + row.durationMinutes * 60_000
     ).toISOString(),
-    label: `${dayLabelInTz(startUtc, timezone, now)}, ${timeInTz(startUtc, timezone)}`,
+    label: `${dayLabelInTz(startUtc, timezone, now)}, ${time12(timeInTz(startUtc, timezone))}`,
+    ...(row.resource ? { resource: row.resource } : {}),
   };
 }
 
@@ -209,8 +219,9 @@ async function readBookings(
   const sinceUnclosed = new Date(now.getTime() - DAYS_UNCLOSED * DAY_MS);
   const sinceClosed = new Date(now.getTime() - CLOSED_DAYS * DAY_MS);
 
-  const [settings, rows] = await Promise.all([
+  const [settings, resources, rows] = await Promise.all([
     getSettings(organizationId),
+    listActiveResources(organizationId),
     db
       .select({
         id: schema.booking.id,
@@ -222,8 +233,11 @@ async function readBookings(
         meetingLink: schema.booking.meetingLink,
         linkPending: schema.booking.linkPending,
         updatedAt: schema.booking.updatedAt,
+        resourceId: schema.booking.resourceId,
+        resourceName: schema.agendaResource.name,
       })
       .from(schema.booking)
+      .leftJoin(schema.agendaResource, eq(schema.booking.resourceId, schema.agendaResource.id))
       .where(
         scoped(
           schema.booking.organizationId,
@@ -241,5 +255,18 @@ async function readBookings(
       ),
   ]);
 
-  return bookingsInContext(rows, settings.timezone, now);
+  const context = bookingsInContext(
+    rows.map(({ resourceId, resourceName, ...row }) => ({
+      ...row,
+      resource: resourceId && resourceName ? { id: resourceId, name: resourceName } : null,
+    })),
+    settings.timezone,
+    now
+  );
+  if (resources.length === 0) return context;
+  return {
+    ...context,
+    resourceMode: settings.agentResourceMode,
+    resources: resources.map(({ id, name, kind }) => ({ id, name, kind })),
+  };
 }

@@ -11,7 +11,12 @@ import { scoped } from "@/lib/db/tenant";
  * en cada ronda (la vigente es siempre la última) y se limpia al reservar.
  */
 
-export type OfferedSlot = { startUtc: string; label: string };
+export type OfferedSlot = {
+  startUtc: string;
+  label: string;
+  /** 1029 — Con quién se ofreció. Null o ausente: con cualquiera libre. */
+  resourceId?: string | null;
+};
 
 /** Reemplaza TODA la oferta de la conversación, en una transacción. */
 export async function replaceOffers(
@@ -37,6 +42,7 @@ export async function replaceOffers(
         organizationId,
         conversationId,
         startUtc: new Date(s.startUtc),
+        resourceId: s.resourceId ?? null,
         label: s.label,
       }))
     );
@@ -52,6 +58,7 @@ export async function getOffers(
     .select({
       startUtc: schema.offeredSlot.startUtc,
       label: schema.offeredSlot.label,
+      resourceId: schema.offeredSlot.resourceId,
     })
     .from(schema.offeredSlot)
     .where(
@@ -66,6 +73,7 @@ export async function getOffers(
   return rows.map((r) => ({
     startUtc: r.startUtc.toISOString(),
     label: r.label,
+    resourceId: r.resourceId,
   }));
 }
 

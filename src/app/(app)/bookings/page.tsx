@@ -8,7 +8,13 @@ import { getSettings } from "@/server/agenda/settings";
 
 export const dynamic = "force-dynamic";
 
-type Params = { vista?: string; fecha?: string; desde?: string; hasta?: string };
+type Params = {
+  vista?: string;
+  fecha?: string;
+  desde?: string;
+  hasta?: string;
+  resource?: string;
+};
 
 /**
  * 215 — Citas en calendario. La vista y la fecha viven en la URL
@@ -48,6 +54,7 @@ export default async function BookingsPage({
           ? clampListTo(date, params.hasta)
           : null
       }
+      initialResourceId={params.resource ?? null}
       timezone={settings.timezone}
       weeklyHours={settings.weeklyHours}
     />

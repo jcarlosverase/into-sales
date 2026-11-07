@@ -26,6 +26,7 @@ import {
   remainingOwed,
 } from "@/server/ai/turn-order";
 import { agendaEnabled } from "@/server/agenda/flag";
+import { listActiveResources } from "@/server/agenda/resources";
 import { bookSlot, offerSlots } from "@/server/agenda/agent";
 import { getOffers, slotsMapForModel } from "@/server/agenda/offers";
 import { stampCardContextFor } from "@/server/stamp-card/agent";
@@ -280,12 +281,13 @@ export async function runAgentTurn(
    */
   const offers = agenda ? await getOffers(organizationId, conversationId) : [];
   const slotsMap = slotsMapForModel(offers);
+  const resources = agenda ? await listActiveResources(organizationId) : [];
   const stampCard = await stampCardContextFor(organizationId, conversation.contactId);
 
   const messages: ChatMessage[] = [
     {
       role: "system",
-      content: buildAgentSystemPrompt({ profile, kb, stages, agenda }),
+      content: buildAgentSystemPrompt({ profile, kb, stages, agenda, resources }),
     },
     ...history
       .filter((m) => m.text)
@@ -329,12 +331,14 @@ export async function runAgentTurn(
                 organizationId,
                 conversationId,
                 intro: action.reply,
+                resourceId: action.resourceId,
               })
             : await bookSlot({
                 organizationId,
                 conversationId,
                 startUtc: action.startUtc,
                 confirmation: action.reply,
+                resourceId: action.resourceId,
               });
         await deliverReply(conversation, turn.text);
         if (turn.ok) {

@@ -111,14 +111,16 @@ describe("fallo 3 · un evento SSE ya no recalcula la disponibilidad", () => {
     expect(reload).not.toHaveBeenCalled();
   });
 
-  it("la pantalla solo pide disponibilidad desde «Reprogramar»", () => {
+  it("the screen only asks for availability from the slot picker", () => {
     const dir = path.resolve(import.meta.dirname, "../../src/components/bookings");
     const read = (f: string) => readFileSync(path.join(dir, f), "utf8");
     // El cliente del calendario (lo que corre en cada evento SSE) no la pide…
     expect(read("bookings-client.tsx")).not.toContain("/api/calendar/availability");
-    // …y el panel de la cita la pide una sola vez, al montar «Mover a».
+    // …y solo la pide el selector de huecos, una vez, al montarse en «Mover a» o en
+    // «Nueva cita» (1029).
+    expect(read("slot-picker.tsx").match(/\/api\/calendar\/availability/g)).toHaveLength(1);
     const drawer = read("booking-drawer.tsx");
-    expect(drawer.match(/\/api\/calendar\/availability/g)).toHaveLength(1);
+    expect(drawer).not.toContain("/api/calendar/availability");
     expect(drawer).toContain("function Reschedule(");
   });
 });
