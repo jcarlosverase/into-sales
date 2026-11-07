@@ -20,6 +20,10 @@ imagen `ghcr.io/kevinrivm/vocero-crm:X.Y.Z`.
   carga Clínica Dental Calma con 6 pacientes, 3 plantillas en borrador y un
   agente que agenda pero no diagnostica. En el VPS, los rubros se cargan con
   `node seed-industry.mjs <rubro>` dentro del contenedor.
+- **La clínica dental de ejemplo trae 10 profesionales** (specs 023 y 1029): tres
+  de endodoncia, dos de odontología general y uno por especialidad, cada uno con su
+  horario. El comando también deja el horario de la clínica si la agenda no estaba
+  configurada, y `--reset` los quita.
 - **Aviso cuando el proveedor de IA frena al agente** (spec 1027): con un límite
   de gasto, una cuenta suspendida o el cupo agotado, el agente dejaba de contestar
   sin decir nada. Ahora lo dicen la franja de arriba y Salud, y el aviso se va

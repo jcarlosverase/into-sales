@@ -129,3 +129,29 @@ el negocio y precios de referencia sacados de internet.
   instalada basta
   `sudo docker compose -p into-sales-<cliente> exec app node seed-industry.mjs dental`
   (con `--reset` u `--overwrite-agent` igual que en local).
+
+## Ampliación del 2026-11-07: profesionales de la clínica dental
+
+**Input**: Juan Carlos el 2026-11-07: «en la carga de datos para dental, agrega
+los profesionales a los que se les va a agendar las citas, mínimo 10». Usa la
+agenda con profesionales de la spec [1029](../1029-agenda-resources/spec.md).
+
+- **D14 — Un rubro puede traer su agenda**: el horario del negocio, la duración
+  de la cita, el modo del agente y sus profesionales, cada uno con su horario
+  dentro del horario del negocio (1029, AC3). El horario del negocio solo se
+  escribe si la agenda nunca se configuró, igual que el perfil del agente (D6).
+  Un profesional solo se agrega si no hay uno activo con el mismo nombre, así
+  que repetir el comando no duplica.
+- **D15 — La clínica dental trae 10 profesionales**: tres de endodoncia, dos de
+  odontología general y uno por cada especialidad (odontopediatría, ortodoncia,
+  periodoncia, cirugía bucal y rehabilitación oral), con horarios escalonados de
+  lunes a sábado. El modo es «primero libre»: Clara agenda con quien pida el
+  paciente o elige según lo que pide, sin suponer un diagnóstico. El
+  conocimiento trae la lista del equipo.
+- **D16 — `--reset` también quita a los profesionales del rubro**, por nombre.
+  Uno que ya tiene citas se archiva en vez de borrarse, porque la agenda no
+  borra (1029).
+- **AC10** — En una instancia nueva, `seed-industry.mjs dental` deja 10
+  profesionales activos y el horario de lunes a viernes de 8:00 a 18:00 y
+  sábados de 8:00 a 14:00, con citas de 60 minutos. Repetirlo agrega 0.
+  `--reset` los quita, salvo los que tienen citas, que quedan archivados.

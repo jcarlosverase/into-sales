@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray, isNull, like } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull, like, sql } from "drizzle-orm";
 import type { getDb } from "@/lib/db";
 import { schema } from "@/lib/db";
 import { newId } from "@/lib/db/ids";
@@ -25,7 +25,10 @@ import {
  *   and have no phone, so nothing can ever be sent to them (D2, D3);
  * - templates go in as drafts and never overwrite one already sent to Meta (D4);
  * - knowledge entries are only added when an identical one is missing (D5);
- * - the agent profile is only filled while nobody configured it (D6).
+ * - the agent profile is only filled while nobody configured it (D6);
+ * - the agenda (spec 1029): business hours only while the agenda was never
+ *   configured, and professionals only added when one with that name is
+ *   missing. `--reset` removes them, or archives the ones that have bookings.
  */
 
 type Db = ReturnType<typeof getDb>;
@@ -64,6 +67,10 @@ export type SeedResult = {
   assigned: number;
   /** Hardware-store demo leftovers removed on the way (see legacy-demo.ts). */
   legacy: LegacyCleanup;
+  /** 1029 — Business hours written, kept as configured, or not part of the sample. */
+  agendaHours: "applied" | "kept" | "none";
+  /** 1029 — Professionals added (the ones already there are left as they are). */
+  resourcesAdded: number;
 };
 
 /** Deletes this industry's sample contacts (cascade: conversations, messages, leads…). */
@@ -110,16 +117,120 @@ async function removeSampleTemplates(
   return removed.length;
 }
 
-/** `--reset`: removes the industry's sample contacts and template drafts (D8). */
+/** Active professionals of the organization whose name matches one of the sample's. */
+async function sampleResources(db: Db, organizationId: string, sample: IndustrySample) {
+  const names = (sample.agenda?.resources ?? []).map((r) => r.name.toLowerCase());
+  if (names.length === 0) return [];
+  return db
+    .select({ id: schema.agendaResource.id, name: schema.agendaResource.name })
+    .from(schema.agendaResource)
+    .where(
+      scoped(
+        schema.agendaResource.organizationId,
+        organizationId,
+        eq(schema.agendaResource.active, true),
+        inArray(sql`lower(${schema.agendaResource.name})`, names)
+      )
+    );
+}
+
+/**
+ * 1029 — Removes the sample's professionals. One with bookings is archived
+ * instead (there is no delete in the agenda: the booking keeps its name).
+ */
+async function removeSampleResources(
+  db: Db,
+  organizationId: string,
+  sample: IndustrySample
+): Promise<{ removed: number; archived: number }> {
+  let removed = 0;
+  let archived = 0;
+  for (const r of await sampleResources(db, organizationId, sample)) {
+    const [used] = await db
+      .select({ id: schema.booking.id })
+      .from(schema.booking)
+      .where(scoped(schema.booking.organizationId, organizationId, eq(schema.booking.resourceId, r.id)))
+      .limit(1);
+    if (used) {
+      await db
+        .update(schema.agendaResource)
+        .set({ active: false, updatedAt: new Date() })
+        .where(eq(schema.agendaResource.id, r.id));
+      archived++;
+    } else {
+      await db.delete(schema.agendaResource).where(eq(schema.agendaResource.id, r.id));
+      removed++;
+    }
+  }
+  return { removed, archived };
+}
+
+/** `--reset`: removes the industry's sample contacts, template drafts and professionals (D8). */
 export async function resetIndustry(
   db: Db,
   organizationId: string,
   sample: IndustrySample
-): Promise<{ contacts: number; templates: number }> {
-  return {
-    contacts: await removeSampleContacts(db, organizationId, sample.key),
-    templates: await removeSampleTemplates(db, organizationId, sample),
-  };
+): Promise<{ contacts: number; templates: number; resources: number; resourcesArchived: number }> {
+  const contacts = await removeSampleContacts(db, organizationId, sample.key);
+  const templates = await removeSampleTemplates(db, organizationId, sample);
+  const { removed, archived } = await removeSampleResources(db, organizationId, sample);
+  return { contacts, templates, resources: removed, resourcesArchived: archived };
+}
+
+/**
+ * 1029 — The agenda: business hours only while nobody configured the agenda
+ * (same rule as the agent profile, D6), and each professional only if one with
+ * that name is not active yet.
+ */
+async function seedAgenda(
+  db: Db,
+  organizationId: string,
+  sample: IndustrySample
+): Promise<{ agendaHours: SeedResult["agendaHours"]; resourcesAdded: number }> {
+  const agenda = sample.agenda;
+  if (!agenda) return { agendaHours: "none", resourcesAdded: 0 };
+
+  const [settings] = await db
+    .select({ id: schema.calendarSettings.id })
+    .from(schema.calendarSettings)
+    .where(eq(schema.calendarSettings.organizationId, organizationId))
+    .limit(1);
+  let agendaHours: SeedResult["agendaHours"] = "kept";
+  if (!settings) {
+    await db.insert(schema.calendarSettings).values({
+      id: newId("calendarSettings"),
+      organizationId,
+      weeklyHours: agenda.weeklyHours,
+      slotMinutes: agenda.slotMinutes,
+      agentResourceMode: agenda.agentResourceMode,
+    });
+    agendaHours = "applied";
+  }
+
+  const present = new Set(
+    (await sampleResources(db, organizationId, sample)).map((r) => r.name.toLowerCase())
+  );
+  const [last] = await db
+    .select({ position: schema.agendaResource.position })
+    .from(schema.agendaResource)
+    .where(scoped(schema.agendaResource.organizationId, organizationId))
+    .orderBy(sql`${schema.agendaResource.position} desc`)
+    .limit(1);
+  let position = (last?.position ?? -1) + 1;
+  let resourcesAdded = 0;
+  for (const r of agenda.resources) {
+    if (present.has(r.name.toLowerCase())) continue;
+    await db.insert(schema.agendaResource).values({
+      id: newId("agendaResource"),
+      organizationId,
+      kind: r.kind,
+      name: r.name,
+      weeklyHours: r.weeklyHours,
+      position: position++,
+    });
+    resourcesAdded++;
+  }
+  return { agendaHours, resourcesAdded };
 }
 
 async function seedContacts(
@@ -347,7 +458,10 @@ export async function seedIndustry(
   const { templates, skipped } = await seedTemplates(db, organizationId, sample);
   const knowledgeAdded = await seedKnowledge(db, organizationId, sample);
   const agent = await seedAgent(db, organizationId, sample, options.overwriteAgent ?? false);
+  const { agendaHours, resourcesAdded } = await seedAgenda(db, organizationId, sample);
   return {
+    agendaHours,
+    resourcesAdded,
     contacts,
     templates,
     templatesSkipped: skipped,

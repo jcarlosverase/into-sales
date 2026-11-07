@@ -65,7 +65,7 @@ E2E de agenda en verde.
 - [x] T036 Sumarlo a `.github/workflows/e2e.yml`: `completo` y el 404 en `default` (AC27)
 - [x] T037 Medir SC-004 con 20 profesionales
 - [x] T038 [P] Nota en la spec 015, `specs/README.md`, `CHANGELOG.md`, mapa de `CLAUDE.md` y `AGENTS.md`
-- [ ] T039 [P] Datos de ejemplo: dos doctores en `src/server/seed/industries/dental.ts`. Sin hacer: el demo de la clínica es de un solo doctor
+- [x] T039 [P] Datos de ejemplo: 10 profesionales en `src/server/seed/industries/dental.ts` (2026-11-07, pedido de Juan Carlos; spec 023, D14 a D16)
 - [ ] T040 Verificación humana: clínica de dos doctores en un CRM real, por WhatsApp (Constitución IX)
 
 ## Notas de la implementación (2026-11-06)

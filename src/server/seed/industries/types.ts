@@ -1,3 +1,6 @@
+import type { AgentResourceMode, ResourceKind } from "@/lib/agenda-resources";
+import type { WeeklyHours } from "@/server/agenda/settings";
+
 /**
  * 023 — Sample data for one industry: what `pnpm seed:<industry>` loads.
  * Texts are in Spanish (Lima, soles); identifiers in English.
@@ -43,6 +46,24 @@ export type SampleAgent = {
   greeting: string;
 };
 
+/** 1029 — A professional (or room) the agenda books with. */
+export type SampleAgendaResource = {
+  /** What the client reads: 1–60 characters, unique per business. */
+  name: string;
+  kind: ResourceKind;
+  /** Must fit inside the business hours (spec 1029, AC3). */
+  weeklyHours: WeeklyHours;
+};
+
+/** 1029 — The business agenda and its professionals. */
+export type SampleAgenda = {
+  /** Business hours; only written when the agenda was never configured. */
+  weeklyHours: WeeklyHours;
+  slotMinutes: number;
+  agentResourceMode: AgentResourceMode;
+  resources: SampleAgendaResource[];
+};
+
 export type IndustrySample = {
   /** CLI key and identity prefix: `sample:<key>:<n>`. */
   key: "academy" | "realestate" | "fashion" | "dental";
@@ -53,4 +74,6 @@ export type IndustrySample = {
   templates: SampleTemplate[];
   knowledge: SampleKbEntry[];
   agent: SampleAgent;
+  /** Only industries that book appointments bring one. */
+  agenda?: SampleAgenda;
 };

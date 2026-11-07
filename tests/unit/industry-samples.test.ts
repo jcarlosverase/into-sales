@@ -65,6 +65,35 @@ describe("industry samples", () => {
     });
   }
 
+  it("the dental clinic books with at least 10 professionals inside its business hours (1029)", () => {
+    const agenda = INDUSTRIES.dental.agenda!;
+    expect(agenda.resources.length).toBeGreaterThanOrEqual(10);
+    const names = agenda.resources.map((r) => r.name.toLowerCase());
+    expect(new Set(names).size).toBe(names.length);
+    for (const r of agenda.resources) {
+      expect(r.name.length).toBeGreaterThan(0);
+      expect(r.name.length).toBeLessThanOrEqual(60);
+      const days = Object.entries(r.weeklyHours);
+      expect(days.length).toBeGreaterThan(0);
+      for (const [day, intervals] of days) {
+        const open = agenda.weeklyHours[day as keyof typeof agenda.weeklyHours] ?? [];
+        for (const i of intervals ?? []) {
+          expect(i.start < i.end).toBe(true);
+          expect(open.some((o) => o.start <= i.start && i.end <= o.end)).toBe(true);
+        }
+      }
+    }
+    // Every name the agent and the knowledge mention is a real professional.
+    const team = INDUSTRIES.dental.knowledge.find(
+      (k) => k.kind === "qa" && k.question.startsWith("¿Quiénes atienden")
+    );
+    expect(team).toBeDefined();
+    for (const r of agenda.resources) {
+      const person = r.name.replace(/ \(.*\)$/, "");
+      expect(team!.kind === "qa" && team!.answer.includes(person)).toBe(true);
+    }
+  });
+
   it("template names are unique across industries", () => {
     const names = samples.flatMap((s) => s.templates.map((t) => t.name));
     expect(new Set(names).size).toBe(names.length);
