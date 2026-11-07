@@ -5,6 +5,7 @@ import {
   expandWorkingDayToUtc,
   isValidTimeZone,
   labelInTz,
+  time12,
   overlaps,
   partsInTz,
   timeInTz,
@@ -192,10 +193,18 @@ describe("overlaps", () => {
 describe("etiquetas para el cliente", () => {
   it("labelInTz muestra la hora local del negocio", () => {
     const label = labelInTz("2026-08-05T14:00:00.000Z", LIMA);
-    expect(label).toContain("09:00");
+    expect(label).toContain("9:00 a. m.");
     expect(label).toContain("5");
     // Mismo instante, otra zona ⇒ otra hora.
-    expect(labelInTz("2026-08-05T14:00:00.000Z", MADRID)).toContain("16:00");
+    expect(labelInTz("2026-08-05T14:00:00.000Z", MADRID)).toContain("4:00 p. m.");
+  });
+
+  it("time12 converts 24 to 12 hours, with noon and midnight right", () => {
+    expect(time12("00:05")).toBe("12:05 a. m.");
+    expect(time12("09:00")).toBe("9:00 a. m.");
+    expect(time12("12:00")).toBe("12:00 p. m.");
+    expect(time12("15:30")).toBe("3:30 p. m.");
+    expect(time12("24:00")).toBe("12:00 a. m.");
   });
 
   it("partsInTz separa fecha, hora y día", () => {

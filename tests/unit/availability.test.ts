@@ -130,7 +130,7 @@ describe("filterFreeSlots", () => {
     });
     const times = freeValue.map((s) => Date.parse(s.startUtc));
     expect([...times].sort((a, b) => a - b)).toEqual(times);
-    expect(freeValue[0]!.label).toContain("09:00");
+    expect(freeValue[0]!.label).toContain("9:00 a. m.");
   });
 
   it("agenda llena ⇒ lista vacía, no error", () => {

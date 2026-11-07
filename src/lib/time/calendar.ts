@@ -1,4 +1,4 @@
-import { addDaysISO, tzOffsetMinutes, WEEKDAYS, zonedWallClockToUtc, type Interval, type WeekdayKey } from "@/lib/time/slots";
+import { addDaysISO, time12, tzOffsetMinutes, WEEKDAYS, zonedWallClockToUtc, type Interval, type WeekdayKey } from "@/lib/time/slots";
 
 /**
  * 215 — Aritmética del calendario de Citas: qué días se ven en cada vista, cómo
@@ -275,6 +275,16 @@ export function wallClock(instant: Date | string, tz: string): { day: string; mi
 export function hhmm(minutes: number): string {
   const m = ((minutes % 1440) + 1440) % 1440;
   return `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+}
+
+/** Minutos del día en 12 horas, para mostrar: 900 → «3:00 p. m.». */
+export function clock12(minutes: number): string {
+  return time12(hhmm(minutes));
+}
+
+/** La hora del eje de la rejilla: 15 → «3 p. m.». */
+export function hourLabel(hour: number): string {
+  return `${hour % 12 || 12} ${hour < 12 ? "a. m." : "p. m."}`;
 }
 
 export type DaySegment = {

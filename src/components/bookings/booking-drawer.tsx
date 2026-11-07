@@ -1,21 +1,22 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { CalendarClock, MessageSquareText, Sparkles, Video, X } from "lucide-react";
-import { addDaysISO } from "@/lib/time/slots";
-import {
-  bookingSegments,
-  dayHeading,
-  groupSlotsByDay,
-  hhmm,
-  longDayLabel,
-  type DaySlot,
-} from "@/lib/time/calendar";
+import { bookingSegments, clock12, longDayLabel } from "@/lib/time/calendar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { bookingTitle, bookingTone, canRetrySync, statusLabel, type Booking } from "./booking-look";
+import {
+  SELECT_CLASS,
+  bookingTitle,
+  bookingTone,
+  canRetrySync,
+  statusLabel,
+  type Booking,
+  type ResourceOption,
+} from "./booking-look";
+import { SlotPicker } from "./slot-picker";
 
 /**
  * 215 — La cita, abierta, sin salir del calendario. Tiene TODO lo que tenía la
@@ -30,6 +31,7 @@ export function BookingDrawer({
   booking: b,
   timezone,
   today,
+  resources,
   nowMs,
   onClose,
   onAct,
@@ -38,6 +40,7 @@ export function BookingDrawer({
   booking: Booking;
   timezone: string;
   today: string;
+  resources: ResourceOption[];
   nowMs: number;
   onClose: () => void;
   /** PATCH a la cita; devuelve el error del servidor si lo hay. */
@@ -126,13 +129,18 @@ export function BookingDrawer({
                 </p>
                 {first && last && (
                   <p className="mt-0.5 text-sm text-text-2 first-letter:uppercase">
-                    {longDayLabel(first.day)} · {hhmm(first.startMin)} – {hhmm(last.endMin)}
+                    {longDayLabel(first.day)} · {clock12(first.startMin)} – {clock12(last.endMin)}
                     {last.day !== first.day && " del día siguiente"}
                   </p>
                 )}
                 <p className="text-xs text-text-3">
                   {b.durationMinutes} min · {timezone}
                 </p>
+                {b.resource && (
+                  <p className="mt-1 text-sm font-medium text-text-2">
+                    {isSession ? "Con" : "Bloquea a"} {b.resource.name}
+                  </p>
+                )}
               </div>
             </div>
 
@@ -227,9 +235,11 @@ export function BookingDrawer({
             <Reschedule
               today={today}
               busy={busy}
+              resources={isSession ? resources : []}
+              currentResourceId={b.resource?.id ?? null}
               onCancel={() => setRescheduling(false)}
-              onPick={async (startUtc) => {
-                if (await run({ action: "reschedule", startUtc })) {
+              onPick={async (startUtc, resourceId) => {
+                if (await run({ action: "reschedule", startUtc, resourceId })) {
                   setRescheduling(false);
                   onRescheduled(startUtc);
                 }
@@ -302,44 +312,20 @@ export function BookingDrawer({
 function Reschedule({
   today,
   busy,
+  resources,
+  currentResourceId,
   onCancel,
   onPick,
 }: {
   today: string;
   busy: boolean;
+  resources: ResourceOption[];
+  currentResourceId: string | null;
   onCancel: () => void;
-  onPick: (startUtc: string) => void;
+  onPick: (startUtc: string, resourceId: string | null) => void;
 }) {
-  const [slots, setSlots] = useState<DaySlot[] | null>(null);
-  const [failed, setFailed] = useState(false);
-  const [day, setDay] = useState<string | null>(null);
-
-  useEffect(() => {
-    // Cerrar el panel (o cambiar de cita) cancela la consulta en vuelo.
-    const abort = new AbortController();
-    let alive = true;
-    void (async () => {
-      const res = await fetch("/api/calendar/availability", { signal: abort.signal }).catch(
-        () => null
-      );
-      if (!alive) return;
-      if (!res?.ok) {
-        setFailed(true);
-        setSlots([]);
-        return;
-      }
-      const data = (await res.json().catch(() => null)) as { slots: DaySlot[] } | null;
-      if (alive) setSlots(data?.slots ?? []);
-    })();
-    return () => {
-      alive = false;
-      abort.abort();
-    };
-  }, []);
-
-  const days = useMemo(() => groupSlotsByDay(slots ?? []), [slots]);
-  const selected = day ?? days[0]?.[0] ?? null;
-  const times = days.find(([d]) => d === selected)?.[1] ?? [];
+  // 1029 — Conserva a la persona; cambiarla muestra los huecos de la nueva.
+  const [resourceId, setResourceId] = useState(currentResourceId);
 
   return (
     <section className="space-y-3 border-b p-4" aria-label="Mover a">
@@ -353,59 +339,29 @@ function Reschedule({
           Cancelar
         </button>
       </div>
-
-      {slots === null && <p className="text-sm text-text-3">Buscando huecos libres…</p>}
-      {slots !== null && days.length === 0 && (
-        <p className="text-sm text-text-3">
-          {failed
-            ? "No se pudo comprobar la disponibilidad. Intenta de nuevo."
-            : "No hay huecos libres para mover esta cita."}
-        </p>
+      {resources.length >= 2 && (
+        <select
+          aria-label="Con quién atiende"
+          value={resourceId ?? ""}
+          onChange={(e) => setResourceId(e.target.value || null)}
+          className={SELECT_CLASS}
+        >
+          {!currentResourceId && <option value="">Sin profesional</option>}
+          {resources.map((r) => (
+            <option key={r.id} value={r.id}>
+              {r.name}
+            </option>
+          ))}
+        </select>
       )}
-
-      {days.length > 0 && (
-        <>
-          <div className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1" role="group" aria-label="Días con huecos">
-            {days.map(([d, list]) => {
-              const h = dayHeading(d);
-              const prefix = d === today ? "Hoy" : d === addDaysISO(today, 1) ? "Mañana" : h.weekday;
-              return (
-                <button
-                  key={d}
-                  type="button"
-                  data-day={d}
-                  onClick={() => setDay(d)}
-                  aria-pressed={d === selected}
-                  className={cn(
-                    "flex shrink-0 flex-col items-center rounded-md border px-2.5 py-1.5 text-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-soft",
-                    d === selected ? "border-brand bg-brand-tint text-brand-text" : "hover:bg-accent"
-                  )}
-                >
-                  <span className="text-[11px] font-medium first-letter:uppercase">{prefix}</span>
-                  <span className="text-sm font-semibold tabular-nums">
-                    {h.day} {h.month}
-                  </span>
-                  <span className="text-[10.5px] text-text-3">{list.length} libres</span>
-                </button>
-              );
-            })}
-          </div>
-          <div className="grid grid-cols-4 gap-1.5" role="group" aria-label="Horarios libres">
-            {times.map((s) => (
-              <button
-                key={s.startUtc}
-                type="button"
-                data-start={s.startUtc}
-                disabled={busy}
-                onClick={() => onPick(s.startUtc)}
-                className="rounded-md border px-1 py-1.5 font-mono text-[12.5px] transition-colors hover:border-brand hover:bg-brand-tint hover:text-brand-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-soft disabled:opacity-50"
-              >
-                {s.time}
-              </button>
-            ))}
-          </div>
-        </>
-      )}
+      <SlotPicker
+        key={resourceId ?? "todos"}
+        today={today}
+        busy={busy}
+        resourceId={resourceId}
+        emptyMessage="No hay huecos libres para mover esta cita."
+        onPick={(slot) => onPick(slot.startUtc, resourceId)}
+      />
     </section>
   );
 }

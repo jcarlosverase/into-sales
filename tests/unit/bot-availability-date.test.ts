@@ -33,10 +33,16 @@ const SETTINGS: CalendarSettings = {
   timezone: "America/Lima",
   connector: "enlace-fijo",
   meetingLink: null,
+  agentResourceMode: "first_free",
 };
 
 // Lunes 21 sep 2026, 09:00 en Lima (UTC-5).
 const NOW = new Date("2026-09-21T14:00:00.000Z");
+
+vi.mock("@/server/agenda/resources", () => ({
+  listActiveResources: async () => [],
+  getResource: async () => null,
+}));
 
 vi.mock("@/server/agenda/flag", () => ({
   agendaEnabled: () => true,

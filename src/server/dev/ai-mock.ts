@@ -148,6 +148,21 @@ export function aiMockCompletion(messages: InMessage[]): string {
     (m) => m.role === "system" && m.content.includes('"action":"offer_slots"')
   );
   const wantsBooking = /cita|agendar|agenda|horario|reserv/.test(text);
+  /** 1029 — Como un modelo: lee los nombres del prompt, nunca los inventa. */
+  const named = messages
+    .filter((m) => m.role === "system")
+    .flatMap((m) => [...m.content.matchAll(/([^,:]+?) \(resourceId "([^"]+)"\)/g)])
+    .find((m) => text.includes((m[1] ?? "").trim().toLowerCase()));
+  if (agendaTaught && named && slots.length === 0) {
+    return JSON.stringify({
+      action: "offer_slots",
+      resourceId: named[2],
+      reply: "Claro, tengo estos horarios:",
+    });
+  }
+  if (agendaTaught && /me da igual|cualquiera/.test(text) && slots.length === 0) {
+    return JSON.stringify({ action: "offer_slots", resourceId: "any" });
+  }
   if (agendaTaught && wantsBooking && slots.length === 0) {
     return JSON.stringify({
       action: "offer_slots",

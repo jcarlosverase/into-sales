@@ -2,10 +2,10 @@
 
 import { useMemo } from "react";
 import { AlertTriangle, CalendarDays, Sparkles, Video } from "lucide-react";
-import { bookingSegments, hhmm, longDayLabel, spanLabel, type DateRange } from "@/lib/time/calendar";
+import { bookingSegments, clock12, longDayLabel, spanLabel, type DateRange } from "@/lib/time/calendar";
 import { cn } from "@/lib/utils";
 import { EmptyState } from "@/components/ui/empty-state";
-import { STATUS_LABEL, bookingTitle, bookingTone, hasDeliveryIssue, type Booking } from "./booking-look";
+import { STATUS_LABEL, bookingLine, bookingTone, hasDeliveryIssue, type Booking } from "./booking-look";
 
 /**
  * 215 — La Lista: las citas del rango, agrupadas por día, como la «Agenda» de
@@ -77,8 +77,8 @@ export function AgendaList({
                     b.id === selectedId && "bg-row-hover"
                   )}
                 >
-                  <span className="w-[6.5rem] shrink-0 font-mono text-[12px] text-text-2">
-                    {hhmm(startMin)} – {hhmm(endMin)}
+                  <span className="w-[5.5rem] shrink-0 font-mono text-[12px] sm:w-[12rem] text-text-2">
+                    {clock12(startMin)} – {clock12(endMin)}
                   </span>
                   <span aria-hidden className={cn("h-2.5 w-2.5 shrink-0 rounded-full", bookingTone(b).dot)} />
                   <span className="min-w-0 flex-1">
@@ -88,7 +88,7 @@ export function AgendaList({
                         b.status === "cancelada" && "text-text-3 line-through"
                       )}
                     >
-                      <span className="truncate">{bookingTitle(b)}</span>
+                      <span className="truncate">{bookingLine(b)}</span>
                       {b.source === "ai" && b.kind === "session" && (
                         <Sparkles aria-label="Agendó la IA" className="h-3.5 w-3.5 shrink-0 text-brand-text" />
                       )}

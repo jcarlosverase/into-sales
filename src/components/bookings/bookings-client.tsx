@@ -29,8 +29,9 @@ import type { WeeklyHours } from "@/server/agenda/settings";
 import { cn } from "@/lib/utils";
 import { AgendaList } from "./agenda-list";
 import { BlockDialog } from "./block-dialog";
+import { NewBookingDialog } from "./new-booking-dialog";
 import { BookingDrawer, type ActResult } from "./booking-drawer";
-import type { Booking } from "./booking-look";
+import type { Booking, ResourceOption } from "./booking-look";
 import { CalendarToolbar } from "./calendar-toolbar";
 import { MonthGrid } from "./month-grid";
 import { TimeGrid } from "./time-grid";
@@ -56,7 +57,12 @@ const legacyKey = (key: string) => key.replace(/^intosales:/, "vocero:");
 /** Una ráfaga de eventos SSE (una cita y su enlace) se paga con UNA consulta. */
 const SSE_COALESCE_MS = 250;
 
-type Loaded = { key: string; bookings: Booking[]; truncated: boolean };
+type Loaded = {
+  key: string;
+  bookings: Booking[];
+  resources: ResourceOption[];
+  truncated: boolean;
+};
 
 function readPref(key: string): string | null {
   return readLocalPref(key, legacyKey(key));
@@ -70,12 +76,14 @@ export function BookingsClient({
   initialView,
   initialDate,
   initialListTo,
+  initialResourceId,
   timezone: initialTimezone,
   weeklyHours: initialWeeklyHours,
 }: {
   initialView: CalendarView | null;
   initialDate: string;
   initialListTo: string | null;
+  initialResourceId: string | null;
   timezone: string;
   weeklyHours: WeeklyHours;
 }) {
@@ -93,6 +101,8 @@ export function BookingsClient({
   const [showTests, setShowTests] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [snapshot, setSnapshot] = useState<Booking | null>(null);
+  const [resourceFilter, setResourceFilter] = useState(initialResourceId);
+  const [newBooking, setNewBooking] = useState(false);
   const [blockDraft, setBlockDraft] = useState<{ day: string; time: string } | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [now, setNow] = useState<number | null>(null);
@@ -133,6 +143,7 @@ export function BookingsClient({
     const data = res?.ok
       ? ((await res.json().catch(() => null)) as {
           bookings: Booking[];
+          resources?: ResourceOption[];
           timezone: string;
           weeklyHours: WeeklyHours;
           truncated?: boolean;
@@ -148,7 +159,12 @@ export function BookingsClient({
     setLoadError(false);
     setTimezone(data.timezone);
     setWeeklyHours(data.weeklyHours);
-    setLoaded({ key, bookings: data.bookings, truncated: Boolean(data.truncated) });
+    setLoaded({
+      key,
+      bookings: data.bookings,
+      resources: data.resources ?? [],
+      truncated: Boolean(data.truncated),
+    });
   }, []);
 
   const reload = useCallback(async () => {
@@ -177,19 +193,31 @@ export function BookingsClient({
     } else {
       params.set("fecha", anchor);
     }
+    if (resourceFilter) params.set("resource", resourceFilter);
     window.history.replaceState(null, "", `?${params.toString()}`);
-  }, [view, anchor, listTo]);
+  }, [view, anchor, listTo, resourceFilter]);
 
   const today = now === null ? null : dayIsoInTz(new Date(now), timezone);
   const nowMinutes = now === null ? 0 : wallClock(new Date(now), timezone).minutes;
 
   const all = useMemo(() => loaded?.bookings ?? [], [loaded]);
+  const resources = useMemo(() => loaded?.resources ?? [], [loaded]);
+  // 1029 — Lo de esa persona y lo que ocupa a todos. Un filtro de alguien que ya
+  // no está (un enlace viejo) se ignora.
+  const activeFilter = resources.some((r) => r.id === resourceFilter) ? resourceFilter : null;
+  const filtered = useMemo(
+    () =>
+      activeFilter
+        ? all.filter((b) => !b.resource || b.resource.id === activeFilter)
+        : all,
+    [all, activeFilter]
+  );
   const visible = useMemo(
-    () => calendarVisible(all, { showCancelled, showTests }),
-    [all, showCancelled, showTests]
+    () => calendarVisible(filtered, { showCancelled, showTests }),
+    [filtered, showCancelled, showTests]
   );
   const counts = useMemo(() => {
-    const inRange = all.filter((b) => {
+    const inRange = filtered.filter((b) => {
       const day = dayIsoInTz(new Date(b.scheduledAtUtc), timezone);
       return range !== null && day >= range.from && day <= range.to;
     });
@@ -201,7 +229,7 @@ export function BookingsClient({
       tests: inRange.filter((b) => b.isTest).length,
       google: inRange.some((b) => b.connector === "google"),
     };
-  }, [all, timezone, range, showTests]);
+  }, [filtered, timezone, range, showTests]);
 
   const selected = selectedId
     ? (all.find((b) => b.id === selectedId) ?? (snapshot?.id === selectedId ? snapshot : null))
@@ -324,6 +352,13 @@ export function BookingsClient({
         onJump={setAnchor}
         onView={changeView}
         onListRange={changeListRange}
+        resources={resources}
+        resourceFilter={activeFilter}
+        onResourceFilter={setResourceFilter}
+        onNewBooking={() => {
+          setSelectedId(null);
+          setNewBooking(true);
+        }}
         onBlock={() => openBlock()}
       />
 
@@ -415,6 +450,7 @@ export function BookingsClient({
             booking={selected}
             timezone={timezone}
             today={today}
+            resources={resources}
             nowMs={now ?? Date.now()}
             onClose={closeDrawer}
             onAct={(body) => act(selected, body)}
@@ -423,11 +459,28 @@ export function BookingsClient({
         )}
       </div>
 
+      {newBooking && today && (
+        <NewBookingDialog
+          today={today}
+          timezone={timezone}
+          resources={resources}
+          initialResourceId={activeFilter}
+          onCancel={() => setNewBooking(false)}
+          onCreated={(day) => {
+            setNewBooking(false);
+            reveal(day);
+            void reload();
+          }}
+        />
+      )}
+
       {blockDraft && (
         <BlockDialog
           initialDay={blockDraft.day}
           initialTime={blockDraft.time}
           timezone={timezone}
+          resources={resources}
+          initialResourceId={activeFilter}
           onCancel={() => setBlockDraft(null)}
           onCreated={(day) => {
             setBlockDraft(null);

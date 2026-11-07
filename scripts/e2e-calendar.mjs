@@ -26,6 +26,12 @@ import postgres from "postgres";
 const BASE = process.env.APP_BASE_URL ?? "http://localhost:3000";
 const AGENDA = /^(on|1|true|si|sí|yes)$/i.test((process.env.AGENDA ?? "").trim());
 const TZ_BUSINESS = "America/Lima";
+
+/** What a person reads is in 12 hours (`time12` in src/lib/time/slots.ts). */
+const time12 = (time) => {
+  const [hour, minute] = time.split(":").map(Number);
+  return `${hour % 12 || 12}:${String(minute).padStart(2, "0")} ${hour < 12 ? "a. m." : "p. m."}`;
+};
 const TZ_BROWSER = "Asia/Tokyo";
 const PN = "PN-E2E-1";
 const HOUR_PX = 48; // el alto de una hora en la rejilla (time-grid.tsx)
@@ -320,7 +326,7 @@ async function main() {
     if (u.includes("/api/bookings?from=")) count.range++;
   });
   await page.goto(`${BASE}/bookings?vista=semana&fecha=${D}`, { waitUntil: "domcontentloaded", timeout: 60000 });
-  const titulo10 = `Lead calendario, ${s10.time} a `;
+  const titulo10 = `Lead calendario, ${time12(s10.time)} a `;
   const evento10 = page.locator(`[aria-label^="${titulo10}"]`);
   ok("la semana pinta la cita", await until(async () => (await evento10.count()) === 1, 45000), `count=${await evento10.count()}`);
   ok("la URL dice vista y fecha", page.url().includes(`vista=semana&fecha=${D}`), page.url());
@@ -453,7 +459,32 @@ async function main() {
     `${block?.scheduledAtUtc} (esperado ${wallToUtc(D2, "15:00")}; con la hora del navegador sería ${wallToUtc(D2, "15:00", TZ_BROWSER)})`
   );
   ok("el diálogo se cierra", await until(async () => (await dialog.count()) === 0, 5000));
-  ok("el bloqueo se pinta rayado en la rejilla", await until(async () => (await page.locator(`[aria-label^="Bloqueo e2e ${RUN}, 15:00 a 16:00"]`).count()) === 1, 8000));
+  ok("el bloqueo se pinta rayado en la rejilla", await until(async () => (await page.locator(`[aria-label^="Bloqueo e2e ${RUN}, 3:00 p. m. a 4:00 p. m."]`).count()) === 1, 8000));
+
+  console.log("\n== 1029: manual booking ==");
+  await page.getByRole("button", { name: "Nueva cita" }).click();
+  const newDialog = page.getByRole("dialog", { name: "Nueva cita" });
+  ok("new booking opens the dialog", await until(async () => newDialog.isVisible(), 5000));
+  const createButton = newDialog.getByRole("button", { name: "Crear cita" });
+  ok("cannot create without contact and slot", await createButton.isDisabled());
+  await newDialog.getByLabel("Contacto").fill("Lead calendario");
+  const option = newDialog.getByRole("button", { name: /Lead calendario/ });
+  ok("finds the contact by name", await until(async () => option.first().isVisible(), 10000));
+  await option.first().click();
+  const manualSlot = newDialog.locator("[data-start]").first();
+  ok("offers the free slots", await until(async () => manualSlot.isVisible(), 15000));
+  const manualStart = await manualSlot.getAttribute("data-start");
+  await manualSlot.click();
+  await newDialog.getByLabel("Nota (opcional)").fill(`Cita manual e2e ${RUN}`);
+  await createButton.click();
+  ok("the dialog closes on create", await until(async () => (await newDialog.count()) === 0, 15000));
+  const manualDay = dayIn(Date.parse(manualStart));
+  const manualRange = await api(`/api/bookings?from=${manualDay}&to=${manualDay}`);
+  const manual = (manualRange.json?.bookings ?? []).find((b) => b.notes === `Cita manual e2e ${RUN}`);
+  if (manual) created.push(manual.id);
+  ok("the booking has that contact and time", manual?.contact?.id === conv.contact.id && manual?.scheduledAtUtc === manualStart, JSON.stringify(manual ?? null));
+  ok("takes the contact conversation", manual?.conversationId === conv.id, String(manual?.conversationId));
+  ok("stays as a manual booking", manual?.source === "manual", String(manual?.source));
 
   console.log("\n== 215: un evento SSE refresca sin pedir disponibilidad (fallo 3) ==");
   await sleep(1500);

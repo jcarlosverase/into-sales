@@ -85,7 +85,6 @@ if (!enabled) {
     "/api/stamp-card/program",
     `/api/stamp-card/cards?contactId=ct_x`,
     "/api/stamp-card/poster",
-    "/api/wallet/apple/v1/log",
     "/api/wallet/apple/v1/devices/dev1/registrations/pass.center.into.stamps",
     "/api/wallet/images/logo",
     "/api/analytics/stamp-card",
@@ -95,6 +94,9 @@ if (!enabled) {
   }
   const put = await req.put(`${BASE}/api/stamp-card/program`, { data: {} });
   ok("PUT del programa → 404", put.status() === 404);
+  // Solo tiene POST: un GET respondería 405 aunque la bandera esté apagada.
+  const walletLog = await req.post(`${BASE}/api/wallet/apple/v1/log`, { data: { logs: ["e2e"] } });
+  ok("POST /api/wallet/apple/v1/log → 404", walletLog.status() === 404, `fue ${walletLog.status()}`);
   const anon = await browser.newContext();
   // Ajustes, como toda pantalla de (app), manda a «Entrar» sin sesión; con sesión da 404 (abajo).
   for (const path of [`/c/${fakeToken}`, `/c/${fakeToken}/apple`, `/c/${fakeToken}/google`, `/s/${fakeSerial}`, "/stamp-card/poster"]) {

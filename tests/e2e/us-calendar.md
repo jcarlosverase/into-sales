@@ -52,6 +52,9 @@ bandera `AGENDA` decide qué mitad corre.
    15:10 abre «Bloquear horario» con ese día y las 15:00; al confirmar, el
    bloqueo queda a las 15:00 de Lima (20:00 UTC), no a las 15:00
    de Tokio, y se pinta rayado.
+6b. **Spec 1029:** «Nueva cita» busca el contacto, ofrece los huecos libres y no
+   deja crear la cita sin los dos. Al crearla aparece en el calendario, con
+   «Abrir conversación» porque toma la conversación del contacto.
 7. **Fallo 3** (antes, cada evento recalculaba la disponibilidad): cinco
    bloqueos creados desde fuera aparecen solos por SSE, sin una sola petición
    de disponibilidad y con a lo más una consulta del rango por evento.

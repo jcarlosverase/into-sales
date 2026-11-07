@@ -7,6 +7,15 @@ imagen `ghcr.io/kevinrivm/vocero-crm:X.Y.Z`.
 
 ## Sin publicar — IntoSales
 
+- **Horas de las citas en am/pm** (spec 1030), en Citas y en lo que recibe el cliente.
+- **Modo claro más suave:** el fondo ya no es blanco puro (spec 002 de into-designsystem).
+- **Agenda con profesionales o recursos** (spec 1029): en Ajustes → Agenda se agregan
+  personas o salas, cada una con su horario. Dos personas pueden tener cita a la misma
+  hora, Citas deja elegir con quién y filtrar, y el agente pregunta con quién o asigna
+  al primero libre. Sin profesionales, todo sigue igual. Migración `0032`.
+- **Crear una cita a mano** (spec 1029): en Citas, «Nueva cita» deja elegir el
+  contacto y un hueco libre, sin esperar a que la agende el agente. El contacto no
+  recibe un mensaje automático.
 - **Datos de ejemplo de una clínica dental** (spec 023): `pnpm seed:dental`
   carga Clínica Dental Calma con 6 pacientes, 3 plantillas en borrador y un
   agente que agenda pero no diagnostica. En el VPS, los rubros se cargan con

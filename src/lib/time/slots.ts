@@ -230,10 +230,17 @@ export function labelInTz(startUtc: string, tz: string): string {
   for (const p of parts) map[p.type] = p.value;
   const weekday = (map.weekday ?? "").replace(/\.$/, "");
   const month = (map.month ?? "").replace(/\.$/, "");
-  return `${weekday} ${map.day} ${month}, ${map.hour}:${map.minute}`;
+  return `${weekday} ${map.day} ${month}, ${time12(`${map.hour}:${map.minute}`)}`;
 }
 
 /** Solo la hora en la zona del negocio: "10:00". */
+/** «15:00» → «3:00 p. m.». Lo que lee una persona va en 12 horas; los datos, en 24. */
+export function time12(time: string): string {
+  const [hour = 0, minute = 0] = time.split(":").map(Number);
+  const h = hour % 24;
+  return `${h % 12 || 12}:${String(minute).padStart(2, "0")} ${h < 12 ? "a. m." : "p. m."}`;
+}
+
 export function timeInTz(startUtc: string, tz: string): string {
   const d = new Date(startUtc);
   if (Number.isNaN(d.getTime())) return "";

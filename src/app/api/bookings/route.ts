@@ -3,8 +3,9 @@ import { apiError, parseBody, withAuth } from "@/lib/api";
 import { parseRangeQuery } from "@/lib/time/calendar";
 import { agendaDisabledResponse, agendaEnabled } from "@/server/agenda/flag";
 import { listBookings, listBookingsInRange } from "@/server/agenda/queries";
+import { listActiveResources } from "@/server/agenda/resources";
 import { getSettings } from "@/server/agenda/settings";
-import { createBlock, createSessionBooking } from "@/server/agenda/service";
+import { createBlock, createSessionBooking, contactConversationId } from "@/server/agenda/service";
 import { bookingErrorResponse, bookingPayload } from "@/server/agenda/http";
 import { canSeeContact, getLeadScope } from "@/server/leads/scope";
 
@@ -32,14 +33,19 @@ export const GET = withAuth(async (session, req: Request) => {
   }
 
   const settings = await getSettings(session.organizationId);
-  const { bookings, truncated } = await listBookingsInRange(
-    session.organizationId,
-    query.range,
-    settings,
-    getLeadScope(session)
-  );
+  const [{ bookings, truncated }, resources] = await Promise.all([
+    listBookingsInRange(
+      session.organizationId,
+      query.range,
+      settings,
+      getLeadScope(session),
+      url.searchParams.get("resourceId")
+    ),
+    listActiveResources(session.organizationId),
+  ]);
   return Response.json({
     bookings,
+    resources: resources.map(({ id, name, kind }) => ({ id, name, kind })),
     timezone: settings.timezone,
     weeklyHours: settings.weeklyHours,
     range: query.range,
@@ -54,12 +60,14 @@ const postSchema = z.discriminatedUnion("kind", [
     conversationId: z.string().min(1).nullish(),
     startUtc: z.string().min(1),
     notes: z.string().nullish(),
+    resourceId: z.string().min(1).nullish(),
   }),
   z.object({
     kind: z.literal("block"),
     startUtc: z.string().min(1),
     durationMinutes: z.number().int().min(5).max(600),
     notes: z.string().nullish(),
+    resourceId: z.string().min(1).nullish(),
   }),
 ]);
 
@@ -85,6 +93,7 @@ export const POST = withAuth(async (session, req: Request) => {
         startUtc: body.data.startUtc,
         durationMinutes: body.data.durationMinutes,
         notes: body.data.notes ?? null,
+        resourceId: body.data.resourceId ?? null,
       });
       return Response.json({ booking: { id: block.id } }, { status: 201 });
     }
@@ -96,9 +105,12 @@ export const POST = withAuth(async (session, req: Request) => {
     const result = await createSessionBooking({
       organizationId: session.organizationId,
       contactId: body.data.contactId,
-      conversationId: body.data.conversationId ?? null,
+      conversationId:
+        body.data.conversationId ??
+        (await contactConversationId(session.organizationId, body.data.contactId)),
       startUtc: body.data.startUtc,
       notes: body.data.notes ?? null,
+      resourceId: body.data.resourceId ?? null,
       source: "manual",
       requireOffer: false,
     });

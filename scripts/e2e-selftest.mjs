@@ -15,6 +15,12 @@
 const BASE = process.env.APP_BASE_URL ?? "http://localhost:3000";
 const BOT_KEY = process.env.BOT_API_KEY;
 
+/** What a person reads is in 12 hours (`time12` in src/lib/time/slots.ts). */
+const time12 = (time) => {
+  const [hour, minute] = time.split(":").map(Number);
+  return `${hour % 12 || 12}:${String(minute).padStart(2, "0")} ${hour < 12 ? "a. m." : "p. m."}`;
+};
+
 let cookie = "";
 let failures = 0;
 let checks = 0;
@@ -2216,7 +2222,7 @@ async function agendaChecks() {
     "…con la etiqueta del día en palabras, en la zona del negocio",
     ctxWithBooking.json?.booking?.timezone === "America/Lima" &&
       typeof next?.label === "string" &&
-      next.label.endsWith(`, ${slotsA[0].time}`) &&
+      next.label.endsWith(`, ${time12(slotsA[0].time)}`) &&
       next.label.length > `, ${slotsA[0].time}`.length + 8,
     `label=${JSON.stringify(next?.label)} time=${slotsA[0].time}`
   );
@@ -2733,7 +2739,7 @@ async function slotsByDateChecks() {
   );
   ok(
     "la cita queda a la hora de la tarde elegida",
-    typeof reservation.json?.label === "string" && reservation.json.label.includes(late.time),
+    typeof reservation.json?.label === "string" && reservation.json.label.includes(time12(late.time)),
     JSON.stringify(reservation.json?.label)
   );
   const again = await bot(`${q}&date=${tomorrow}`);

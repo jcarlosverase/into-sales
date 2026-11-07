@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { apiError, parseBody, withAuth } from "@/lib/api";
 import { CONNECTOR_ORDER } from "@/lib/agenda-connectors";
+import { AGENT_RESOURCE_MODES } from "@/lib/agenda-resources";
 import { agendaDisabledResponse, agendaEnabled } from "@/server/agenda/flag";
 import {
   CalendarSettingsError,
@@ -46,6 +47,7 @@ const putSchema = z.object({
     })
     .optional(),
   meetingLink: z.string().nullish(),
+  agentResourceMode: z.enum(AGENT_RESOURCE_MODES).optional(),
 });
 
 /**

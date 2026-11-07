@@ -42,6 +42,12 @@ vi.mock("@/server/agenda/settings", async (importOriginal) => {
   return { ...original, getSettings: async () => SETTINGS };
 });
 
+vi.mock("@/server/agenda/resources", () => ({
+  listActiveResources: async () => [],
+  getResource: async () => null,
+  resourceNames: async () => new Map(),
+}));
+
 // El tenant y los límites del rango, legibles en la prueba.
 vi.mock("@/lib/db/tenant", () => ({
   scoped: (_col: unknown, organizationId: string, ...conditions: unknown[]) => ({

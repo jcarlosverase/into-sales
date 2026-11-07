@@ -534,6 +534,9 @@ reconexión.
 
 - **Un negocio = una agenda**: configuración por organización, no por usuario;
   múltiples calendarios por agente quedan fuera de v1.
+  *Enmienda del 2026-11-06:* la spec
+  [1029](../1029-agenda-resources/spec.md) agrega profesionales o recursos con su
+  propio horario. Sin ninguno, esta suposición sigue vigente.
 - **Un conector activo a la vez**: la composición (Zoom + evento en Google a la
   vez) queda fuera; quien quiera ver sus reuniones de Zoom en su calendario usa
   la sincronización propia de Zoom, como hace hoy el dueño del fork.

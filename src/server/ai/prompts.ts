@@ -31,6 +31,8 @@ export function buildAgentSystemPrompt(input: {
    * token en hablar de horarios: la agenda no existe aquí.
    */
   agenda?: boolean;
+  /** 1029 — Con 2 o más, el agente sabe con quién puede agendar. */
+  resources?: { id: string; name: string }[];
 }): string {
   const { profile } = input;
   const stageNames = input.stages.map((s) => s.name).join(" | ");
@@ -40,8 +42,16 @@ export function buildAgentSystemPrompt(input: {
         '- {"action":"book_slot","startUtc":"<uno de los horarios que el sistema ofreció, en ISO UTC>","reply":"..."} — agendar el horario que el cliente eligió.',
       ]
     : [];
+  const resources = input.agenda && (input.resources?.length ?? 0) >= 2 ? input.resources! : [];
+  const resourceRules = resources.length
+    ? [
+        `- Se puede agendar con: ${resources.map((r) => `${r.name} (resourceId "${r.id}")`).join(", ")}.`,
+        '- Si el cliente nombra a alguien, usa offer_slots con su resourceId. Si le da igual, usa offer_slots con "resourceId":"any". Nunca inventes un resourceId.',
+      ]
+    : [];
   const agendaRules = input.agenda
     ? [
+        ...resourceRules,
         "- NUNCA escribas tú los horarios ni los inventes: usa offer_slots y el sistema pega los reales.",
         "- book_slot solo acepta un horario que el sistema ofreció antes en ESTA conversación. Si el cliente pide otro, vuelve a ofrecer con offer_slots.",
         "- Si el cliente quiere CANCELAR una cita → handoff: esa decisión no es tuya.",

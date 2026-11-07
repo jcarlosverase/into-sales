@@ -1,4 +1,4 @@
-import { asc, desc, eq, gte, lt } from "drizzle-orm";
+import { asc, desc, eq, gte, isNull, lt, or } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db";
 import { scoped } from "@/lib/db/tenant";
 import type { DateRange } from "@/lib/time/calendar";
@@ -19,6 +19,8 @@ export type BookingListItem = {
   time: string;
   weekday: string;
   contact: { id: string; name: string } | null;
+  /** 1029 — Con quién es; null si no tiene profesional. */
+  resource: { id: string; name: string; kind: "person" | "resource" } | null;
   conversationId: string | null;
   /** Con qué conector nació la entrega de esta cita. */
   connector: string | null;
@@ -51,6 +53,8 @@ type Row = {
   booking: typeof schema.booking.$inferSelect;
   contactId: string | null;
   contactName: string | null;
+  resourceName: string | null;
+  resourceKind: "person" | "resource" | null;
 };
 
 function baseQuery() {
@@ -59,9 +63,12 @@ function baseQuery() {
       booking: schema.booking,
       contactId: schema.contact.id,
       contactName: schema.contact.name,
+      resourceName: schema.agendaResource.name,
+      resourceKind: schema.agendaResource.kind,
     })
     .from(schema.booking)
-    .leftJoin(schema.contact, eq(schema.booking.contactId, schema.contact.id));
+    .leftJoin(schema.contact, eq(schema.booking.contactId, schema.contact.id))
+    .leftJoin(schema.agendaResource, eq(schema.booking.resourceId, schema.agendaResource.id));
 }
 
 /** Las últimas 200 citas: el listado de siempre, para quien no pide rango. */
@@ -90,7 +97,9 @@ export async function listBookingsInRange(
   organizationId: string,
   range: DateRange,
   settings?: CalendarSettings,
-  scope: LeadScope = { kind: "all" }
+  scope: LeadScope = { kind: "all" },
+  /** 1029 — Lo de esa persona y lo que ocupa a todos. */
+  resourceId?: string | null
 ): Promise<{ bookings: BookingListItem[]; truncated: boolean }> {
   const resolved = settings ?? (await getSettings(organizationId));
   const tz = resolved.timezone;
@@ -105,7 +114,10 @@ export async function listBookingsInRange(
         organizationId,
         gte(schema.booking.scheduledAt, new Date(start.getTime() - LOOKBACK_MS)),
         lt(schema.booking.scheduledAt, end),
-        visibleBookingCondition(scope)
+        visibleBookingCondition(scope),
+        resourceId
+          ? or(eq(schema.booking.resourceId, resourceId), isNull(schema.booking.resourceId))
+          : undefined
       )
     )
     .orderBy(asc(schema.booking.scheduledAt))
@@ -137,6 +149,10 @@ function toListItem(r: Row, timezone: string): BookingListItem {
     time: parts.time,
     weekday: parts.weekday,
     contact: r.contactId ? { id: r.contactId, name: r.contactName ?? "" } : null,
+    resource:
+      r.booking.resourceId && r.resourceName && r.resourceKind
+        ? { id: r.booking.resourceId, name: r.resourceName, kind: r.resourceKind }
+        : null,
     conversationId: r.booking.conversationId,
     connector: r.booking.connector,
     meetingLink: r.booking.meetingLink,

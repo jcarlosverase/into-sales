@@ -8,7 +8,10 @@ import { addDaysISO, todayInTz } from "@/lib/time/slots";
 import {
   buildCandidateSlots,
   computeAvailability,
+  resourceCandidates,
 } from "@/server/agenda/availability";
+import { ANY_RESOURCE } from "@/lib/agenda-resources";
+import { getResource, listActiveResources } from "@/server/agenda/resources";
 import { getSettings } from "@/server/agenda/settings";
 import { buildSlots, daysWithAgenda } from "@/server/agenda/spread";
 import { replaceOffers } from "@/server/agenda/offers";
@@ -93,11 +96,24 @@ export async function GET(req: Request) {
     .limit(1);
   if (!rows[0]) return apiError(404, "not_found", "Conversación no encontrada");
 
+  // 1029 — Un id, o `any`. Sin él, de todos: un cerebro que no conoce esto sigue
+  // funcionando, y lee `resourceMode` y `resources` si quiere preguntar.
+  const requested = url.searchParams.get("resourceId")?.trim() || null;
+  const resourceId = requested === ANY_RESOURCE ? null : requested;
+  if (resourceId) {
+    const resource = await getResource(organizationId, resourceId);
+    if (!resource) return apiError(404, "resource_not_found", "No encontramos a esa persona");
+    if (!resource.active) return apiError(409, "resource_archived", "Esa persona ya no atiende");
+  }
+
   const limit = clamp(url.searchParams.get("limit"), LIMITS.limit);
   const perDay = clamp(url.searchParams.get("perDay"), LIMITS.perDay);
   const days = clamp(url.searchParams.get("days"), LIMITS.days);
 
-  const settings = await getSettings(organizationId);
+  const [settings, resources] = await Promise.all([
+    getSettings(organizationId),
+    listActiveResources(organizationId),
+  ]);
   const now = new Date();
   const today = todayInTz(now, settings.timezone);
   // Un día fuera de lo agendable ni se calcula: no hay nada que buscar.
@@ -107,6 +123,7 @@ export async function GET(req: Request) {
     ? await computeAvailability(organizationId, {
         settings,
         now,
+        resourceId,
         ...(date ? { fromISO: date, toISO: date } : {}),
       })
     : [];
@@ -120,7 +137,13 @@ export async function GET(req: Request) {
     days,
     date,
     candidatosDelDia:
-      date && inside ? buildCandidateSlots(settings, date, date).length : 0,
+      date && inside
+        ? resources.length > 0
+          ? resources
+              .filter((r) => !resourceId || r.id === resourceId)
+              .flatMap((r) => resourceCandidates(settings, r, date, date)).length
+          : buildCandidateSlots(settings, date, date).length
+        : 0,
   });
 
   // Reemplazo completo: la oferta vigente es siempre la última. Pero una
@@ -131,7 +154,11 @@ export async function GET(req: Request) {
     await replaceOffers(
       organizationId,
       conversationId,
-      slots.map((s) => ({ startUtc: s.startUtc, label: s.label }))
+      slots.map((s) => ({
+        startUtc: s.startUtc,
+        label: s.label,
+        ...(resourceId ? { resourceId } : {}),
+      }))
     );
   }
 
@@ -143,12 +170,19 @@ export async function GET(req: Request) {
       dayIso: s.dayIso,
       dayLabel: s.dayLabel,
       time: s.time,
+      ...(resources.length > 0 ? { resourceIds: s.resourceIds ?? [] } : {}),
     })),
     // Los días que NO están aquí no tienen agenda HASTA `query.coveredUntil`:
     // lo posterior no se revisó, y de cada día se ven hasta `query.perDay`
     // horas. Para un día concreto, se pregunta con `date`.
     diasConAgenda: daysWithAgenda(slots),
     query,
+    ...(resources.length > 0
+      ? {
+          resourceMode: settings.agentResourceMode,
+          resources: resources.map(({ id, name, kind }) => ({ id, name, kind })),
+        }
+      : {}),
   });
 }
 
