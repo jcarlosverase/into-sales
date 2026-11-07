@@ -67,7 +67,10 @@ try {
   } else if (args.includes("--reset")) {
     const removed = await resetIndustry(db, org.id, sample);
     console.log(
-      `[seed] ${sample.businessName}: quitados ${removed.contacts} contactos de ejemplo y ${removed.templates} borradores de plantilla.`
+      `[seed] ${sample.businessName}: quitados ${removed.contacts} contactos de ejemplo y ${removed.templates} borradores de plantilla` +
+        (removed.resources || removed.resourcesArchived
+          ? `; ${removed.resources} profesionales quitados y ${removed.resourcesArchived} archivados porque tienen citas.`
+          : ".")
     );
   } else {
     const r = await seedIndustry(db, org.id, sample, {
@@ -88,6 +91,12 @@ try {
       r.agent === "applied"
         ? `  · perfil del agente configurado (${sample.agent.name}); el interruptor no se tocó`
         : "  · el agente ya estaba configurado y se dejó igual (usa --overwrite-agent para reemplazarlo)",
+      r.agendaHours === "applied"
+        ? "  · horario de la agenda configurado"
+        : r.agendaHours === "kept"
+          ? "  · la agenda ya tenía horario y se dejó igual (el de cada profesional se recorta a ese horario)"
+          : null,
+      sample.agenda ? `  · ${r.resourcesAdded} profesionales nuevos en la agenda` : null,
     ];
     console.log(lines.filter(Boolean).join("\n"));
   }

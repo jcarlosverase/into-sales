@@ -1,4 +1,18 @@
+import type { WeeklyHours } from "@/server/agenda/settings";
 import type { IndustrySample } from "./types";
+
+/** Hours helper: the same interval on several days. */
+function days(list: (keyof WeeklyHours)[], start: string, end: string): WeeklyHours {
+  return Object.fromEntries(list.map((d) => [d, [{ start, end }]]));
+}
+
+const WEEKDAYS: (keyof WeeklyHours)[] = ["mon", "tue", "wed", "thu", "fri"];
+
+/** Monday to Friday 8:00–18:00 and Saturday 8:00–14:00, as the knowledge says. */
+const BUSINESS_HOURS: WeeklyHours = {
+  ...days(WEEKDAYS, "08:00", "18:00"),
+  sat: [{ start: "08:00", end: "14:00" }],
+};
 
 /**
  * 023 — Clínica Dental Calma: endodoncia y odontología general en Lima, con
@@ -110,6 +124,7 @@ export const dental: IndustrySample = {
     },
     { kind: "qa", question: "¿Dónde están ubicados?", answer: "Av. Sucre 820, consultorio 305, Pueblo Libre (dirección de ejemplo). Hay estacionamiento pagado en el edificio." },
     { kind: "qa", question: "¿Cuál es el horario?", answer: "Lunes a viernes de 8:00 a. m. a 6:00 p. m. y sábados de 8:00 a. m. a 2:00 p. m. Domingos y feriados no atendemos; para urgencias fuera de horario, escribe y te respondemos a primera hora." },
+    { kind: "qa", question: "¿Quiénes atienden? ¿Con qué doctor me toca?", answer: "Somos un equipo de 10 profesionales. Endodoncia: Dra. Lucía Paredes, Dr. Martín Quispe y Dra. Carla Benavides. Odontología general: Dr. Andrés Villanueva y Dra. Rosa Huamán. Odontopediatría (niños): Dra. Valeria Rojas. Ortodoncia (brackets y alineadores): Dr. Jorge Castañeda. Periodoncia (encías): Dra. Milagros Torres. Cirugía bucal (muelas del juicio, implantes): Dr. Renato Cárdenas. Rehabilitación oral (coronas y prótesis): Dra. Fiorella Lazo. Puedes pedir a alguien en particular o te damos el primer horario libre." },
     { kind: "qa", question: "¿Cuánto cuesta la endodoncia?", answer: "Precios de referencia con evaluación y radiografía incluidas: diente anterior desde S/ 420, premolar desde S/ 650, molar desde S/ 950. Retratamiento de endodoncia desde S/ 750. El precio final se confirma en la evaluación." },
     { kind: "qa", question: "¿Cuánto cuesta la evaluación?", answer: "Evaluación con radiografía: S/ 80. Si haces el tratamiento con nosotros, se descuenta del total. Sesión de adaptación para pacientes con miedo: S/ 120, con la evaluación incluida." },
     { kind: "qa", question: "¿Qué otros tratamientos hacen y cuánto cuestan?", answer: "Limpieza dental S/ 120. Curación con resina desde S/ 150. Extracción simple desde S/ 150. Corona de zirconio desde S/ 1,200. Blanqueamiento S/ 550." },
@@ -125,9 +140,44 @@ export const dental: IndustrySample = {
     name: "Clara",
     tone: "Cercana, calmada y empática, como la asistente de un consultorio que sabe que muchas personas llegan con dolor o con miedo. Trata de tú salvo que el paciente use usted. Mensajes cortos y sin tecnicismos.",
     instructions:
-      "Ayuda a agendar una evaluación o una cita. Si el paciente tiene dolor, ofrece el primer horario disponible. Da precios en soles solo si están en el conocimiento y aclara que el precio final se confirma en la evaluación. Si cuenta que tiene miedo, tranquilízalo y explica la atención para pacientes con ansiedad. Nunca des un diagnóstico, no recetes medicamentos ni digas qué tratamiento necesita: eso lo decide el doctor al verlo. Tampoco interpretes síntomas ni fotos: no digas que algo «suele ser señal de», «indica», «puede ser» o «suena a» una caries, el nervio o una infección, ni si un diente se puede salvar o si puede esperar. Ante un síntoma, muestra empatía y ofrece la evaluación; no supongas que su caso es una endodoncia: el precio de la evaluación va primero y los de cada tratamiento solo si los pide, aclarando que el doctor confirma qué necesita.",
+      "Ayuda a agendar una evaluación o una cita. Si el paciente tiene dolor, ofrece el primer horario disponible. Si nombra a un profesional, agenda con esa persona. Si no, elige según lo que pide, sin suponer un diagnóstico: dolor, evaluación, endodoncia o retratamiento con endodoncia u odontología general; limpieza, resina o blanqueamiento con odontología general; niños con odontopediatría; brackets o alineadores con ortodoncia; encías con periodoncia; muelas del juicio o implantes con cirugía bucal; coronas o prótesis con rehabilitación oral. Da precios en soles solo si están en el conocimiento y aclara que el precio final se confirma en la evaluación. Si cuenta que tiene miedo, tranquilízalo y explica la atención para pacientes con ansiedad. Nunca des un diagnóstico, no recetes medicamentos ni digas qué tratamiento necesita: eso lo decide el doctor al verlo. Tampoco interpretes síntomas ni fotos: no digas que algo «suele ser señal de», «indica», «puede ser» o «suena a» una caries, el nervio o una infección, ni si un diente se puede salvar o si puede esperar. Ante un síntoma, muestra empatía y ofrece la evaluación; no supongas que su caso es una endodoncia: el precio de la evaluación va primero y los de cada tratamiento solo si los pide, aclarando que el doctor confirma qué necesita.",
     escalationRules:
       "Pasa la conversación a una persona de inmediato si hay hinchazón de la cara, fiebre, sangrado que no para, pus o una bolita en la encía, un golpe o un diente roto, o dificultad para tragar o respirar. Al pasarla, no expliques qué puede ser ni cómo evoluciona: solo di que lo atienden con prioridad. También si pide hablar con el doctor, si hay un reclamo, si pregunta por un medicamento o si es un paciente en tratamiento.",
     greeting: "¡Hola! Soy Clara, de Clínica Dental Calma 🦷 Cuéntame, ¿tienes alguna molestia o quieres agendar una evaluación?",
+  },
+  // 1029 — Ten professionals with staggered hours, all inside the business hours.
+  // «Primero libre»: Clara offers whoever is free unless the patient names someone.
+  agenda: {
+    weeklyHours: BUSINESS_HOURS,
+    slotMinutes: 60,
+    agentResourceMode: "first_free",
+    resources: [
+      { kind: "person", name: "Dra. Lucía Paredes (endodoncia)", weeklyHours: days(WEEKDAYS, "08:00", "14:00") },
+      { kind: "person", name: "Dr. Martín Quispe (endodoncia)", weeklyHours: days(WEEKDAYS, "12:00", "18:00") },
+      {
+        kind: "person",
+        name: "Dra. Carla Benavides (endodoncia)",
+        weeklyHours: { ...days(["tue", "thu"], "08:00", "18:00"), sat: [{ start: "08:00", end: "14:00" }] },
+      },
+      { kind: "person", name: "Dr. Andrés Villanueva (odontología general)", weeklyHours: days(WEEKDAYS, "08:00", "18:00") },
+      {
+        kind: "person",
+        name: "Dra. Rosa Huamán (odontología general)",
+        weeklyHours: { ...days(["mon", "wed", "fri"], "08:00", "18:00"), sat: [{ start: "08:00", end: "14:00" }] },
+      },
+      {
+        kind: "person",
+        name: "Dra. Valeria Rojas (odontopediatría)",
+        weeklyHours: { ...days(["tue", "thu"], "14:00", "18:00"), sat: [{ start: "08:00", end: "14:00" }] },
+      },
+      {
+        kind: "person",
+        name: "Dr. Jorge Castañeda (ortodoncia)",
+        weeklyHours: { ...days(["mon", "wed"], "14:00", "18:00"), sat: [{ start: "08:00", end: "12:00" }] },
+      },
+      { kind: "person", name: "Dra. Milagros Torres (periodoncia)", weeklyHours: days(["tue", "thu"], "08:00", "13:00") },
+      { kind: "person", name: "Dr. Renato Cárdenas (cirugía bucal)", weeklyHours: days(["wed", "fri"], "08:00", "13:00") },
+      { kind: "person", name: "Dra. Fiorella Lazo (rehabilitación oral)", weeklyHours: days(["mon", "thu"], "13:00", "18:00") },
+    ],
   },
 };
